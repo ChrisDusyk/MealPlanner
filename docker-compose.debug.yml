@@ -1,0 +1,12 @@
+version: '3.4'
+
+services:
+  webapi:
+    container_name: webapi
+    image: mcr.microsoft.com/dotnet/sdk:7.0
+    volumes:
+      -./:/Service
+    command: dotnet watch
+  webapp:
+    container_name: webapp
+    image: 
