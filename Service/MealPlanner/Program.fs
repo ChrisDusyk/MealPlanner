@@ -15,7 +15,7 @@ module Program =
     let main args =
 
         let builder = WebApplication.CreateBuilder(args)
-        
+
         builder.Services.AddAuthorization()
         builder.Logging.AddConsole()
         builder.Services.AddGiraffe()
@@ -26,23 +26,25 @@ module Program =
 
         builder.Services.AddNpgsqlDataSource(builder.Configuration.GetConnectionString("DefaultConnection"))
 
+        builder.Services.Configure<Config.Metadata>(builder.Configuration.GetSection("Metadata"))
+
         let routes =
             choose [
                 route "/ping" >=> Handlers.pingHandler
-                subRoute "/api"
-                    (choose [
-                        GET >=> choose [
-                            route "/books" >=> Handlers.getBooksHandler
-                            routef "/books/%s" Handlers.getBookByIdHandler
-                        ]
-                        POST >=> choose [
-                            route "/books" >=> Handlers.createBookHandler
-                        ]
-                        PUT >=> choose [
-                            routef "/books/%s" Handlers.updateBookHandler
-                        ]
-                    ])
-                
+                //subRoute "/api"
+                //    (choose [
+                //        GET >=> choose [
+                //            route "/books" >=> Handlers.getBooksHandler
+                //            routef "/books/%s" Handlers.getBookByIdHandler
+                //        ]
+                //        POST >=> choose [
+                //            route "/books" >=> Handlers.createBookHandler
+                //        ]
+                //        PUT >=> choose [
+                //            routef "/books/%s" Handlers.updateBookHandler
+                //        ]
+                //    ])
+
                 RequestErrors.NOT_FOUND "Not Found"
             ]
         let app = builder.Build()

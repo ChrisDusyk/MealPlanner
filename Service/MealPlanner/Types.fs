@@ -50,3 +50,19 @@ module Types =
             Id: Guid
             Weeks: IEnumerable<MealPlanWeek>
         }
+
+    type PingInfo =
+        {
+            Name : string
+            Version : string
+            Database : string
+        }
+
+module Config =
+    [<CLIMutable>]
+    type Metadata =
+        {
+            Version : string
+            Name : string
+
+        }

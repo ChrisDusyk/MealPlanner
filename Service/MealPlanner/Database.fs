@@ -4,7 +4,7 @@ open Npgsql.FSharp
 open Types
 
 module Database =
-    let getMealsForWeek
+    let getMealsForWeek = []
 
 // let readBook (reader : RowReader) =
 //         {

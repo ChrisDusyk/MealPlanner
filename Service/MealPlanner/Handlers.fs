@@ -3,6 +3,7 @@ namespace MealPlanner
 open System
 open Microsoft.Extensions.Logging
 open Microsoft.Extensions.Options
+open Types
 open Giraffe
 
 module Handlers =
@@ -11,4 +12,14 @@ module Handlers =
         handler dataSource
 
     let pingHandler : HttpHandler =
-        Successful.OK "Hello"
+        handleContext(
+            fun ctx ->
+                let metadata = ctx.GetService<IOptions<Config.Metadata>>().Value
+                let response =
+                    {
+                        Name = metadata.Name
+                        Version = metadata.Version
+                        Database = "magic"
+                    }
+                ctx.WriteJsonAsync response
+        )
