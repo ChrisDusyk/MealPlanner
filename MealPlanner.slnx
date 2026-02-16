@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="MealPlanner.Api/MealPlanner.Api.csproj" />
+  <Project Path="MealPlanner.AppHost/MealPlanner.AppHost.csproj" />
+  <Project Path="MealPlanner.ServiceDefaults/MealPlanner.ServiceDefaults.csproj" />
+</Solution>
