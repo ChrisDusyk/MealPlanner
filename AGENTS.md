@@ -227,6 +227,63 @@ This pattern ensures errors short-circuit the chain while success flows through 
 
 ---
 
+# Authentication (Keycloak)
+
+The application uses Keycloak as the identity provider, orchestrated through Aspire.
+
+## Architecture
+
+- **Keycloak** runs as an Aspire-managed container on port `8080` with a realm imported from `MealPlanner.AppHost/Realms/mealplanner-realm.json`
+- **API** validates Keycloak-issued JWTs using `Aspire.Keycloak.Authentication` (prerelease)
+- **Frontend** handles OIDC login/logout server-side using `@auth/sveltekit` with the Keycloak provider
+
+## Realm Configuration
+
+The realm JSON (`MealPlanner.AppHost/Realms/mealplanner-realm.json`) defines:
+
+- **Realm**: `mealplanner`
+- **Clients**:
+  - `mealplanner-web` — Confidential client for the SvelteKit frontend (Authorization Code flow)
+  - `mealplanner-api` — Bearer-only client for API token validation
+- **Realm Roles**: `user`, `admin`
+- **Test User**: `user@meal.com` / `user123` (role: `user`)
+
+To modify the realm config, edit the JSON file and restart the Aspire app. The realm import only runs on first Keycloak startup — to re-import, delete the Keycloak data volume first.
+
+## API Authentication
+
+The API uses `AddKeycloakJwtBearer` with:
+
+- Service name: `keycloak` (Aspire service discovery)
+- Realm: `mealplanner`
+- Audience: `mealplanner-api`
+- HTTPS metadata validation is disabled in development
+
+Protected endpoints use `.RequireAuthorization()` on the route group.
+
+## Frontend Authentication
+
+Auth.js (`@auth/sveltekit`) handles OIDC flows:
+
+- **`src/auth.ts`**: Configures `SvelteKitAuth` with the Keycloak provider and JWT callbacks that persist the access token in the session
+- **`src/hooks.server.ts`**: Re-exports the Auth.js handle function
+- **`src/routes/+layout.server.ts`**: Loads the session and passes it to all pages
+- **`src/app.d.ts`**: Extends Auth.js types with `accessToken` on the session
+
+### Environment Variables (frontend `.env`)
+
+- `AUTH_SECRET` — Cookie signing secret (required, change in production)
+- `AUTH_KEYCLOAK_ID` — Keycloak client ID (`mealplanner-web`)
+- `AUTH_KEYCLOAK_SECRET` — Keycloak client secret
+- `AUTH_KEYCLOAK_ISSUER` — Keycloak issuer URL (`http://localhost:8080/realms/mealplanner`)
+
+### Auth UI
+
+- The `Navbar` component accepts a `session` prop and shows Login/Logout buttons accordingly
+- Login triggers `signIn('keycloak')`, Logout triggers `signOut()` from `@auth/sveltekit/client`
+
+---
+
 # Frontend Development (SvelteKit)
 
 This section describes the patterns and conventions for the `frontend` project.
