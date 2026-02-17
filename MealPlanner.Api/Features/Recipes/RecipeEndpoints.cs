@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using MealPlanner.Api.Features.Recipes.Commands;
 using MealPlanner.Api.Features.Recipes.Dtos;
 using MealPlanner.Api.Features.Recipes.Models;
@@ -25,11 +26,20 @@ public static class RecipeEndpoints
 		return app;
 	}
 
+	private static string? GetUserId(HttpContext httpContext) =>
+		httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+		?? httpContext.User.FindFirst("sub")?.Value;
+
 	private static async Task<IResult> GetAllRecipes(
+		HttpContext httpContext,
 		IQueryHandler<GetAllRecipesQuery, IReadOnlyList<Recipe>> handler,
 		CancellationToken cancellationToken)
 	{
-		var result = await handler.HandleAsync(new GetAllRecipesQuery(), cancellationToken);
+		var userId = GetUserId(httpContext);
+		if (userId is null)
+			return Results.Unauthorized();
+
+		var result = await handler.HandleAsync(new GetAllRecipesQuery(userId), cancellationToken);
 		return result.Match(
 			onSuccess: recipes => Results.Ok(recipes.Select(RecipeResponse.FromDomain).ToList()),
 			onFailure: error => Results.Problem(error.Message, statusCode: 500));
@@ -37,23 +47,37 @@ public static class RecipeEndpoints
 
 	private static async Task<IResult> GetRecipeById(
 		string id,
+		HttpContext httpContext,
 		IQueryHandler<GetRecipeByIdQuery, Recipe> handler,
 		CancellationToken cancellationToken)
 	{
-		var result = await handler.HandleAsync(new GetRecipeByIdQuery(id), cancellationToken);
+		var userId = GetUserId(httpContext);
+		if (userId is null)
+			return Results.Unauthorized();
+
+		var result = await handler.HandleAsync(new GetRecipeByIdQuery(id, userId), cancellationToken);
 		return result.Match(
 			onSuccess: recipe => Results.Ok(RecipeResponse.FromDomain(recipe)),
-			onFailure: error => error.Code == ErrorCodes.NotFound
-				? Results.NotFound(error.Message)
-				: Results.Problem(error.Message, statusCode: 500));
+			onFailure: error => error.Code switch
+			{
+				ErrorCodes.NotFound => Results.NotFound(error.Message),
+				ErrorCodes.Unauthorized => Results.Forbid(),
+				_ => Results.Problem(error.Message, statusCode: 500)
+			});
 	}
 
 	private static async Task<IResult> CreateRecipe(
 		CreateRecipeRequest request,
+		HttpContext httpContext,
 		ICommandHandler<CreateRecipeCommand, Recipe> handler,
 		CancellationToken cancellationToken)
 	{
+		var userId = GetUserId(httpContext);
+		if (userId is null)
+			return Results.Unauthorized();
+
 		var command = new CreateRecipeCommand(
+			userId,
 			request.Name,
 			request.Description,
 			request.SourceUrl,
@@ -74,11 +98,17 @@ public static class RecipeEndpoints
 	private static async Task<IResult> UpdateRecipe(
 		string id,
 		UpdateRecipeRequest request,
+		HttpContext httpContext,
 		ICommandHandler<UpdateRecipeCommand, Recipe> handler,
 		CancellationToken cancellationToken)
 	{
+		var userId = GetUserId(httpContext);
+		if (userId is null)
+			return Results.Unauthorized();
+
 		var command = new UpdateRecipeCommand(
 			id,
+			userId,
 			request.Name,
 			request.Description,
 			request.SourceUrl,
@@ -90,8 +120,10 @@ public static class RecipeEndpoints
 			onFailure: error => error.Code switch
 			{
 				ErrorCodes.NotFound => Results.NotFound(error.Message),
+				ErrorCodes.Unauthorized => Results.Forbid(),
 				ErrorCodes.ValidationFailed => Results.BadRequest(error.Message),
 				_ => Results.Problem(error.Message, statusCode: 500)
 			});
 	}
 }
+

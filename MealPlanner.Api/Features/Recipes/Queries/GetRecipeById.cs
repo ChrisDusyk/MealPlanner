@@ -7,7 +7,7 @@ namespace MealPlanner.Api.Features.Recipes.Queries;
 /// <summary>
 /// Query to retrieve a single recipe by its ID.
 /// </summary>
-public record GetRecipeByIdQuery(string Id) : IQuery<Recipe>;
+public record GetRecipeByIdQuery(string Id, string UserId) : IQuery<Recipe>;
 
 /// <summary>
 /// Handles retrieving a single recipe from MongoDB by ID.
@@ -33,6 +33,10 @@ public class GetRecipeByIdQueryHandler(IMongoClient mongoClient)
 				return Result<Recipe>.Failure(
 					new Error(ErrorCodes.NotFound, $"Recipe with ID '{query.Id}' was not found."));
 
+			if (document.UserId != query.UserId)
+				return Result<Recipe>.Failure(
+					new Error(ErrorCodes.Unauthorized, "You do not have permission to view this recipe."));
+
 			return Result<Recipe>.Success(MapToRecipe(document));
 		}
 		catch (Exception ex)
@@ -45,6 +49,7 @@ public class GetRecipeByIdQueryHandler(IMongoClient mongoClient)
 	private static Recipe MapToRecipe(RecipeDocument doc) =>
 		new(
 			Id: doc.Id!,
+			UserId: doc.UserId,
 			Name: doc.Name,
 			Description: doc.Description,
 			SourceUrl: doc.SourceUrl,

@@ -7,7 +7,7 @@ namespace MealPlanner.Api.Features.Recipes.Queries;
 /// <summary>
 /// Query to retrieve all recipes.
 /// </summary>
-public record GetAllRecipesQuery : IQuery<IReadOnlyList<Recipe>>;
+public record GetAllRecipesQuery(string UserId) : IQuery<IReadOnlyList<Recipe>>;
 
 /// <summary>
 /// Handles retrieving all recipes from MongoDB.
@@ -26,7 +26,7 @@ public class GetAllRecipesQueryHandler(IMongoClient mongoClient)
 				.GetCollection<RecipeDocument>("recipes");
 
 			var documents = await collection
-				.Find(_ => true)
+				.Find(r => r.UserId == query.UserId)
 				.ToListAsync(cancellationToken);
 
 			var recipes = documents
@@ -45,6 +45,7 @@ public class GetAllRecipesQueryHandler(IMongoClient mongoClient)
 	private static Recipe MapToRecipe(RecipeDocument doc) =>
 		new(
 			Id: doc.Id!,
+			UserId: doc.UserId,
 			Name: doc.Name,
 			Description: doc.Description,
 			SourceUrl: doc.SourceUrl,
