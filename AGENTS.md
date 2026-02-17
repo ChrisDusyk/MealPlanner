@@ -273,6 +273,37 @@ You MUST use Svelte 5 Runes for all component logic. Do NOT use legacy Svelte 4 
 
 ---
 
+# Git Workflow
+
+This repository follows a strict Git workflow to ensure code quality and traceability.
+
+## 1. Feature Branching
+
+- **Always** create a new branch for each implementation plan or task.
+- Branch names should be descriptive (e.g., `feature/add-login`, `bugfix/fix-header-layout`).
+- Do not commit directly to `main` (or `master`) unless it's a trivial documentation fix.
+
+## 2. Atomic Commits
+
+- **Commit often**. Ideally, commit after each step in your implementation plan.
+- Commits should represent a single logical change or a completed step.
+- Use `git add .` carefully; prefer staging specific files related to the change.
+
+## 3. Commit Messages
+
+- Use Conventional Commits format: `<type>(<scope>): <subject>`
+  - `feat`: A new feature
+  - `fix`: A bug fix
+  - `docs`: Documentation only changes
+  - `style`: Changes that do not affect the meaning of the code (white-space, formatting, etc)
+  - `refactor`: A code change that neither fixes a bug nor adds a feature
+  - `perf`: A code change that improves performance
+  - `test`: Adding missing tests or correcting existing tests
+  - `chore`: Changes to the build process or auxiliary tools and libraries such as documentation generation
+- Example: `feat(auth): add login page component`
+
+---
+
 You are able to use the Svelte MCP server, where you have access to comprehensive Svelte 5 and SvelteKit documentation. Here's how to use the available tools effectively:
 
 ## Available MCP Tools:
