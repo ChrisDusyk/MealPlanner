@@ -42,19 +42,7 @@
       "attributes": {
         "pkce.code.challenge.method": "S256",
         "post.logout.redirect.uris": "http://localhost:3000/*"
-      },
-      "defaultClientScopes": [
-        "web-origins",
-        "acr",
-        "profile",
-        "roles",
-        "email"
-      ],
-      "optionalClientScopes": [
-        "address",
-        "phone",
-        "offline_access"
-      ]
+      }
     },
     {
       "clientId": "mealplanner-api",
@@ -64,14 +52,7 @@
       "publicClient": false,
       "standardFlowEnabled": false,
       "directAccessGrantsEnabled": false,
-      "protocol": "openid-connect",
-      "defaultClientScopes": [
-        "web-origins",
-        "acr",
-        "profile",
-        "roles",
-        "email"
-      ]
+      "protocol": "openid-connect"
     }
   ],
   "users": [
@@ -104,12 +85,5 @@
       ]
     }
   ],
-  "clientScopeMappings": {},
-  "defaultDefaultClientScopes": [
-    "web-origins",
-    "acr",
-    "profile",
-    "roles",
-    "email"
-  ]
+  "clientScopeMappings": {}
 }
