@@ -274,6 +274,7 @@ Auth.js (`@auth/sveltekit`) handles OIDC flows:
 
 - `AUTH_SECRET` — Cookie signing secret (required, change in production)
 - `AUTH_KEYCLOAK_ID` — Keycloak client ID (`mealplanner-web`)
+- `AUTH_KEYCLOAK_SECRET` — Keycloak client secret
 - `AUTH_KEYCLOAK_ISSUER` — Keycloak issuer URL (`http://localhost:8080/realms/mealplanner`)
 
 ### Auth UI
