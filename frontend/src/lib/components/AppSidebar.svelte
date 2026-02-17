@@ -1,0 +1,157 @@
+<script lang="ts">
+	import { page } from '$app/state';
+	import { signOut } from '@auth/sveltekit/client';
+	import type { Session } from '@auth/sveltekit';
+
+	let { session }: { session: Session | null } = $props();
+
+	let mobileOpen = $state(false);
+
+	const navItems = [
+		{
+			label: 'Recipes',
+			href: '/app/recipes',
+			icon: 'recipe'
+		}
+	];
+
+	function isActive(href: string): boolean {
+		return page.url.pathname.startsWith(href);
+	}
+
+	function handleLogout() {
+		signOut();
+	}
+</script>
+
+<!-- Mobile sidebar toggle -->
+<button
+	class="fixed top-[78px] left-4 z-40 flex h-10 w-10 items-center justify-center rounded-lg bg-green-900 text-green-200 shadow-lg transition-colors hover:bg-green-800 md:hidden"
+	onclick={() => (mobileOpen = !mobileOpen)}
+	aria-label="Toggle sidebar"
+>
+	<svg
+		xmlns="http://www.w3.org/2000/svg"
+		class="h-5 w-5"
+		fill="none"
+		viewBox="0 0 24 24"
+		stroke="currentColor"
+		stroke-width="2"
+	>
+		{#if mobileOpen}
+			<path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+		{:else}
+			<path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h8" />
+		{/if}
+	</svg>
+</button>
+
+<!-- Mobile backdrop -->
+{#if mobileOpen}
+	<button
+		class="fixed inset-0 z-30 bg-black/40 backdrop-blur-sm md:hidden"
+		onclick={() => (mobileOpen = false)}
+		aria-label="Close sidebar"
+		tabindex="-1"
+	></button>
+{/if}
+
+<!-- Sidebar -->
+<aside
+	class="fixed top-[72px] bottom-0 left-0 z-40 flex w-64 flex-col border-r border-green-800/30 bg-green-900 transition-transform duration-300 {mobileOpen
+		? 'translate-x-0'
+		: '-translate-x-full'} md:translate-x-0"
+>
+	<!-- User section -->
+	{#if session?.user}
+		<div class="border-b border-green-800/40 px-5 py-5">
+			<div class="flex items-center gap-3">
+				<div
+					class="flex h-10 w-10 items-center justify-center rounded-full bg-green-500 font-display text-sm font-bold text-white"
+				>
+					{(session.user.name ?? session.user.email ?? 'U').charAt(0).toUpperCase()}
+				</div>
+				<div class="min-w-0 flex-1">
+					<p class="truncate font-display text-sm font-semibold text-white">
+						{session.user.name ?? 'User'}
+					</p>
+					{#if session.user.email}
+						<p class="truncate text-xs text-green-300/70">
+							{session.user.email}
+						</p>
+					{/if}
+				</div>
+			</div>
+		</div>
+	{/if}
+
+	<!-- Navigation -->
+	<nav class="flex-1 overflow-y-auto px-3 py-4">
+		<ul class="flex flex-col gap-1">
+			{#each navItems as item (item.href)}
+				<li>
+					<a
+						href={item.href}
+						onclick={() => (mobileOpen = false)}
+						class="group flex items-center gap-3 rounded-lg px-3 py-2.5 font-display text-sm font-medium transition-all {isActive(
+							item.href
+						)
+							? 'bg-green-500/20 text-white'
+							: 'text-green-200/70 hover:bg-green-800/50 hover:text-white'}"
+					>
+						<!-- Recipe book icon -->
+						{#if item.icon === 'recipe'}
+							<svg
+								xmlns="http://www.w3.org/2000/svg"
+								class="h-5 w-5 shrink-0 transition-colors {isActive(item.href)
+									? 'text-green-400'
+									: 'text-green-400/50 group-hover:text-green-400/80'}"
+								fill="none"
+								viewBox="0 0 24 24"
+								stroke="currentColor"
+								stroke-width="1.5"
+							>
+								<path
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25"
+								/>
+							</svg>
+						{/if}
+						{item.label}
+						{#if isActive(item.href)}
+							<span
+								class="ml-auto h-1.5 w-1.5 rounded-full bg-green-400"
+								aria-hidden="true"
+							></span>
+						{/if}
+					</a>
+				</li>
+			{/each}
+		</ul>
+	</nav>
+
+	<!-- Bottom actions -->
+	<div class="border-t border-green-800/40 px-3 py-4">
+		<button
+			onclick={handleLogout}
+			class="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 font-display text-sm font-medium text-green-200/70 transition-all hover:bg-green-800/50 hover:text-white"
+		>
+			<svg
+				xmlns="http://www.w3.org/2000/svg"
+				class="h-5 w-5 shrink-0 text-green-400/50"
+				fill="none"
+				viewBox="0 0 24 24"
+				stroke="currentColor"
+				stroke-width="1.5"
+			>
+				<path
+					stroke-linecap="round"
+					stroke-linejoin="round"
+					d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15m3 0 3-3m0 0-3-3m3 3H9"
+				/>
+			</svg>
+			Log Out
+		</button>
+	</div>
+</aside>
