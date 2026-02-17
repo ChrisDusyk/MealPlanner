@@ -1,9 +1,22 @@
 <script lang="ts">
+	import { signIn, signOut } from '@auth/sveltekit/client';
+	import type { Session } from '@auth/sveltekit';
+
+	let { session }: { session: Session | null } = $props();
+
 	let scrolled = $state(false);
 	let mobileOpen = $state(false);
 
 	function handleScroll() {
 		scrolled = window.scrollY > 10;
+	}
+
+	function handleLogin() {
+		signIn('keycloak');
+	}
+
+	function handleLogout() {
+		signOut();
 	}
 </script>
 
@@ -66,18 +79,30 @@
 
 		<!-- Desktop Right Buttons -->
 		<div class="hidden items-center gap-3 md:flex">
-			<a
-				href="/login"
-				class="rounded-lg border border-green-400/30 px-5 py-2 font-display text-sm font-medium text-green-100 transition-all hover:border-green-400/60 hover:bg-green-800/50"
-			>
-				Log In
-			</a>
-			<a
-				href="/signup"
-				class="rounded-lg bg-green-500 px-5 py-2 font-display text-sm font-semibold text-white shadow-md shadow-green-900/30 transition-all hover:bg-green-400 hover:shadow-lg hover:shadow-green-900/40"
-			>
-				Get Started
-			</a>
+			{#if session?.user}
+				<span class="font-display text-sm font-medium text-green-200/80">
+					{session.user.name ?? session.user.email}
+				</span>
+				<button
+					onclick={handleLogout}
+					class="rounded-lg border border-green-400/30 px-5 py-2 font-display text-sm font-medium text-green-100 transition-all hover:border-green-400/60 hover:bg-green-800/50"
+				>
+					Log Out
+				</button>
+			{:else}
+				<button
+					onclick={handleLogin}
+					class="rounded-lg border border-green-400/30 px-5 py-2 font-display text-sm font-medium text-green-100 transition-all hover:border-green-400/60 hover:bg-green-800/50"
+				>
+					Log In
+				</button>
+				<button
+					onclick={handleLogin}
+					class="rounded-lg bg-green-500 px-5 py-2 font-display text-sm font-semibold text-white shadow-md shadow-green-900/30 transition-all hover:bg-green-400 hover:shadow-lg hover:shadow-green-900/40"
+				>
+					Get Started
+				</button>
+			{/if}
 		</div>
 
 		<!-- Mobile Hamburger -->
@@ -140,20 +165,41 @@
 					Testimonials
 				</a>
 				<hr class="border-green-700/40" />
-				<a
-					href="/login"
-					class="rounded-lg border border-green-400/30 px-3 py-2.5 text-center font-display text-sm font-medium text-green-100 transition-all hover:border-green-400/60 hover:bg-green-800/50"
-					onclick={() => (mobileOpen = false)}
-				>
-					Log In
-				</a>
-				<a
-					href="/signup"
-					class="rounded-lg bg-green-500 px-3 py-2.5 text-center font-display text-sm font-semibold text-white shadow-md transition-all hover:bg-green-400"
-					onclick={() => (mobileOpen = false)}
-				>
-					Get Started
-				</a>
+				{#if session?.user}
+					<span
+						class="rounded-lg px-3 py-2.5 font-display text-sm font-medium text-green-200/90"
+					>
+						{session.user.name ?? session.user.email}
+					</span>
+					<button
+						onclick={() => {
+							mobileOpen = false;
+							handleLogout();
+						}}
+						class="rounded-lg border border-green-400/30 px-3 py-2.5 text-center font-display text-sm font-medium text-green-100 transition-all hover:border-green-400/60 hover:bg-green-800/50"
+					>
+						Log Out
+					</button>
+				{:else}
+					<button
+						onclick={() => {
+							mobileOpen = false;
+							handleLogin();
+						}}
+						class="rounded-lg border border-green-400/30 px-3 py-2.5 text-center font-display text-sm font-medium text-green-100 transition-all hover:border-green-400/60 hover:bg-green-800/50"
+					>
+						Log In
+					</button>
+					<button
+						onclick={() => {
+							mobileOpen = false;
+							handleLogin();
+						}}
+						class="rounded-lg bg-green-500 px-3 py-2.5 text-center font-display text-sm font-semibold text-white shadow-md transition-all hover:bg-green-400"
+					>
+						Get Started
+					</button>
+				{/if}
 			</div>
 		</div>
 	{/if}
