@@ -14,7 +14,8 @@ public static class RecipeEndpoints
 	public static IEndpointRouteBuilder MapRecipeEndpoints(this IEndpointRouteBuilder app)
 	{
 		var group = app.MapGroup("/api/recipes")
-			.WithTags("Recipes");
+			.WithTags("Recipes")
+			.RequireAuthorization();
 
 		group.MapGet("/", GetAllRecipes);
 		group.MapGet("/{id}", GetRecipeById);

@@ -13,6 +13,21 @@ builder.Services.AddOpenApi();
 
 builder.Services.AddCqrsHandlers(typeof(Program).Assembly);
 
+// Authentication & Authorization
+builder.Services.AddAuthentication()
+	.AddKeycloakJwtBearer(
+		serviceName: "keycloak",
+		realm: "mealplanner",
+		options =>
+		{
+			options.Audience = "mealplanner-api";
+			if (builder.Environment.IsDevelopment())
+			{
+				options.RequireHttpsMetadata = false;
+			}
+		});
+builder.Services.AddAuthorization();
+
 var app = builder.Build();
 
 app.MapDefaultEndpoints();
@@ -24,6 +39,8 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.UseAuthentication();
+app.UseAuthorization();
 
 app.MapRecipeEndpoints();
 
