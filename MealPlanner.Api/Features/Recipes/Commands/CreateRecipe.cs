@@ -1,0 +1,80 @@
+using MealPlanner.Api.Features.Recipes.Models;
+using MealPlanner.Api.Shared;
+using MongoDB.Driver;
+
+namespace MealPlanner.Api.Features.Recipes.Commands;
+
+/// <summary>
+/// Command to create a new recipe.
+/// </summary>
+public record CreateRecipeCommand(
+	string Name,
+	string Description,
+	string SourceUrl,
+	List<Ingredient> Ingredients
+) : ICommand<Recipe>;
+
+/// <summary>
+/// Handles creating a new recipe in MongoDB.
+/// </summary>
+public class CreateRecipeCommandHandler(IMongoClient mongoClient)
+	: ICommandHandler<CreateRecipeCommand, Recipe>
+{
+	public async Task<Result<Recipe>> HandleAsync(
+		CreateRecipeCommand command,
+		CancellationToken cancellationToken = default)
+	{
+		if (string.IsNullOrWhiteSpace(command.Name))
+			return Result<Recipe>.Failure(
+				new Error(ErrorCodes.ValidationFailed, "Recipe name is required."));
+
+		if (string.IsNullOrWhiteSpace(command.SourceUrl))
+			return Result<Recipe>.Failure(
+				new Error(ErrorCodes.ValidationFailed, "Recipe source URL is required."));
+
+		try
+		{
+			var now = DateTime.UtcNow;
+			var document = new RecipeDocument
+			{
+				Name = command.Name,
+				Description = command.Description,
+				SourceUrl = command.SourceUrl,
+				Ingredients = command.Ingredients
+					.Select(i => new IngredientDocument
+					{
+						Name = i.Name,
+						Quantity = i.Quantity,
+						Unit = i.Unit
+					})
+					.ToList(),
+				CreatedAt = now,
+				UpdatedAt = now
+			};
+
+			var collection = mongoClient
+				.GetDatabase("mealplannerDb")
+				.GetCollection<RecipeDocument>("recipes");
+
+			await collection.InsertOneAsync(document, cancellationToken: cancellationToken);
+
+			return Result<Recipe>.Success(MapToRecipe(document));
+		}
+		catch (Exception ex)
+		{
+			return Result<Recipe>.Failure(
+				new Error(ErrorCodes.DatabaseError, "Failed to create recipe.", ex));
+		}
+	}
+
+	private static Recipe MapToRecipe(RecipeDocument doc) =>
+		new(
+			Id: doc.Id!,
+			Name: doc.Name,
+			Description: doc.Description,
+			SourceUrl: doc.SourceUrl,
+			Ingredients: doc.Ingredients.Select(i => new Ingredient(i.Name, i.Quantity, i.Unit)).ToList(),
+			CreatedAt: doc.CreatedAt,
+			UpdatedAt: doc.UpdatedAt
+		);
+}

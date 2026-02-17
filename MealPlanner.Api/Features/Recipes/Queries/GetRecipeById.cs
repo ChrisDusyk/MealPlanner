@@ -1,0 +1,55 @@
+using MealPlanner.Api.Features.Recipes.Models;
+using MealPlanner.Api.Shared;
+using MongoDB.Driver;
+
+namespace MealPlanner.Api.Features.Recipes.Queries;
+
+/// <summary>
+/// Query to retrieve a single recipe by its ID.
+/// </summary>
+public record GetRecipeByIdQuery(string Id) : IQuery<Recipe>;
+
+/// <summary>
+/// Handles retrieving a single recipe from MongoDB by ID.
+/// </summary>
+public class GetRecipeByIdQueryHandler(IMongoClient mongoClient)
+	: IQueryHandler<GetRecipeByIdQuery, Recipe>
+{
+	public async Task<Result<Recipe>> HandleAsync(
+		GetRecipeByIdQuery query,
+		CancellationToken cancellationToken = default)
+	{
+		try
+		{
+			var collection = mongoClient
+				.GetDatabase("mealplannerDb")
+				.GetCollection<RecipeDocument>("recipes");
+
+			var document = await collection
+				.Find(r => r.Id == query.Id)
+				.FirstOrDefaultAsync(cancellationToken);
+
+			if (document is null)
+				return Result<Recipe>.Failure(
+					new Error(ErrorCodes.NotFound, $"Recipe with ID '{query.Id}' was not found."));
+
+			return Result<Recipe>.Success(MapToRecipe(document));
+		}
+		catch (Exception ex)
+		{
+			return Result<Recipe>.Failure(
+				new Error(ErrorCodes.DatabaseError, "Failed to retrieve recipe.", ex));
+		}
+	}
+
+	private static Recipe MapToRecipe(RecipeDocument doc) =>
+		new(
+			Id: doc.Id!,
+			Name: doc.Name,
+			Description: doc.Description,
+			SourceUrl: doc.SourceUrl,
+			Ingredients: doc.Ingredients.Select(i => new Ingredient(i.Name, i.Quantity, i.Unit)).ToList(),
+			CreatedAt: doc.CreatedAt,
+			UpdatedAt: doc.UpdatedAt
+		);
+}

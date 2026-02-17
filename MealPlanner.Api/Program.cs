@@ -1,3 +1,4 @@
+using MealPlanner.Api.Features.Recipes;
 using MealPlanner.Api.Shared;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -23,5 +24,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+app.MapRecipeEndpoints();
 
 app.Run();
