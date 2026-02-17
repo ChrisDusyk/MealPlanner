@@ -1,3 +1,90 @@
 @import 'tailwindcss';
 @plugin '@tailwindcss/forms';
 @plugin '@tailwindcss/typography';
+
+/* ── Warm-Green Theme Tokens ─────────────────────────── */
+@theme {
+	--font-display: 'Outfit', sans-serif;
+	--font-body: 'Source Serif 4', serif;
+
+	--color-green-50: #f0faf0;
+	--color-green-100: #ddf3dd;
+	--color-green-200: #b8e5b8;
+	--color-green-300: #8ad18a;
+	--color-green-400: #5fba65;
+	--color-green-500: #4a9d5b;
+	--color-green-600: #3a7d48;
+	--color-green-700: #2c6038;
+	--color-green-800: #224a2b;
+	--color-green-900: #1a3d22;
+	--color-green-950: #0f2514;
+
+	--color-cream: #fdfaf5;
+	--color-cream-dark: #f5eedd;
+	--color-charcoal: #2d3a2e;
+}
+
+/* ── Base styles ─────────────────────────────────────── */
+html {
+	scroll-behavior: smooth;
+}
+
+body {
+	font-family: var(--font-body);
+	background-color: var(--color-cream);
+	color: var(--color-charcoal);
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+	font-family: var(--font-display);
+}
+
+::selection {
+	background-color: var(--color-green-200);
+	color: var(--color-green-900);
+}
+
+/* ── Scroll-triggered reveal animation ───────────────── */
+@keyframes fade-in-up {
+	from {
+		opacity: 0;
+		transform: translateY(24px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+.reveal {
+	opacity: 0;
+	animation: fade-in-up 0.7s ease-out forwards;
+}
+
+.reveal-delay-1 {
+	animation-delay: 0.1s;
+}
+.reveal-delay-2 {
+	animation-delay: 0.2s;
+}
+.reveal-delay-3 {
+	animation-delay: 0.3s;
+}
+.reveal-delay-4 {
+	animation-delay: 0.4s;
+}
+
+/* ── Subtle grain overlay on sections ────────────────── */
+.grain::after {
+	content: '';
+	position: absolute;
+	inset: 0;
+	opacity: 0.03;
+	pointer-events: none;
+	background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
