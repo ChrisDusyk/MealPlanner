@@ -3,7 +3,7 @@
 	import favicon from '$lib/assets/favicon.svg';
 	import Navbar from '$lib/components/Navbar.svelte';
 
-	let { children } = $props();
+	let { children, data } = $props();
 </script>
 
 <svelte:head>
@@ -15,7 +15,7 @@
 	/>
 </svelte:head>
 
-<Navbar />
+<Navbar session={data.session} />
 <main class="pt-[72px]">
 	{@render children()}
 </main>
