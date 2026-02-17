@@ -1,6 +1,11 @@
 var builder = DistributedApplication.CreateBuilder(args);
 
-var api = builder.AddProject<Projects.MealPlanner_Api>("api");
+var mongoDb = builder.AddMongoDB("mongodb")
+	.WithLifetime(ContainerLifetime.Persistent);
+var mealPlannerDb = mongoDb.AddDatabase("mealplannerDb");
+
+var api = builder.AddProject<Projects.MealPlanner_Api>("api")
+	.WithReference(mealPlannerDb).WaitFor(mealPlannerDb);
 
 builder.AddViteApp("frontend", "..\\frontend")
 	.WithReference(api).WaitFor(api)
