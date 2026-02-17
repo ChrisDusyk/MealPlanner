@@ -21,7 +21,7 @@ export const { handle, signIn, signOut } = SvelteKitAuth({
 		},
 		async session({ session, token }) {
 			// Make the access token available in the session for API calls
-			session.accessToken = token.accessToken as string;
+			session.accessToken = typeof token.accessToken === 'string' ? token.accessToken : '';
 			return session;
 		}
 	}
