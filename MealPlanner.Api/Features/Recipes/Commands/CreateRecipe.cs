@@ -8,6 +8,7 @@ namespace MealPlanner.Api.Features.Recipes.Commands;
 /// Command to create a new recipe.
 /// </summary>
 public record CreateRecipeCommand(
+	string UserId,
 	string Name,
 	string Description,
 	string SourceUrl,
@@ -37,6 +38,7 @@ public class CreateRecipeCommandHandler(IMongoClient mongoClient)
 			var now = DateTime.UtcNow;
 			var document = new RecipeDocument
 			{
+				UserId = command.UserId,
 				Name = command.Name,
 				Description = command.Description,
 				SourceUrl = command.SourceUrl,
@@ -70,6 +72,7 @@ public class CreateRecipeCommandHandler(IMongoClient mongoClient)
 	private static Recipe MapToRecipe(RecipeDocument doc) =>
 		new(
 			Id: doc.Id!,
+			UserId: doc.UserId,
 			Name: doc.Name,
 			Description: doc.Description,
 			SourceUrl: doc.SourceUrl,

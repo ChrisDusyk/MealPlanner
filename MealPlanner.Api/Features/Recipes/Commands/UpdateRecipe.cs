@@ -9,6 +9,7 @@ namespace MealPlanner.Api.Features.Recipes.Commands;
 /// </summary>
 public record UpdateRecipeCommand(
 	string Id,
+	string UserId,
 	string Name,
 	string Description,
 	string SourceUrl,
@@ -47,9 +48,14 @@ public class UpdateRecipeCommandHandler(IMongoClient mongoClient)
 				return Result<Recipe>.Failure(
 					new Error(ErrorCodes.NotFound, $"Recipe with ID '{command.Id}' was not found."));
 
+			if (existing.UserId != command.UserId)
+				return Result<Recipe>.Failure(
+					new Error(ErrorCodes.Unauthorized, "You do not have permission to update this recipe."));
+
 			var updatedDocument = new RecipeDocument
 			{
 				Id = existing.Id,
+				UserId = existing.UserId,
 				Name = command.Name,
 				Description = command.Description,
 				SourceUrl = command.SourceUrl,
@@ -82,6 +88,7 @@ public class UpdateRecipeCommandHandler(IMongoClient mongoClient)
 	private static Recipe MapToRecipe(RecipeDocument doc) =>
 		new(
 			Id: doc.Id!,
+			UserId: doc.UserId,
 			Name: doc.Name,
 			Description: doc.Description,
 			SourceUrl: doc.SourceUrl,

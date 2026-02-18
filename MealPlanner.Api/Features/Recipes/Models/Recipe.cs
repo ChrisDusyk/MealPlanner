@@ -5,6 +5,7 @@ namespace MealPlanner.Api.Features.Recipes.Models;
 /// </summary>
 public record Recipe(
 	string Id,
+	string UserId,
 	string Name,
 	string Description,
 	string SourceUrl,
