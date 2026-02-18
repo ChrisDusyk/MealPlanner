@@ -21,8 +21,13 @@ export interface CreateRecipeRequest {
 	ingredients: Ingredient[];
 }
 
-export async function fetchRecipes(accessToken: string): Promise<Recipe[]> {
-	const response = await fetch('/api/recipes', {
+type FetchFn = typeof globalThis.fetch;
+
+export async function fetchRecipes(
+	accessToken: string,
+	fetchFn: FetchFn = fetch
+): Promise<Recipe[]> {
+	const response = await fetchFn('/api/recipes', {
 		headers: {
 			Authorization: `Bearer ${accessToken}`
 		}
@@ -37,9 +42,10 @@ export async function fetchRecipes(accessToken: string): Promise<Recipe[]> {
 
 export async function createRecipe(
 	accessToken: string,
-	request: CreateRecipeRequest
+	request: CreateRecipeRequest,
+	fetchFn: FetchFn = fetch
 ): Promise<Recipe> {
-	const response = await fetch('/api/recipes', {
+	const response = await fetchFn('/api/recipes', {
 		method: 'POST',
 		headers: {
 			'Content-Type': 'application/json',

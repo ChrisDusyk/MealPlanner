@@ -2,11 +2,11 @@ import { error } from '@sveltejs/kit';
 import { fetchRecipes } from '$lib/api/recipeApi';
 import type { PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async ({ parent }) => {
+export const load: PageServerLoad = async ({ parent, fetch }) => {
 	const { session } = await parent();
 
 	try {
-		const recipes = await fetchRecipes(session.accessToken);
+		const recipes = await fetchRecipes(session.accessToken, fetch);
 		return { recipes };
 	} catch (err) {
 		console.error('Failed to load recipes:', err);
