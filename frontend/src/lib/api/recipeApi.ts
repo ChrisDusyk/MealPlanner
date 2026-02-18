@@ -14,6 +14,13 @@ export interface Recipe {
 	updatedAt: string;
 }
 
+export interface CreateRecipeRequest {
+	name: string;
+	description: string;
+	sourceUrl: string;
+	ingredients: Ingredient[];
+}
+
 export async function fetchRecipes(accessToken: string): Promise<Recipe[]> {
 	const response = await fetch('/api/recipes', {
 		headers: {
@@ -23,6 +30,27 @@ export async function fetchRecipes(accessToken: string): Promise<Recipe[]> {
 
 	if (!response.ok) {
 		throw new Error(`Failed to fetch recipes: ${response.status}`);
+	}
+
+	return response.json();
+}
+
+export async function createRecipe(
+	accessToken: string,
+	request: CreateRecipeRequest
+): Promise<Recipe> {
+	const response = await fetch('/api/recipes', {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/json',
+			Authorization: `Bearer ${accessToken}`
+		},
+		body: JSON.stringify(request)
+	});
+
+	if (!response.ok) {
+		const message = await response.text();
+		throw new Error(message || `Failed to create recipe: ${response.status}`);
 	}
 
 	return response.json();

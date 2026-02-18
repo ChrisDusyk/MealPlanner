@@ -10,11 +10,29 @@
 
 <div class="mx-auto max-w-6xl">
 	<!-- Page header -->
-	<div class="mb-8">
-		<h1 class="font-display text-3xl font-bold text-charcoal">My Recipes</h1>
-		<p class="mt-1 text-charcoal/60">
-			Manage your collection of recipes and discover new meal ideas.
-		</p>
+	<div class="mb-8 flex items-center justify-between">
+		<div>
+			<h1 class="font-display text-3xl font-bold text-charcoal">My Recipes</h1>
+			<p class="mt-1 text-charcoal/60">
+				Manage your collection of recipes and discover new meal ideas.
+			</p>
+		</div>
+		<a
+			href="/app/recipes/new"
+			class="flex items-center gap-2 rounded-lg bg-green-600 px-5 py-2.5 font-display text-sm font-semibold text-white shadow-md shadow-green-900/20 transition-all hover:bg-green-700 hover:shadow-lg"
+		>
+			<svg
+				xmlns="http://www.w3.org/2000/svg"
+				class="h-5 w-5"
+				fill="none"
+				viewBox="0 0 24 24"
+				stroke="currentColor"
+				stroke-width="2"
+			>
+				<path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+			</svg>
+			Add Recipe
+		</a>
 	</div>
 
 	{#if data.recipes.length === 0}
