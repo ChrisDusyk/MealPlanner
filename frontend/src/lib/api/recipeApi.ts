@@ -6,7 +6,6 @@ export interface Ingredient {
 
 export interface Recipe {
 	id: string;
-	userId: string;
 	name: string;
 	description: string;
 	sourceUrl: string;

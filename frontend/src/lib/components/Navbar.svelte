@@ -197,7 +197,7 @@
 
 						<!-- Click outside handler -->
 						<button
-							class="fixed inset-0 z-[-1]"
+							class="fixed inset-0 z-40"
 							onclick={closeDropdown}
 							tabindex="-1"
 							aria-hidden="true"

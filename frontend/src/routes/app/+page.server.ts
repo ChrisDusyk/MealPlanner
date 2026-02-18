@@ -1,3 +1,4 @@
+import { error } from '@sveltejs/kit';
 import { fetchRecipes } from '$lib/api/recipeApi';
 import type { PageServerLoad } from './$types';
 
@@ -14,10 +15,8 @@ export const load: PageServerLoad = async ({ parent }) => {
 			recipes: recentRecipes,
 			totalRecipes: recipes.length
 		};
-	} catch {
-		return {
-			recipes: [],
-			totalRecipes: 0
-		};
+	} catch (err) {
+		console.error('Failed to load dashboard data:', err);
+		error(500, 'Failed to load dashboard data. Please try again.');
 	}
 };

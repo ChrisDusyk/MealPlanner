@@ -42,7 +42,6 @@ public record UpdateRecipeRequest(
 /// </summary>
 public record RecipeResponse(
 	string Id,
-	string UserId,
 	string Name,
 	string Description,
 	string SourceUrl,
@@ -54,7 +53,6 @@ public record RecipeResponse(
 	public static RecipeResponse FromDomain(Recipe recipe) =>
 		new(
 			recipe.Id,
-			recipe.UserId,
 			recipe.Name,
 			recipe.Description,
 			recipe.SourceUrl,
