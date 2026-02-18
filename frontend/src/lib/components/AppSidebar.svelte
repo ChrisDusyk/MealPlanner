@@ -16,6 +16,9 @@
 	];
 
 	function isActive(href: string): boolean {
+		if (href === '/app') {
+			return page.url.pathname === href;
+		}
 		return page.url.pathname.startsWith(href);
 	}
 
