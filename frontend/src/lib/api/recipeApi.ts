@@ -28,8 +28,9 @@ export interface CreateRecipeRequest {
  */
 function getApiBase(): string {
 	if (typeof process !== 'undefined') {
-		// Prefer HTTP in dev to avoid self-signed cert issues with Node fetch
-		const url = process.env.services__api__http__0 || process.env.services__api__https__0;
+		// Must use HTTPS: the API has UseHttpsRedirection() which redirects
+		// HTTP → HTTPS, and fetch drops the Authorization header on redirect.
+		const url = process.env.services__api__https__0 || process.env.services__api__http__0;
 		if (url) return url;
 	}
 	// Fallback for client-side / browser requests — use relative URL
