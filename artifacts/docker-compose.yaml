@@ -1,0 +1,79 @@
+services:
+  compose-dashboard:
+    image: "mcr.microsoft.com/dotnet/nightly/aspire-dashboard:latest"
+    ports:
+      - "18888"
+    expose:
+      - "18889"
+      - "18890"
+    networks:
+      - "aspire"
+    restart: "always"
+  mealplannerMongoDb:
+    image: "docker.io/library/mongo:8.2"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: "admin"
+      MONGO_INITDB_ROOT_PASSWORD: "${MONGODB_PASSWORD}"
+    expose:
+      - "27017"
+    networks:
+      - "aspire"
+  mealplannerKeycloak:
+    image: "quay.io/keycloak/keycloak:26.4"
+    command:
+      - "start"
+      - "--import-realm"
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: "admin"
+      KC_BOOTSTRAP_ADMIN_PASSWORD: "${KEYCLOAK_PASSWORD}"
+      KC_HEALTH_ENABLED: "true"
+      KC_FEATURES: "opentelemetry"
+      OTEL_EXPORTER_OTLP_ENDPOINT: "http://compose-dashboard:18889"
+      OTEL_EXPORTER_OTLP_PROTOCOL: "grpc"
+      OTEL_SERVICE_NAME: "keycloak"
+    expose:
+      - "8080"
+      - "9000"
+    volumes:
+      - type: "bind"
+        target: "/opt/keycloak/data/import"
+        source: "${KEYCLOAK_BINDMOUNT_0}"
+        read_only: true
+    networks:
+      - "aspire"
+  mealplannerApi:
+    image: "${API_IMAGE}"
+    environment:
+      OTEL_DOTNET_EXPERIMENTAL_OTLP_EMIT_EXCEPTION_LOG_ATTRIBUTES: "true"
+      OTEL_DOTNET_EXPERIMENTAL_OTLP_EMIT_EVENT_LOG_ATTRIBUTES: "true"
+      OTEL_DOTNET_EXPERIMENTAL_OTLP_RETRY: "in_memory"
+      ASPNETCORE_FORWARDEDHEADERS_ENABLED: "true"
+      HTTP_PORTS: "${API_PORT}"
+      ConnectionStrings__mealplannerDb: "mongodb://admin:${MONGODB_PASSWORD}@mongodb:27017/mealplannerDb?authSource=admin&authMechanism=SCRAM-SHA-256"
+      MEALPLANNERDB_HOST: "mongodb"
+      MEALPLANNERDB_PORT: "27017"
+      MEALPLANNERDB_USERNAME: "admin"
+      MEALPLANNERDB_PASSWORD: "${MONGODB_PASSWORD}"
+      MEALPLANNERDB_AUTHENTICATIONDATABASE: "admin"
+      MEALPLANNERDB_AUTHENTICATIONMECHANISM: "SCRAM-SHA-256"
+      MEALPLANNERDB_URI: "mongodb://admin:${MONGODB_PASSWORD}@mongodb:27017/mealplannerDb?authSource=admin&authMechanism=SCRAM-SHA-256"
+      MEALPLANNERDB_DATABASENAME: "mealplannerDb"
+      KEYCLOAK_HTTP: "http://keycloak:8080"
+      services__keycloak__http__0: "http://keycloak:8080"
+      KEYCLOAK_MANAGEMENT: "http://keycloak:9000"
+      services__keycloak__management__0: "http://keycloak:9000"
+      OTEL_EXPORTER_OTLP_ENDPOINT: "http://compose-dashboard:18889"
+      OTEL_EXPORTER_OTLP_PROTOCOL: "grpc"
+      OTEL_SERVICE_NAME: "api"
+    expose:
+      - "${API_PORT}"
+    depends_on:
+      mongodb:
+        condition: "service_started"
+      keycloak:
+        condition: "service_started"
+    networks:
+      - "aspire"
+networks:
+  aspire:
+    driver: "bridge"
