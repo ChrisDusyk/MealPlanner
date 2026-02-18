@@ -25,9 +25,12 @@ builder.Services.AddAuthentication()
 			{
 				options.RequireHttpsMetadata = false;
 				// Aspire service discovery resolves Keycloak to an internal URL,
-				// but tokens are issued with the external URL (http://localhost:8080).
-				// Disable strict issuer validation in dev to handle this mismatch.
-				options.TokenValidationParameters.ValidateIssuer = false;
+				// but tokens are issued with the external URL. Accept both.
+				options.TokenValidationParameters.ValidIssuers =
+				[
+					"http://localhost:8080/realms/mealplanner",
+					"https://localhost:8080/realms/mealplanner"
+				];
 			}
 		});
 builder.Services.AddAuthorization();

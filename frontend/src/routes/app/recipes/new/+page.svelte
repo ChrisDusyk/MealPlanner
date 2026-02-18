@@ -5,8 +5,6 @@
 	import { quintOut } from 'svelte/easing';
 	import type { Ingredient, CreateRecipeRequest } from '$lib/api/recipeApi';
 
-	let { data } = $props();
-
 	// Form state
 	let name = $state('');
 	let description = $state('');
@@ -62,6 +60,9 @@
 			if (!ing.name.trim()) {
 				errors[`ingredient-${ing._id}-name`] = 'Name required';
 			}
+			if (ing.name.trim() && ing.quantity <= 0) {
+				errors[`ingredient-${ing._id}-qty`] = 'Quantity required';
+			}
 		}
 
 		validationErrors = errors;
@@ -95,8 +96,17 @@
 			});
 
 			if (!response.ok) {
-				const result = await response.json();
-				errorMessage = result.error || 'Failed to create recipe.';
+				try {
+					const contentType = response.headers.get('content-type') || '';
+					if (contentType.includes('application/json')) {
+						const result = await response.json();
+						errorMessage = result.error || result.message || 'Failed to create recipe.';
+					} else {
+						errorMessage = (await response.text()) || 'Failed to create recipe.';
+					}
+				} catch {
+					errorMessage = 'Failed to create recipe.';
+				}
 				return;
 			}
 
@@ -139,6 +149,7 @@
 	<!-- Error banner -->
 	{#if errorMessage}
 		<div
+			role="alert"
 			transition:slide={{ duration: 300 }}
 			class="mb-6 flex items-center gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
 		>
@@ -193,13 +204,15 @@
 						type="text"
 						bind:value={name}
 						placeholder="e.g. Grandma's Chicken Soup"
+						aria-invalid={!!validationErrors.name}
+						aria-describedby={validationErrors.name ? 'recipe-name-error' : undefined}
 						class="w-full rounded-lg border px-4 py-2.5 text-sm text-charcoal transition-colors placeholder:text-charcoal/30 focus:outline-none focus:ring-2 focus:ring-green-500/40
 						{validationErrors.name
 							? 'border-red-300 bg-red-50/50 focus:border-red-400'
 							: 'border-green-200/60 bg-white focus:border-green-400'}"
 					/>
 					{#if validationErrors.name}
-						<p transition:slide={{ duration: 200 }} class="mt-1 text-xs text-red-500">
+						<p id="recipe-name-error" transition:slide={{ duration: 200 }} class="mt-1 text-xs text-red-500">
 							{validationErrors.name}
 						</p>
 					{/if}
@@ -229,13 +242,15 @@
 						type="url"
 						bind:value={sourceUrl}
 						placeholder="https://example.com/recipe"
+						aria-invalid={!!validationErrors.sourceUrl}
+						aria-describedby={validationErrors.sourceUrl ? 'recipe-url-error' : undefined}
 						class="w-full rounded-lg border px-4 py-2.5 text-sm text-charcoal transition-colors placeholder:text-charcoal/30 focus:outline-none focus:ring-2 focus:ring-green-500/40
 						{validationErrors.sourceUrl
 							? 'border-red-300 bg-red-50/50 focus:border-red-400'
 							: 'border-green-200/60 bg-white focus:border-green-400'}"
 					/>
 					{#if validationErrors.sourceUrl}
-						<p transition:slide={{ duration: 200 }} class="mt-1 text-xs text-red-500">
+						<p id="recipe-url-error" transition:slide={{ duration: 200 }} class="mt-1 text-xs text-red-500">
 							{validationErrors.sourceUrl}
 						</p>
 					{/if}
@@ -323,6 +338,8 @@
 										type="text"
 										bind:value={ingredient.name}
 										placeholder="e.g. Chicken breast"
+										aria-label="Ingredient name"
+										aria-invalid={!!validationErrors[`ingredient-${ingredient._id}-name`]}
 										class="w-full rounded-md border border-green-200/50 bg-white px-3 py-2 text-sm text-charcoal transition-colors placeholder:text-charcoal/25 focus:border-green-400 focus:outline-none focus:ring-2 focus:ring-green-500/30
 										{validationErrors[`ingredient-${ingredient._id}-name`]
 											? 'border-red-300 bg-red-50/50'
@@ -336,18 +353,32 @@
 								</div>
 
 								<!-- Quantity -->
-								<input
-									type="number"
-									bind:value={ingredient.quantity}
-									min="0"
-									step="0.25"
-									placeholder="0"
-									class="w-full rounded-md border border-green-200/50 bg-white px-3 py-2 text-sm text-charcoal transition-colors placeholder:text-charcoal/25 focus:border-green-400 focus:outline-none focus:ring-2 focus:ring-green-500/30"
-								/>
+								<div>
+									<input
+										type="number"
+										bind:value={ingredient.quantity}
+										min="0"
+										max="9999"
+										step="0.25"
+										placeholder="0"
+										aria-label="Quantity"
+										aria-invalid={!!validationErrors[`ingredient-${ingredient._id}-qty`]}
+										class="w-full rounded-md border border-green-200/50 bg-white px-3 py-2 text-sm text-charcoal transition-colors placeholder:text-charcoal/25 focus:border-green-400 focus:outline-none focus:ring-2 focus:ring-green-500/30
+										{validationErrors[`ingredient-${ingredient._id}-qty`]
+											? 'border-red-300 bg-red-50/50'
+											: ''}"
+									/>
+									{#if validationErrors[`ingredient-${ingredient._id}-qty`]}
+										<p transition:slide={{ duration: 150 }} class="mt-0.5 text-[11px] text-red-500">
+											{validationErrors[`ingredient-${ingredient._id}-qty`]}
+										</p>
+									{/if}
+								</div>
 
 								<!-- Unit -->
 								<select
 									bind:value={ingredient.unit}
+									aria-label="Unit"
 									class="w-full appearance-none rounded-md border border-green-200/50 bg-white px-3 py-2 text-sm text-charcoal transition-colors focus:border-green-400 focus:outline-none focus:ring-2 focus:ring-green-500/30"
 								>
 									{#each units as u}

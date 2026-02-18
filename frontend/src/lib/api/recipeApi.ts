@@ -22,6 +22,21 @@ export interface CreateRecipeRequest {
 }
 
 /**
+ * Custom error that preserves the HTTP status code from an API response.
+ */
+export class ApiError extends Error {
+	status: number;
+	body: unknown;
+
+	constructor(status: number, message: string, body?: unknown) {
+		super(message);
+		this.name = 'ApiError';
+		this.status = status;
+		this.body = body;
+	}
+}
+
+/**
  * Resolve the API base URL. On the server side we use the Aspire service
  * discovery env vars so requests go directly to the API rather than
  * through the Vite dev-server proxy (which only handles browser requests).
@@ -38,6 +53,27 @@ function getApiBase(): string {
 	return '';
 }
 
+/**
+ * Parse an error response body, handling both JSON and plain text.
+ */
+async function parseErrorBody(response: Response): Promise<{ message: string; body?: unknown }> {
+	const contentType = response.headers.get('content-type') || '';
+	if (contentType.includes('application/json')) {
+		try {
+			const json = await response.json();
+			const message =
+				typeof json === 'string'
+					? json
+					: json.message || json.error || json.title || JSON.stringify(json);
+			return { message, body: json };
+		} catch {
+			return { message: `Request failed with status ${response.status}` };
+		}
+	}
+	const text = await response.text();
+	return { message: text || `Request failed with status ${response.status}` };
+}
+
 export async function fetchRecipes(
 	accessToken: string,
 	fetchFn: typeof fetch = fetch
@@ -49,7 +85,8 @@ export async function fetchRecipes(
 	});
 
 	if (!response.ok) {
-		throw new Error(`Failed to fetch recipes: ${response.status}`);
+		const { message, body } = await parseErrorBody(response);
+		throw new ApiError(response.status, message, body);
 	}
 
 	return response.json();
@@ -70,8 +107,8 @@ export async function createRecipe(
 	});
 
 	if (!response.ok) {
-		const message = await response.text();
-		throw new Error(message || `Failed to create recipe: ${response.status}`);
+		const { message, body } = await parseErrorBody(response);
+		throw new ApiError(response.status, message, body);
 	}
 
 	return response.json();

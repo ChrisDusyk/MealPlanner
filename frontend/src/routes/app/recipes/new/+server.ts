@@ -14,9 +14,9 @@ export const POST: RequestHandler = async ({ request, locals, fetch }) => {
 		return json(recipe, { status: 201 });
 	} catch (err) {
 		console.error('Failed to create recipe:', err);
-		return json(
-			{ error: err instanceof Error ? err.message : 'Failed to create recipe.' },
-			{ status: 500 }
-		);
+		// Preserve the original status code from the API when possible
+		const message = err instanceof Error ? err.message : 'Failed to create recipe.';
+		const isBadRequest = message.includes('400');
+		return json({ error: message }, { status: isBadRequest ? 400 : 500 });
 	}
 };
