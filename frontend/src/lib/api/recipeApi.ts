@@ -48,9 +48,30 @@ function getApiBase(): string {
 		const url = process.env.services__api__https__0 || process.env.services__api__http__0;
 		if (url) return url;
 	}
-	// Fallback for client-side / browser requests — use relative URL
-	// which the Vite proxy will forward during dev.
-	return '';
+	// Fallback for client-side / browser requests.
+	// In development, Vite proxy forwards this.
+	// In production (Docker), we need the full URL from env var.
+	// Note: In SvelteKit, use $env/static/public for public env vars, but here we are in a .ts file
+	// that might be shared. For now, we'll try to access import.meta.env if available,
+	// or rely on a global config if needed.
+	// But actually, `recipeApi.ts` is imported by `+page.server.ts` (server) and `+page.svelte` (client).
+
+	// Best approach for SvelteKit: use a store or context, but for simplicity here:
+	// If we are in the browser, we might need a distinct base URL if not proxied.
+
+	// However, simpliest fix for Docker deployment without proxy:
+	// If we are on the server (SSR), we successfully use logic above.
+	// If we are on the client (Browser), we need to know the API URL.
+	// In a typical Railway setup, API and Frontend are on different domains.
+
+	// Let's rely on Vite's transform to inject VITE_API_URL if present,
+	// or fallback to relative path (which fails without proxy).
+
+	// We'll add a check for a global variable or import.meta.env
+	// to allow injecting the URL at build time or runtime.
+
+	// For this specific file, we can try to use `import.meta.env` which Vite handles.
+	return (import.meta.env.VITE_API_URL as string) || '';
 }
 
 /**

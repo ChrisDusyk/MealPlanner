@@ -1,0 +1,80 @@
+services:
+  mealplannerMongoDb:
+    image: mongo:8.2
+    container_name: mealplannerMongoDb
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: password
+    ports:
+      - "27017:27017"
+    networks:
+      - mealplanner-network
+
+  mealplannerKeycloak:
+    image: quay.io/keycloak/keycloak:26.4
+    container_name: mealplannerKeycloak
+    command: start --import-realm
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+      KC_HTTP_ENABLED: "true"
+      KC_HOSTNAME_STRICT: "false"
+      KC_HOSTNAME: "localhost"
+      KC_HTTP_PORT: 8080
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./MealPlanner.AppHost/Realms/mealplanner-realm.json:/opt/keycloak/data/import/realm.json
+    networks:
+      - mealplanner-network
+
+  mealplannerApi:
+    build:
+      context: .
+      dockerfile: MealPlanner.Api/Dockerfile
+    container_name: mealplannerApi
+    environment:
+      ConnectionStrings__mealplannerDb: mongodb://admin:password@mealplannerMongoDb:27017/mealplannerDb?authSource=admin
+      services__keycloak__http__0: http://mealplannerKeycloak:8080
+      services__keycloak__https__0: http://mealplannerKeycloak:8080
+      ASPNETCORE_ENVIRONMENT: Development
+      # In Docker, we need to bind to all interfaces
+      ASPNETCORE_URLS: http://+:5000
+    ports:
+      - "5000:5000"
+    depends_on:
+      - mealplannerMongoDb
+      - mealplannerKeycloak
+    networks:
+      - mealplanner-network
+
+  mealplannerFrontend:
+    build:
+      context: frontend
+      dockerfile: Dockerfile
+    container_name: mealplannerFrontend
+    environment:
+      AUTH_KEYCLOAK_ID: mealplanner-web
+      AUTH_KEYCLOAK_SECRET: mealplanner-web-secret
+      AUTH_KEYCLOAK_ISSUER: http://mealplannerKeycloak:8080/realms/mealplanner
+      AUTH_SECRET: supersecretvaluekeepitsecret
+      # Server-side API URL (Docker network)
+      services__api__http__0: http://mealplannerApi:5000
+      services__api__https__0: http://mealplannerApi:5000
+      # Client-side API URL (Browser access)
+      VITE_API_URL: http://localhost:5000
+      # Node adapter config
+      HOST: 0.0.0.0
+      PORT: 3000
+      ORIGIN: http://localhost:3000
+    ports:
+      - "3000:3000"
+    depends_on:
+      - mealplannerApi
+      - mealplannerKeycloak
+    networks:
+      - mealplanner-network
+
+networks:
+  mealplanner-network:
+    driver: bridge
