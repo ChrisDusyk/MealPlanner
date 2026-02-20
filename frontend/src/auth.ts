@@ -1,8 +1,6 @@
 import { SvelteKitAuth } from '@auth/sveltekit';
 import Auth0 from '@auth/sveltekit/providers/auth0';
 
-console.log(process.env);
-
 export const { handle, signIn, signOut } = SvelteKitAuth({
 	trustHost: true,
 	providers: [
