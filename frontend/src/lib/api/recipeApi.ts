@@ -49,6 +49,7 @@ function getApiBase(): string {
 			process.env.services__api__https__0 ||
 			process.env.services__api__http__0 ||
 			`https://${process.env.API_BASE_URL}`;
+		console.log(url);
 		if (url) return url;
 	}
 	// Fallback for client-side / browser requests.
