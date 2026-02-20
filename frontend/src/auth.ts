@@ -6,7 +6,10 @@ interface SyncUserPayload {
 	email?: string;
 }
 
-function normalizeBaseUrl(value?: string, fallbackPort?: string): string {
+const USER_SYNC_MAX_ATTEMPTS = 3;
+const USER_SYNC_BASE_RETRY_DELAY_MS = 250;
+
+function normalizeBaseUrl(source: string, value?: string, fallbackPort?: string): string {
 	if (!value) return '';
 
 	const trimmed = value.trim();
@@ -20,19 +23,33 @@ function normalizeBaseUrl(value?: string, fallbackPort?: string): string {
 			parsed.port = fallbackPort;
 		}
 		return parsed.toString().replace(/\/$/, '');
-	} catch {
+	} catch (error) {
+		console.warn('Invalid API base URL value for user sync.', {
+			source,
+			error
+		});
 		return '';
 	}
 }
 
 function getApiBaseUrl(): string {
 	const explicitApiUrl = normalizeBaseUrl(
+		'API_INTERNAL_URL/API_BASE_URL',
 		process.env.API_INTERNAL_URL || process.env.API_BASE_URL,
 		process.env.API_PORT
 	);
 	if (explicitApiUrl) return explicitApiUrl;
 
-	return normalizeBaseUrl(process.env.services__api__https__0 || process.env.services__api__http__0);
+	const serviceDiscoveryUrl = normalizeBaseUrl(
+		'services__api__https__0/services__api__http__0',
+		process.env.services__api__https__0 || process.env.services__api__http__0
+	);
+
+	if (!serviceDiscoveryUrl) {
+		console.warn('Unable to resolve API base URL for user sync. Skipping sync for this request.');
+	}
+
+	return serviceDiscoveryUrl;
 }
 
 function getStringValue(source: Record<string, unknown> | undefined, key: string): string | undefined {
@@ -41,21 +58,12 @@ function getStringValue(source: Record<string, unknown> | undefined, key: string
 }
 
 function buildSyncUserPayload(token: Record<string, unknown>, profile?: Record<string, unknown>): SyncUserPayload | null {
-	const auth0UserId =
-		getStringValue(profile, 'sub') ||
-		getStringValue(token, 'sub') ||
-		'';
-
-	if (!auth0UserId) {
-		return null;
-	}
-
 	const email = getStringValue(profile, 'email') || getStringValue(token, 'email');
 	const name =
 		getStringValue(profile, 'name') ||
 		getStringValue(token, 'name') ||
 		email ||
-		auth0UserId;
+		'MealPlanner User';
 
 	return {
 		name,
@@ -82,6 +90,36 @@ async function syncUserWithApi(accessToken: string, payload: SyncUserPayload): P
 		const details = await response.text();
 		throw new Error(`User sync failed with status ${response.status}: ${details}`);
 	}
+}
+
+function wait(delayMs: number): Promise<void> {
+	return new Promise((resolve) => {
+		setTimeout(resolve, delayMs);
+	});
+}
+
+async function syncUserWithRetry(accessToken: string, payload: SyncUserPayload): Promise<void> {
+	let lastError: unknown;
+
+	for (let attempt = 1; attempt <= USER_SYNC_MAX_ATTEMPTS; attempt++) {
+		try {
+			await syncUserWithApi(accessToken, payload);
+			if (attempt > 1) {
+				console.info('User sync succeeded after retry.', { attempt });
+			}
+			return;
+		} catch (error) {
+			lastError = error;
+			if (attempt < USER_SYNC_MAX_ATTEMPTS) {
+				const retryDelayMs = USER_SYNC_BASE_RETRY_DELAY_MS * 2 ** (attempt - 1);
+				console.warn('User sync failed. Retrying.', { attempt, retryDelayMs, error });
+				await wait(retryDelayMs);
+				continue;
+			}
+		}
+	}
+
+	console.error('User sync failed after all retry attempts.', { error: lastError });
 }
 
 export const { handle, signIn, signOut } = SvelteKitAuth({
@@ -112,11 +150,9 @@ export const { handle, signIn, signOut } = SvelteKitAuth({
 				);
 
 				if (accessToken && syncPayload) {
-					try {
-						await syncUserWithApi(accessToken, syncPayload);
-					} catch (error) {
-						console.error('Failed to sync user to API during authentication callback.', error);
-					}
+					await syncUserWithRetry(accessToken, syncPayload);
+				} else {
+					console.warn('Skipping user sync due to missing access token or profile payload.');
 				}
 			}
 			return token;
