@@ -48,7 +48,7 @@ function getApiBase(): string {
 		const url =
 			process.env.services__api__https__0 ||
 			process.env.services__api__http__0 ||
-			`https://${process.env.API_BASE_URL}`;
+			`http://${process.env.API_BASE_URL}`;   // Production URL in Railway
 		console.log(url);
 		if (url) return url;
 	}
