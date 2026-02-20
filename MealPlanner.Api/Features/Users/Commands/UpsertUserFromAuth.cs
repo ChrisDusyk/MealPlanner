@@ -19,9 +19,6 @@ public record UpsertUserFromAuthCommand(
 public class UpsertUserFromAuthCommandHandler(IMongoClient mongoClient)
 	: ICommandHandler<UpsertUserFromAuthCommand, User>
 {
-	private static readonly SemaphoreSlim IndexCreationLock = new(1, 1);
-	private static bool _indexCreated;
-
 	public async Task<Result<User>> HandleAsync(
 		UpsertUserFromAuthCommand command,
 		CancellationToken cancellationToken = default)
@@ -42,36 +39,35 @@ public class UpsertUserFromAuthCommandHandler(IMongoClient mongoClient)
 
 			await EnsureIndexesAsync(collection, cancellationToken);
 
-			var existing = await collection
-				.Find(u => u.Auth0UserId == command.Auth0UserId)
-				.FirstOrDefaultAsync(cancellationToken);
-
 			var now = DateTime.UtcNow;
-			if (existing is null)
-			{
-				var created = new UserDocument
-				{
-					Auth0UserId = command.Auth0UserId,
-					Name = command.Name,
-					Email = command.Email.GetValueOrNull(),
-					CreatedAt = now,
-					UpdatedAt = now
-				};
+			var email = command.Email.GetValueOrNull();
 
-				await collection.InsertOneAsync(created, cancellationToken: cancellationToken);
-				return Result<User>.Success(MapToDomain(created));
+			var updateDefinition = Builders<UserDocument>.Update
+				.Set(u => u.Name, command.Name)
+				.Set(u => u.Email, email)
+				.Set(u => u.UpdatedAt, now)
+				.SetOnInsert(u => u.Auth0UserId, command.Auth0UserId)
+				.SetOnInsert(u => u.CreatedAt, now);
+
+			var options = new FindOneAndUpdateOptions<UserDocument>
+			{
+				IsUpsert = true,
+				ReturnDocument = ReturnDocument.After
+			};
+
+			var updated = await collection.FindOneAndUpdateAsync(
+				u => u.Auth0UserId == command.Auth0UserId,
+				updateDefinition,
+				options,
+				cancellationToken);
+
+			if (updated is null)
+			{
+				return Result<User>.Failure(
+					new Error(ErrorCodes.DatabaseError, "Failed to upsert user."));
 			}
 
-			existing.Name = command.Name;
-			existing.Email = command.Email.GetValueOrNull();
-			existing.UpdatedAt = now;
-
-			await collection.ReplaceOneAsync(
-				u => u.Id == existing.Id,
-				existing,
-				cancellationToken: cancellationToken);
-
-			return Result<User>.Success(MapToDomain(existing));
+			return Result<User>.Success(MapToDomain(updated));
 		}
 		catch (Exception ex)
 		{
@@ -84,25 +80,19 @@ public class UpsertUserFromAuthCommandHandler(IMongoClient mongoClient)
 		IMongoCollection<UserDocument> collection,
 		CancellationToken cancellationToken)
 	{
-		if (_indexCreated)
-			return;
-
-		await IndexCreationLock.WaitAsync(cancellationToken);
 		try
 		{
-			if (_indexCreated)
-				return;
-
 			var indexModel = new CreateIndexModel<UserDocument>(
 				Builders<UserDocument>.IndexKeys.Ascending(u => u.Auth0UserId),
 				new CreateIndexOptions { Unique = true, Name = "ux_users_auth0UserId" });
 
 			await collection.Indexes.CreateOneAsync(indexModel, cancellationToken: cancellationToken);
-			_indexCreated = true;
 		}
-		finally
+		catch (MongoCommandException ex) when (ex.CodeName is "IndexOptionsConflict" or "IndexKeySpecsConflict")
 		{
-			IndexCreationLock.Release();
+		}
+		catch (MongoWriteException ex) when (ex.WriteError?.Category == ServerErrorCategory.DuplicateKey)
+		{
 		}
 	}
 
