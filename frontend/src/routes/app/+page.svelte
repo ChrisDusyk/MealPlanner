@@ -36,9 +36,9 @@
 			</svg>
 			Add Recipe
 		</a>
-		<button
-			disabled
-			class="flex cursor-not-allowed items-center gap-2 rounded-lg border border-green-200/50 bg-green-50/50 px-5 py-2.5 font-display text-sm font-semibold text-charcoal/40"
+		<a
+			href="/app/meal-plans"
+			class="flex items-center gap-2 rounded-lg border border-green-200/50 bg-white px-5 py-2.5 font-display text-sm font-semibold text-charcoal shadow-sm transition-all hover:border-green-300 hover:bg-green-50 hover:shadow-md"
 		>
 			<svg
 				xmlns="http://www.w3.org/2000/svg"
@@ -54,9 +54,8 @@
 					d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
 				/>
 			</svg>
-			Create Meal Plan
-			<span class="text-xs">(Coming Soon)</span>
-		</button>
+			Plan Meals
+		</a>
 	</div>
 
 	<!-- Statistics cards -->
@@ -93,16 +92,17 @@
 			</div>
 		</div>
 
-		<!-- Meal Plans (Coming Soon) -->
-		<div
-			class="overflow-hidden rounded-xl border border-green-200/30 bg-gradient-to-br from-white to-green-50/20 opacity-60"
+		<!-- Meal Plans -->
+		<a
+			href="/app/meal-plans"
+			class="group overflow-hidden rounded-xl border border-green-200/30 bg-gradient-to-br from-white to-green-50/20 transition-all hover:border-green-300 hover:shadow-md"
 		>
 			<div class="p-6">
 				<div class="flex items-center justify-between">
 					<div>
 						<p class="text-sm font-medium text-charcoal/60">Meal Plans</p>
-						<p class="mt-2 font-display text-3xl font-bold text-charcoal">—</p>
-						<p class="mt-1 text-xs text-charcoal/40">Coming Soon</p>
+						<p class="mt-2 font-display text-3xl font-bold text-charcoal">This Week</p>
+						<p class="mt-1 text-xs text-green-600 group-hover:underline">View planner &rarr;</p>
 					</div>
 					<div class="flex h-12 w-12 items-center justify-center rounded-xl bg-green-500/10">
 						<svg
@@ -122,7 +122,7 @@
 					</div>
 				</div>
 			</div>
-		</div>
+		</a>
 
 		<!-- Grocery Lists (Coming Soon) -->
 		<div
