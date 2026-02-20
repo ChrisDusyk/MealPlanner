@@ -1,0 +1,68 @@
+name: PR Build and Test
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  backend-dotnet:
+    name: Backend (.NET)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore
+        run: dotnet restore MealPlanner.slnx
+
+      - name: Build
+        run: dotnet build MealPlanner.slnx -c Release --no-restore
+
+      - name: Test
+        run: dotnet test MealPlanner.slnx -c Release --no-build --verbosity normal
+
+  frontend-svelte:
+    name: Frontend (Svelte)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Activate pnpm
+        run: corepack prepare pnpm@9 --activate
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Type check
+        run: pnpm run check
+
+      - name: Build
+        run: pnpm run build
+
+      - name: Install Playwright Chromium
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Test
+        run: pnpm run test
