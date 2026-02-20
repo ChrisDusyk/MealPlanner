@@ -1,4 +1,5 @@
 using MealPlanner.Api.Features.Recipes;
+using MealPlanner.Api.Features.Users;
 using MealPlanner.Api.Shared;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -43,5 +44,6 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapRecipeEndpoints();
+app.MapUserEndpoints();
 
 app.Run();
