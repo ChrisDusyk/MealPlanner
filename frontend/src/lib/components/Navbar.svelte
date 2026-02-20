@@ -16,6 +16,10 @@
 		signIn('auth0');
 	}
 
+	function handleSignup() {
+		signIn('auth0', undefined, { screen_hint: 'signup' });
+	}
+
 	function handleLogout() {
 		signOut();
 		dropdownOpen = false;
@@ -212,7 +216,7 @@
 					Log In
 				</button>
 				<button
-					onclick={handleLogin}
+					onclick={handleSignup}
 					class="rounded-lg bg-green-500 px-5 py-2 font-display text-sm font-semibold text-white shadow-md shadow-green-900/30 transition-all hover:bg-green-400 hover:shadow-lg hover:shadow-green-900/40"
 				>
 					Get Started
@@ -306,7 +310,7 @@
 					<button
 						onclick={() => {
 							mobileOpen = false;
-							handleLogin();
+							handleSignup();
 						}}
 						class="rounded-lg bg-green-500 px-3 py-2.5 text-center font-display text-sm font-semibold text-white shadow-md transition-all hover:bg-green-400"
 					>
