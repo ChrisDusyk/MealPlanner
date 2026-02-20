@@ -10,11 +10,11 @@
 
 	let { data }: { data: PageData } = $props();
 
-	// Reactive local state seeded from server data
-	let mealPlan: MealPlanResponse = $state(data.mealPlan);
-	let recipes: Recipe[] = $state(data.recipes);
+	// Mutable local copies for optimistic updates, re-seeded on navigation
+	let mealPlan: MealPlanResponse = $state(undefined!);
+	let recipes: Recipe[] = $state([]);
 
-	// Re-sync when server data changes (e.g. week navigation)
+	// Seed initial values and re-sync when server data changes (e.g. week navigation)
 	$effect(() => {
 		mealPlan = data.mealPlan;
 		recipes = data.recipes;

@@ -64,6 +64,7 @@
 			class="relative z-10 w-full max-w-md overflow-hidden rounded-2xl border border-green-200/50 bg-white shadow-2xl shadow-green-900/10"
 			role="dialog"
 			aria-label="Add item to meal slot"
+			tabindex="-1"
 			onkeydown={handleKeydown}
 		>
 			<!-- Header -->
@@ -72,6 +73,7 @@
 					<h3 class="font-display text-lg font-bold text-charcoal">Add Item</h3>
 					<button
 						onclick={reset}
+						aria-label="Close"
 						class="flex h-8 w-8 items-center justify-center rounded-lg text-charcoal/40 transition-colors hover:bg-green-50 hover:text-charcoal"
 					>
 						<svg

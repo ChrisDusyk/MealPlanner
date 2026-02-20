@@ -66,6 +66,7 @@
 		<div
 			class="relative z-10 w-full max-w-sm overflow-hidden rounded-2xl border border-green-200/50 bg-white shadow-2xl shadow-green-900/10"
 			role="dialog"
+			tabindex="-1"
 			aria-label="Copy meals to other days"
 			onkeydown={handleKeydown}
 		>
@@ -80,6 +81,7 @@
 					</div>
 					<button
 						onclick={onClose}
+						aria-label="Close"
 						class="flex h-8 w-8 items-center justify-center rounded-lg text-charcoal/40 transition-colors hover:bg-green-50 hover:text-charcoal"
 					>
 						<svg
