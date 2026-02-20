@@ -4,12 +4,11 @@ builder.AddDockerComposeEnvironment("compose");
 
 var mongoDb = builder.AddMongoDB("mongodb")
 	.WithLifetime(ContainerLifetime.Persistent)
-	.PublishAsDockerComposeService((_, service) => { service.Name = "mealplannerMongoDb"; });
+	.WithDbGate();
 var mealPlannerDb = mongoDb.AddDatabase("mealplannerDb");
 
 var api = builder.AddProject<Projects.MealPlanner_Api>("api")
-	.WithReference(mealPlannerDb).WaitFor(mealPlannerDb)
-	.PublishAsDockerComposeService((_, service) => { service.Name = "mealplannerApi"; });
+	.WithReference(mealPlannerDb).WaitFor(mealPlannerDb);
 
 builder.AddViteApp("frontend", "..\\frontend")
 	.WithReference(api).WaitFor(api)
@@ -25,7 +24,6 @@ builder.AddViteApp("frontend", "..\\frontend")
 		cfg.IsProxied = false;
 		cfg.IsExternal = true;
 	})
-	.PublishAsDockerFile()
-	.PublishAsDockerComposeService((_, service) => { service.Name = "mealplannerFrontend"; });
+	.PublishAsDockerFile();
 
 builder.Build().Run();
