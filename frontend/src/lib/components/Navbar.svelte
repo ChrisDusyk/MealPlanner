@@ -13,7 +13,7 @@
 	}
 
 	function handleLogin() {
-		signIn('keycloak');
+		signIn('auth0');
 	}
 
 	function handleLogout() {
@@ -121,7 +121,7 @@
 					<!-- Dropdown menu -->
 					{#if dropdownOpen}
 						<div
-							class="absolute right-0 top-full mt-2 w-56 origin-top-right overflow-hidden rounded-lg border border-green-700/40 bg-green-900/95 shadow-lg shadow-green-950/20 backdrop-blur-md"
+							class="absolute top-full right-0 mt-2 w-56 origin-top-right overflow-hidden rounded-lg border border-green-700/40 bg-green-900/95 shadow-lg shadow-green-950/20 backdrop-blur-md"
 							role="menu"
 							aria-orientation="vertical"
 						>
@@ -281,9 +281,7 @@
 				</a>
 				<hr class="border-green-700/40" />
 				{#if session?.user}
-					<span
-						class="rounded-lg px-3 py-2.5 font-display text-sm font-medium text-green-200/90"
-					>
+					<span class="rounded-lg px-3 py-2.5 font-display text-sm font-medium text-green-200/90">
 						{session.user.name ?? session.user.email}
 					</span>
 					<button

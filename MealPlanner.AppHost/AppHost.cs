@@ -7,19 +7,16 @@ var mongoDb = builder.AddMongoDB("mongodb")
 	.PublishAsDockerComposeService((_, service) => { service.Name = "mealplannerMongoDb"; });
 var mealPlannerDb = mongoDb.AddDatabase("mealplannerDb");
 
-var keycloak = builder.AddKeycloak("keycloak", 8080)
-	.WithRealmImport("./Realms")
-	.WithLifetime(ContainerLifetime.Persistent)
-	.PublishAsDockerComposeService((_, service) => { service.Name = "mealplannerKeycloak"; });
-
 var api = builder.AddProject<Projects.MealPlanner_Api>("api")
 	.WithReference(mealPlannerDb).WaitFor(mealPlannerDb)
-	.WithReference(keycloak).WaitFor(keycloak)
 	.PublishAsDockerComposeService((_, service) => { service.Name = "mealplannerApi"; });
 
 builder.AddViteApp("frontend", "..\\frontend")
 	.WithReference(api).WaitFor(api)
-	.WithReference(keycloak).WaitFor(keycloak)
+	.WithEnvironment("AUTH_AUTH0_ID", builder.Configuration["AUTH_AUTH0_ID"])
+	.WithEnvironment("AUTH_AUTH0_SECRET", builder.Configuration["AUTH_AUTH0_SECRET"])
+	.WithEnvironment("AUTH_AUTH0_ISSUER", builder.Configuration["AUTH_AUTH0_ISSUER"])
+	.WithEnvironment("AUTH_API_AUDIENCE", builder.Configuration["AUTH_API_AUDIENCE"])
 	.WithPnpm()
 	.WithEndpoint("http", cfg =>
 	{

@@ -1,18 +1,25 @@
 import { SvelteKitAuth } from '@auth/sveltekit';
-import Keycloak from '@auth/sveltekit/providers/keycloak';
+import Auth0 from '@auth/sveltekit/providers/auth0';
+
+console.log(process.env);
 
 export const { handle, signIn, signOut } = SvelteKitAuth({
 	trustHost: true,
 	providers: [
-		Keycloak({
-			clientId: process.env.AUTH_KEYCLOAK_ID ?? 'mealplanner-web',
-			clientSecret: process.env.AUTH_KEYCLOAK_SECRET,
-			issuer: process.env.AUTH_KEYCLOAK_ISSUER ?? 'http://localhost:8080/realms/mealplanner'
+		Auth0({
+			clientId: process.env.AUTH_AUTH0_ID,
+			clientSecret: process.env.AUTH_AUTH0_SECRET,
+			issuer: process.env.AUTH_AUTH0_ISSUER,
+			authorization: {
+				params: {
+					audience: process.env.AUTH_API_AUDIENCE
+				}
+			}
 		})
 	],
 	callbacks: {
 		async jwt({ token, account }) {
-			// Persist the access token from the Keycloak provider to the JWT
+			// Persist the access token from the Auth0 provider to the JWT
 			if (account) {
 				token.accessToken = account.access_token;
 				token.idToken = account.id_token;

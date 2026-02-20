@@ -15,24 +15,17 @@ builder.Services.AddCqrsHandlers(typeof(Program).Assembly);
 
 // Authentication & Authorization
 builder.Services.AddAuthentication()
-	.AddKeycloakJwtBearer(
-		serviceName: "keycloak",
-		realm: "mealplanner",
-		options =>
+	.AddJwtBearer(options =>
+	{
+		options.Authority = builder.Configuration["Authentication:Authority"];
+		options.Audience = builder.Configuration["Authentication:Audience"];
+		options.TokenValidationParameters.ValidateAudience = true;
+
+		if (builder.Environment.IsDevelopment())
 		{
-			options.Audience = "mealplanner-api";
-			if (builder.Environment.IsDevelopment())
-			{
-				options.RequireHttpsMetadata = false;
-				// Aspire service discovery resolves Keycloak to an internal URL,
-				// but tokens are issued with the external URL. Accept both.
-				options.TokenValidationParameters.ValidIssuers =
-				[
-					"http://localhost:8080/realms/mealplanner",
-					"https://localhost:8080/realms/mealplanner"
-				];
-			}
-		});
+			options.RequireHttpsMetadata = false;
+		}
+	});
 builder.Services.AddAuthorization();
 
 var app = builder.Build();
