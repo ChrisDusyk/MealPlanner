@@ -42,15 +42,36 @@ export class ApiError extends Error {
  * through the Vite dev-server proxy (which only handles browser requests).
  */
 function getApiBase(): string {
+	const normalizeBaseUrl = (value?: string, fallbackPort?: string): string => {
+		if (!value) return '';
+
+		const trimmed = value.trim();
+		if (!trimmed) return '';
+
+		const withProtocol = /^https?:\/\//i.test(trimmed) ? trimmed : `http://${trimmed}`;
+
+		try {
+			const parsed = new URL(withProtocol);
+			if (!parsed.port && fallbackPort) {
+				parsed.port = fallbackPort;
+			}
+			return parsed.toString().replace(/\/$/, '');
+		} catch {
+			return '';
+		}
+	};
+
 	if (typeof process !== 'undefined') {
-		// Must use HTTPS: the API has UseHttpsRedirection() which redirects
-		// HTTP → HTTPS, and fetch drops the Authorization header on redirect.
-		const url =
-			process.env.services__api__https__0 ||
-			process.env.services__api__http__0 ||
-			`http://${process.env.API_BASE_URL}`;   // Production URL in Railway
-		console.log(url);
-		if (url) return url;
+		const explicitApiUrl = normalizeBaseUrl(
+			process.env.API_INTERNAL_URL || process.env.API_BASE_URL,
+			process.env.API_PORT
+		);
+		if (explicitApiUrl) return explicitApiUrl;
+
+		const serviceDiscoveryUrl = normalizeBaseUrl(
+			process.env.services__api__https__0 || process.env.services__api__http__0
+		);
+		if (serviceDiscoveryUrl) return serviceDiscoveryUrl;
 	}
 	// Fallback for client-side / browser requests.
 	// In development, Vite proxy forwards this.
@@ -75,7 +96,7 @@ function getApiBase(): string {
 	// to allow injecting the URL at build time or runtime.
 
 	// For this specific file, we can try to use `import.meta.env` which Vite handles.
-	return (import.meta.env.VITE_API_URL as string) || '';
+	return normalizeBaseUrl(import.meta.env.VITE_API_URL as string);
 }
 
 /**
