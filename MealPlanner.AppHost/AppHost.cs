@@ -17,6 +17,7 @@ builder.AddViteApp("frontend", "..\\frontend")
 	.WithEnvironment("AUTH_AUTH0_SECRET", builder.Configuration["AUTH_AUTH0_SECRET"])
 	.WithEnvironment("AUTH_AUTH0_ISSUER", builder.Configuration["AUTH_AUTH0_ISSUER"])
 	.WithEnvironment("AUTH_API_AUDIENCE", builder.Configuration["AUTH_API_AUDIENCE"])
+	.WithEnvironment("AUTH_SECRET", builder.Configuration["AUTH_SECRET"])
 	.WithPnpm()
 	.WithEndpoint("http", cfg =>
 	{
