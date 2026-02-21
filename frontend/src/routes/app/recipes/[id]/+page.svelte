@@ -17,7 +17,7 @@
 	<div class="mb-8">
 		<a
 			href="/app/recipes"
-			class="mb-4 inline-flex items-center gap-1.5 font-display text-sm font-medium text-green-600 transition-colors hover:text-green-700"
+			class="mb-4 inline-flex items-center gap-1.5 py-2 font-display text-sm font-medium text-green-600 transition-colors hover:text-green-700"
 		>
 			<svg
 				xmlns="http://www.w3.org/2000/svg"
@@ -32,17 +32,17 @@
 			Back to Recipes
 		</a>
 
-		<div class="flex items-start justify-between gap-4">
+		<div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
 			<div>
-				<h1 class="font-display text-3xl font-bold text-charcoal">{recipe.name}</h1>
-				<div class="mt-2 flex items-center gap-4 text-sm text-charcoal/50">
+				<h1 class="font-display text-2xl font-bold text-charcoal sm:text-3xl">{recipe.name}</h1>
+				<div class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-charcoal/50">
 					<span>Created {formatDate(recipe.createdAt)}</span>
 					<span>Updated {formatDate(recipe.updatedAt)}</span>
 				</div>
 			</div>
 			<a
 				href="/app/recipes/{recipe.id}/edit"
-				class="flex shrink-0 items-center gap-2 rounded-lg bg-green-600 px-5 py-2.5 font-display text-sm font-semibold text-white shadow-md shadow-green-900/20 transition-all hover:bg-green-700 hover:shadow-lg"
+				class="flex w-fit shrink-0 items-center gap-2 rounded-lg bg-green-600 px-5 py-2.5 font-display text-sm font-semibold text-white shadow-md shadow-green-900/20 transition-all hover:bg-green-700 hover:shadow-lg"
 			>
 				<svg
 					xmlns="http://www.w3.org/2000/svg"
@@ -97,7 +97,7 @@
 					href={safeSourceUrl}
 					target="_blank"
 					rel="noopener noreferrer"
-					class="text-sm font-medium text-green-600 transition-colors hover:text-green-700 hover:underline"
+					class="block truncate text-sm font-medium text-green-600 transition-colors hover:text-green-700 hover:underline"
 				>
 					{safeSourceUrl}
 				</a>

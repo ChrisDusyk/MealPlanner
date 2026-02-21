@@ -288,8 +288,8 @@
 					<p class="mt-0.5 text-xs text-charcoal/30">Click "Add" above to start building your ingredient list</p>
 				</div>
 			{:else}
-				<!-- Column headers -->
-				<div class="mb-3 grid grid-cols-[1fr_5rem_7rem_2.5rem] gap-3 px-1 text-xs font-medium uppercase tracking-wider text-charcoal/40">
+				<!-- Column headers (hidden on mobile) -->
+				<div class="mb-3 hidden grid-cols-[1fr_5rem_7rem_2.5rem] gap-3 px-1 text-xs font-medium uppercase tracking-wider text-charcoal/40 sm:grid">
 					<span>Ingredient</span>
 					<span>Qty</span>
 					<span>Unit</span>
@@ -300,13 +300,14 @@
 				<div class="space-y-2">
 					{#each ingredients as ingredient (ingredient._id)}
 						<div
-							class="group grid grid-cols-[1fr_5rem_7rem_2.5rem] items-start gap-3 rounded-lg border border-green-100/60 bg-green-50/20 p-3 transition-all hover:border-green-200/80 hover:bg-green-50/50"
+							class="group flex flex-col gap-2 rounded-lg border border-green-100/60 bg-green-50/20 p-3 transition-all hover:border-green-200/80 hover:bg-green-50/50 sm:grid sm:grid-cols-[1fr_5rem_7rem_2.5rem] sm:items-start sm:gap-3"
 							animate:flip={{ duration: 300, easing: quintOut }}
 							in:fly={{ y: -10, duration: 300, easing: quintOut }}
 							out:slide={{ duration: 250, easing: quintOut }}
 						>
 							<!-- Name -->
 							<div>
+								<span class="mb-1 block text-xs font-medium text-charcoal/40 sm:hidden">Ingredient</span>
 								<input
 									type="text"
 									bind:value={ingredient.name}
@@ -325,62 +326,69 @@
 								{/if}
 							</div>
 
-							<!-- Quantity -->
-							<div>
-								<input
-									type="number"
-									bind:value={ingredient.quantity}
-									min="0"
-									max="9999"
-									step="0.25"
-									placeholder="0"
-									aria-label="Quantity"
-									aria-invalid={!!validationErrors[`ingredient-${ingredient._id}-qty`]}
-									class="w-full rounded-md border border-green-200/50 bg-white px-3 py-2 text-sm text-charcoal transition-colors placeholder:text-charcoal/25 focus:border-green-400 focus:outline-none focus:ring-2 focus:ring-green-500/30
-									{validationErrors[`ingredient-${ingredient._id}-qty`]
-										? 'border-red-300 bg-red-50/50'
-										: ''}"
-								/>
-								{#if validationErrors[`ingredient-${ingredient._id}-qty`]}
-									<p transition:slide={{ duration: 150 }} class="mt-0.5 text-[11px] text-red-500">
-										{validationErrors[`ingredient-${ingredient._id}-qty`]}
-									</p>
-								{/if}
-							</div>
-
-							<!-- Unit -->
-							<select
-								bind:value={ingredient.unit}
-								aria-label="Unit"
-								class="w-full appearance-none rounded-md border border-green-200/50 bg-white px-3 py-2 text-sm text-charcoal transition-colors focus:border-green-400 focus:outline-none focus:ring-2 focus:ring-green-500/30"
-							>
-								{#each units as u}
-									<option value={u}>{u || '—'}</option>
-								{/each}
-							</select>
-
-							<!-- Remove button -->
-							<button
-								type="button"
-								onclick={() => removeIngredient(ingredient._id)}
-								class="mt-0.5 flex h-9 w-9 items-center justify-center rounded-md text-charcoal/30 transition-all hover:bg-red-50 hover:text-red-500 active:scale-90"
-								aria-label="Remove ingredient"
-							>
-								<svg
-									xmlns="http://www.w3.org/2000/svg"
-									class="h-4 w-4"
-									fill="none"
-									viewBox="0 0 24 24"
-									stroke="currentColor"
-									stroke-width="2"
-								>
-									<path
-										stroke-linecap="round"
-										stroke-linejoin="round"
-										d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+							<!-- Qty, Unit & Remove: row on mobile, grid children on desktop -->
+							<div class="flex items-start gap-2 sm:contents">
+								<!-- Quantity -->
+								<div class="w-20 sm:w-auto">
+									<span class="mb-1 block text-xs font-medium text-charcoal/40 sm:hidden">Qty</span>
+									<input
+										type="number"
+										bind:value={ingredient.quantity}
+										min="0"
+										max="9999"
+										step="0.25"
+										placeholder="0"
+										aria-label="Quantity"
+										aria-invalid={!!validationErrors[`ingredient-${ingredient._id}-qty`]}
+										class="w-full rounded-md border border-green-200/50 bg-white px-3 py-2 text-sm text-charcoal transition-colors placeholder:text-charcoal/25 focus:border-green-400 focus:outline-none focus:ring-2 focus:ring-green-500/30
+										{validationErrors[`ingredient-${ingredient._id}-qty`]
+											? 'border-red-300 bg-red-50/50'
+											: ''}"
 									/>
-								</svg>
-							</button>
+									{#if validationErrors[`ingredient-${ingredient._id}-qty`]}
+										<p transition:slide={{ duration: 150 }} class="mt-0.5 text-[11px] text-red-500">
+											{validationErrors[`ingredient-${ingredient._id}-qty`]}
+										</p>
+									{/if}
+								</div>
+
+								<!-- Unit -->
+								<div class="flex-1 sm:flex-initial">
+									<span class="mb-1 block text-xs font-medium text-charcoal/40 sm:hidden">Unit</span>
+									<select
+										bind:value={ingredient.unit}
+										aria-label="Unit"
+										class="w-full appearance-none rounded-md border border-green-200/50 bg-white px-3 py-2 text-sm text-charcoal transition-colors focus:border-green-400 focus:outline-none focus:ring-2 focus:ring-green-500/30"
+									>
+										{#each units as u}
+											<option value={u}>{u || '—'}</option>
+										{/each}
+									</select>
+								</div>
+
+								<!-- Remove button -->
+								<button
+									type="button"
+									onclick={() => removeIngredient(ingredient._id)}
+									class="mt-5 flex h-9 w-9 items-center justify-center rounded-md text-charcoal/30 transition-all hover:bg-red-50 hover:text-red-500 active:scale-90 sm:mt-0.5"
+									aria-label="Remove ingredient"
+								>
+									<svg
+										xmlns="http://www.w3.org/2000/svg"
+										class="h-4 w-4"
+										fill="none"
+										viewBox="0 0 24 24"
+										stroke="currentColor"
+										stroke-width="2"
+									>
+										<path
+											stroke-linecap="round"
+											stroke-linejoin="round"
+											d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+										/>
+									</svg>
+								</button>
+							</div>
 						</div>
 					{/each}
 				</div>

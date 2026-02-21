@@ -50,7 +50,7 @@
 	<div class="mb-8">
 		<a
 			href="/app/recipes"
-			class="mb-4 inline-flex items-center gap-1.5 font-display text-sm font-medium text-green-600 transition-colors hover:text-green-700"
+			class="mb-4 inline-flex items-center gap-1.5 py-2 font-display text-sm font-medium text-green-600 transition-colors hover:text-green-700"
 		>
 			<svg
 				xmlns="http://www.w3.org/2000/svg"
@@ -64,7 +64,7 @@
 			</svg>
 			Back to Recipes
 		</a>
-		<h1 class="font-display text-3xl font-bold text-charcoal">New Recipe</h1>
+		<h1 class="font-display text-2xl font-bold text-charcoal sm:text-3xl">New Recipe</h1>
 		<p class="mt-1 text-charcoal/60">Add a new recipe to your collection.</p>
 	</div>
 

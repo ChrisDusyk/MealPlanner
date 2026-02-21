@@ -10,16 +10,16 @@
 
 <div class="mx-auto max-w-6xl">
 	<!-- Page header -->
-	<div class="mb-8 flex items-center justify-between">
+	<div class="mb-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 		<div>
-			<h1 class="font-display text-3xl font-bold text-charcoal">My Recipes</h1>
+			<h1 class="font-display text-2xl font-bold text-charcoal sm:text-3xl">My Recipes</h1>
 			<p class="mt-1 text-charcoal/60">
 				Manage your collection of recipes and discover new meal ideas.
 			</p>
 		</div>
 		<a
 			href="/app/recipes/new"
-			class="flex items-center gap-2 rounded-lg bg-green-600 px-5 py-2.5 font-display text-sm font-semibold text-white shadow-md shadow-green-900/20 transition-all hover:bg-green-700 hover:shadow-lg"
+			class="flex w-fit items-center gap-2 rounded-lg bg-green-600 px-5 py-2.5 font-display text-sm font-semibold text-white shadow-md shadow-green-900/20 transition-all hover:bg-green-700 hover:shadow-lg"
 		>
 			<svg
 				xmlns="http://www.w3.org/2000/svg"
