@@ -137,7 +137,7 @@
 			type="button"
 			class="ml-auto inline-flex h-5 w-5 items-center justify-center rounded-full text-red-500 hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-red-300"
 			aria-label="Dismiss error"
-			on:click={() => (errorMessage = '')}
+			onclick={() => (errorMessage = '')}
 		>
 			<svg
 				xmlns="http://www.w3.org/2000/svg"
