@@ -33,7 +33,7 @@
 			{category}
 		</span>
 		<div
-			class="flex items-center gap-0.5 opacity-0 transition-opacity group-hover/slot:opacity-100"
+			class="flex items-center gap-0.5 opacity-100 md:opacity-0 md:transition-opacity md:group-hover/slot:opacity-100"
 		>
 			{#if hasItems}
 				<button
@@ -100,7 +100,7 @@
 					{/if}
 					<button
 						onclick={() => onRemove(day, category, index)}
-						class="flex h-5 w-5 shrink-0 items-center justify-center rounded text-charcoal/20 opacity-0 transition-all hover:bg-red-50 hover:text-red-400 group-hover/item:opacity-100"
+						class="flex h-5 w-5 shrink-0 items-center justify-center rounded text-charcoal/20 opacity-100 md:opacity-0 md:transition-all hover:bg-red-50 hover:text-red-400 md:group-hover/item:opacity-100"
 						aria-label="Remove {item.name}"
 					>
 						<svg
