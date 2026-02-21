@@ -18,6 +18,7 @@ export const PUT: RequestHandler = async ({ request, locals, params, fetch }) =>
 			return json({ error: err.message }, { status: err.status });
 		}
 		const message = err instanceof Error ? err.message : 'Failed to update recipe.';
-		return json({ error: message }, { status: 500 });
+		const isBadRequest = message.includes('400');
+		return json({ error: message }, { status: isBadRequest ? 400 : 500 });
 	}
 };
