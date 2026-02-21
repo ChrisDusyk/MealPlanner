@@ -11,7 +11,7 @@ public record CreateRecipeCommand(
 	string UserId,
 	string Name,
 	string Description,
-	string SourceUrl,
+	Option<string> SourceUrl,
 	List<Ingredient> Ingredients
 ) : ICommand<Recipe>;
 
@@ -29,10 +29,6 @@ public class CreateRecipeCommandHandler(IMongoClient mongoClient)
 			return Result<Recipe>.Failure(
 				new Error(ErrorCodes.ValidationFailed, "Recipe name is required."));
 
-		if (string.IsNullOrWhiteSpace(command.SourceUrl))
-			return Result<Recipe>.Failure(
-				new Error(ErrorCodes.ValidationFailed, "Recipe source URL is required."));
-
 		try
 		{
 			var now = DateTime.UtcNow;
@@ -41,7 +37,7 @@ public class CreateRecipeCommandHandler(IMongoClient mongoClient)
 				UserId = command.UserId,
 				Name = command.Name,
 				Description = command.Description,
-				SourceUrl = command.SourceUrl,
+				SourceUrl = command.SourceUrl.GetValueOrNull(),
 				Ingredients = command.Ingredients
 					.Select(i => new IngredientDocument
 					{
@@ -75,7 +71,7 @@ public class CreateRecipeCommandHandler(IMongoClient mongoClient)
 			UserId: doc.UserId,
 			Name: doc.Name,
 			Description: doc.Description,
-			SourceUrl: doc.SourceUrl,
+			SourceUrl: Option<string>.From(doc.SourceUrl),
 			Ingredients: doc.Ingredients.Select(i => new Ingredient(i.Name, i.Quantity, i.Unit)).ToList(),
 			CreatedAt: doc.CreatedAt,
 			UpdatedAt: doc.UpdatedAt

@@ -80,7 +80,7 @@ public static class RecipeEndpoints
 			userId,
 			request.Name,
 			request.Description,
-			request.SourceUrl,
+			Option<string>.From(request.SourceUrl),
 			request.Ingredients.Select(i => i.ToDomain()).ToList());
 
 		var result = await handler.HandleAsync(command, cancellationToken);
@@ -111,7 +111,7 @@ public static class RecipeEndpoints
 			userId,
 			request.Name,
 			request.Description,
-			request.SourceUrl,
+			Option<string>.From(request.SourceUrl),
 			request.Ingredients.Select(i => i.ToDomain()).ToList());
 
 		var result = await handler.HandleAsync(command, cancellationToken);
