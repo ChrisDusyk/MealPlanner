@@ -191,7 +191,7 @@
 <div class="mx-auto max-w-7xl">
 	<!-- Page header -->
 	<div class="mb-6">
-		<h1 class="font-display text-3xl font-bold text-charcoal">Meal Plans</h1>
+		<h1 class="font-display text-2xl font-bold text-charcoal sm:text-3xl">Meal Plans</h1>
 		<p class="mt-1 text-charcoal/60">
 			Plan your weekly meals — drag recipes into slots and copy across days.
 		</p>
@@ -231,7 +231,7 @@
 	<!-- Toast notification -->
 	{#if toastVisible}
 		<div
-			class="fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-lg px-4 py-3 shadow-lg transition-all {toastType ===
+			class="fixed bottom-6 left-6 right-6 z-50 flex items-center gap-2 rounded-lg px-4 py-3 shadow-lg transition-all sm:left-auto {toastType ===
 			'error'
 				? 'bg-red-600 text-white'
 				: 'bg-green-700 text-white'}"

@@ -61,7 +61,7 @@
 			</svg>
 		</button>
 
-		<h2 class="min-w-[200px] text-center font-display text-lg font-bold text-charcoal sm:text-xl">
+		<h2 class="min-w-0 text-center font-display text-base font-bold text-charcoal sm:min-w-[200px] sm:text-xl">
 			{weekLabel}
 		</h2>
 
