@@ -132,7 +132,24 @@
 				d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"
 			/>
 		</svg>
-		<span>{errorMessage}</span>
+		<span class="flex-1">{errorMessage}</span>
+		<button
+			type="button"
+			class="ml-auto inline-flex h-5 w-5 items-center justify-center rounded-full text-red-500 hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-red-300"
+			aria-label="Dismiss error"
+			on:click={() => (errorMessage = '')}
+		>
+			<svg
+				xmlns="http://www.w3.org/2000/svg"
+				class="h-3 w-3"
+				fill="none"
+				viewBox="0 0 24 24"
+				stroke="currentColor"
+				stroke-width="2"
+			>
+				<path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+			</svg>
+		</button>
 	</div>
 {/if}
 
