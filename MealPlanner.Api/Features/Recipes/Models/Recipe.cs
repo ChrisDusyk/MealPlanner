@@ -1,3 +1,5 @@
+using MealPlanner.Api.Shared;
+
 namespace MealPlanner.Api.Features.Recipes.Models;
 
 /// <summary>
@@ -8,7 +10,7 @@ public record Recipe(
 	string UserId,
 	string Name,
 	string Description,
-	string SourceUrl,
+	Option<string> SourceUrl,
 	List<Ingredient> Ingredients,
 	DateTime CreatedAt,
 	DateTime UpdatedAt

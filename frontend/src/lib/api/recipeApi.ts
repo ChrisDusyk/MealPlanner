@@ -8,7 +8,7 @@ export interface Recipe {
 	id: string;
 	name: string;
 	description: string;
-	sourceUrl: string;
+	sourceUrl?: string | null;
 	ingredients: Ingredient[];
 	createdAt: string;
 	updatedAt: string;
@@ -17,7 +17,7 @@ export interface Recipe {
 export interface CreateRecipeRequest {
 	name: string;
 	description: string;
-	sourceUrl: string;
+	sourceUrl?: string | null;
 	ingredients: Ingredient[];
 }
 

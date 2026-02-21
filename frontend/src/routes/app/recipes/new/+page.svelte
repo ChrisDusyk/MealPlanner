@@ -40,9 +40,7 @@
 		if (!name.trim()) {
 			errors.name = 'Recipe name is required.';
 		}
-		if (!sourceUrl.trim()) {
-			errors.sourceUrl = 'Source URL is required.';
-		} else {
+		if (sourceUrl.trim()) {
 			try {
 				const url = new URL(sourceUrl);
 				if (url.protocol !== 'http:' && url.protocol !== 'https:') {
@@ -78,7 +76,7 @@
 		const request: CreateRecipeRequest = {
 			name: name.trim(),
 			description: description.trim(),
-			sourceUrl: sourceUrl.trim(),
+			sourceUrl: sourceUrl.trim() || undefined,
 			ingredients: ingredients
 				.filter((i) => i.name.trim())
 				.map((i) => ({
@@ -235,7 +233,7 @@
 				<!-- Source URL -->
 				<div>
 					<label for="recipe-url" class="mb-1.5 block text-sm font-medium text-charcoal/80">
-						Source URL <span class="text-red-400">*</span>
+						Source URL <span class="text-xs text-charcoal/40">(optional)</span>
 					</label>
 					<input
 						id="recipe-url"

@@ -18,7 +18,7 @@ public class RecipeDocument
 
 	public string Description { get; set; } = string.Empty;
 
-	public string SourceUrl { get; set; } = string.Empty;
+	public string? SourceUrl { get; set; }
 
 	public List<IngredientDocument> Ingredients { get; set; } = [];
 
