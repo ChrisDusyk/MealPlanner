@@ -10,12 +10,20 @@
 
 	let { data }: { data: PageData } = $props();
 
-	// Mutable local copies for optimistic updates, re-seeded on navigation
-	let mealPlan: MealPlanResponse = $state(undefined!);
-	let recipes: Recipe[] = $state([]);
+	// Track server data version so we can re-seed local state on navigation
+	let serverVersion = $derived(data.mealPlan.weekStart + data.mealPlan.id);
 
-	// Seed initial values and re-sync when server data changes (e.g. week navigation)
+	// Mutable local copies for optimistic updates, seeded from server data.
+	// The $state() captures data for SSR; the $effect below re-seeds on navigation.
+	// svelte-ignore state_referenced_locally
+	let mealPlan: MealPlanResponse = $state(data.mealPlan);
+	// svelte-ignore state_referenced_locally
+	let recipes: Recipe[] = $state(data.recipes);
+
+	// Re-sync when server data changes (e.g. week navigation)
 	$effect(() => {
+		// Subscribe to the derived value so this re-runs on navigation
+		void serverVersion;
 		mealPlan = data.mealPlan;
 		recipes = data.recipes;
 	});
