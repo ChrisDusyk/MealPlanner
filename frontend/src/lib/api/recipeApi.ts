@@ -21,6 +21,13 @@ export interface CreateRecipeRequest {
 	ingredients: Ingredient[];
 }
 
+export interface UpdateRecipeRequest {
+	name: string;
+	description: string;
+	sourceUrl?: string | null;
+	ingredients: Ingredient[];
+}
+
 /**
  * Custom error that preserves the HTTP status code from an API response.
  */
@@ -145,6 +152,48 @@ export async function createRecipe(
 ): Promise<Recipe> {
 	const response = await fetchFn(`${getApiBase()}/api/recipes`, {
 		method: 'POST',
+		headers: {
+			'Content-Type': 'application/json',
+			Authorization: `Bearer ${accessToken}`
+		},
+		body: JSON.stringify(request)
+	});
+
+	if (!response.ok) {
+		const { message, body } = await parseErrorBody(response);
+		throw new ApiError(response.status, message, body);
+	}
+
+	return response.json();
+}
+
+export async function fetchRecipeById(
+	accessToken: string,
+	id: string,
+	fetchFn: typeof fetch = fetch
+): Promise<Recipe> {
+	const response = await fetchFn(`${getApiBase()}/api/recipes/${encodeURIComponent(id)}`, {
+		headers: {
+			Authorization: `Bearer ${accessToken}`
+		}
+	});
+
+	if (!response.ok) {
+		const { message, body } = await parseErrorBody(response);
+		throw new ApiError(response.status, message, body);
+	}
+
+	return response.json();
+}
+
+export async function updateRecipe(
+	accessToken: string,
+	id: string,
+	request: UpdateRecipeRequest,
+	fetchFn: typeof fetch = fetch
+): Promise<Recipe> {
+	const response = await fetchFn(`${getApiBase()}/api/recipes/${encodeURIComponent(id)}`, {
+		method: 'PUT',
 		headers: {
 			'Content-Type': 'application/json',
 			Authorization: `Bearer ${accessToken}`
