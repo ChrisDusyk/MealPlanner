@@ -87,7 +87,11 @@
 	function getActivePlan(): MealPlanResponse {
 		if (editingSharedPlan) {
 			const shared = sharedWithMe.find((s) => s.shareId === editingSharedPlan!.shareId);
-			return shared!.mealPlan;
+			if (!shared) {
+				editingSharedPlan = null;
+				return mealPlan;
+			}
+			return shared.mealPlan;
 		}
 		return mealPlan;
 	}
@@ -320,6 +324,7 @@
 			if (!res.ok) throw new Error('Failed to dismiss');
 
 			sharedWithMe = sharedWithMe.filter((s) => s.shareId !== shareId);
+			editingSharedPlan = null;
 			showToast('Shared plan dismissed');
 		} catch {
 			showToast('Failed to dismiss shared plan.', 'error');
@@ -408,6 +413,8 @@
 		<div class="mt-8">
 			<button
 				onclick={() => (sharedSectionOpen = !sharedSectionOpen)}
+				aria-expanded={sharedSectionOpen}
+				aria-label="Toggle shared meal plans section"
 				class="mb-3 flex items-center gap-2 text-left"
 			>
 				<svg

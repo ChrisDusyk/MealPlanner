@@ -6,6 +6,7 @@ import {
 	getSharedWithMe,
 	dismissShare
 } from '$lib/api/sharingApi';
+import { ApiError } from '$lib/api/recipeApi';
 import type { RequestHandler } from './$types';
 
 /**
@@ -23,6 +24,9 @@ export const POST: RequestHandler = async ({ request, locals, fetch, url }) => {
 	try {
 		if (action === 'dismiss') {
 			const shareId = url.searchParams.get('shareId') ?? '';
+			if (!shareId) {
+				return json({ error: 'shareId is required' }, { status: 400 });
+			}
 			await dismissShare(session.accessToken, shareId, fetch);
 			return json({ ok: true });
 		}
@@ -33,6 +37,9 @@ export const POST: RequestHandler = async ({ request, locals, fetch, url }) => {
 		return json(result, { status: 201 });
 	} catch (err) {
 		console.error('Sharing POST failed:', err);
+		if (err instanceof ApiError) {
+			return json({ error: err.message }, { status: err.status });
+		}
 		const message = err instanceof Error ? err.message : 'Sharing operation failed.';
 		return json({ error: message }, { status: 500 });
 	}
@@ -62,6 +69,9 @@ export const GET: RequestHandler = async ({ locals, fetch, url }) => {
 		return json(shared);
 	} catch (err) {
 		console.error('Sharing GET failed:', err);
+		if (err instanceof ApiError) {
+			return json({ error: err.message }, { status: err.status });
+		}
 		const message = err instanceof Error ? err.message : 'Failed to load shares.';
 		return json({ error: message }, { status: 500 });
 	}
@@ -77,12 +87,18 @@ export const DELETE: RequestHandler = async ({ locals, fetch, url }) => {
 	}
 
 	const shareId = url.searchParams.get('shareId') ?? '';
+	if (!shareId) {
+		return json({ error: 'shareId is required' }, { status: 400 });
+	}
 
 	try {
 		await revokeShare(session.accessToken, shareId, fetch);
 		return json({ ok: true });
 	} catch (err) {
 		console.error('Sharing DELETE failed:', err);
+		if (err instanceof ApiError) {
+			return json({ error: err.message }, { status: err.status });
+		}
 		const message = err instanceof Error ? err.message : 'Failed to revoke share.';
 		return json({ error: message }, { status: 500 });
 	}

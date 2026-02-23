@@ -91,6 +91,11 @@ public class ShareMealPlanCommandHandler(IMongoClient mongoClient)
 
 			return Result<MealPlanShare>.Success(document.ToDomain());
 		}
+		catch (MongoWriteException ex) when (ex.WriteError?.Category == ServerErrorCategory.DuplicateKey)
+		{
+			return Result<MealPlanShare>.Failure(
+				new Error(ErrorCodes.ValidationFailed, "This meal plan is already shared with that user."));
+		}
 		catch (Exception ex)
 		{
 			return Result<MealPlanShare>.Failure(
