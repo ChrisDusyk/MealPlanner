@@ -1,0 +1,53 @@
+using MealPlanner.Api.Features.MealPlans.Models;
+using MealPlanner.Api.Shared;
+using MongoDB.Driver;
+
+namespace MealPlanner.Api.Features.MealPlans.Commands;
+
+/// <summary>
+/// Command for the owner to revoke a share.
+/// </summary>
+public record RevokeMealPlanShareCommand(
+	string OwnerUserId,
+	string ShareId
+) : ICommand<Unit>;
+
+/// <summary>
+/// Handles revoking (deleting) a share. Only the share owner can revoke.
+/// </summary>
+public class RevokeMealPlanShareCommandHandler(IMongoClient mongoClient)
+	: ICommandHandler<RevokeMealPlanShareCommand, Unit>
+{
+	public async Task<Result<Unit>> HandleAsync(
+		RevokeMealPlanShareCommand command,
+		CancellationToken cancellationToken = default)
+	{
+		if (string.IsNullOrWhiteSpace(command.ShareId))
+			return Result<Unit>.Failure(
+				new Error(ErrorCodes.ValidationFailed, "Share ID is required."));
+
+		try
+		{
+			var collection = mongoClient
+				.GetDatabase("mealplannerDb")
+				.GetCollection<MealPlanShareDocument>("shares");
+
+			var filter = Builders<MealPlanShareDocument>.Filter.And(
+				Builders<MealPlanShareDocument>.Filter.Eq(s => s.Id, command.ShareId),
+				Builders<MealPlanShareDocument>.Filter.Eq(s => s.OwnerUserId, command.OwnerUserId));
+
+			var result = await collection.DeleteOneAsync(filter, cancellationToken);
+
+			if (result.DeletedCount == 0)
+				return Result<Unit>.Failure(
+					new Error(ErrorCodes.NotFound, "Share not found or you are not the owner."));
+
+			return Result<Unit>.Success(Unit.Value);
+		}
+		catch (Exception ex)
+		{
+			return Result<Unit>.Failure(
+				new Error(ErrorCodes.DatabaseError, "Failed to revoke share.", ex));
+		}
+	}
+}
