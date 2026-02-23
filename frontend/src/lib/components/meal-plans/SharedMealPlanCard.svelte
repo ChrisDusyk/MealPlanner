@@ -1,34 +1,38 @@
 <script lang="ts">
 	import { MEAL_CATEGORIES, WEEK_DAYS } from '$lib/api/mealPlanApi';
 	import type { MealPlanResponse, MealSlotItem } from '$lib/api/mealPlanApi';
+	import MealPlanGrid from './MealPlanGrid.svelte';
 
 	let {
 		shareId,
+		ownerUserId,
 		ownerName,
 		ownerEmail,
 		permission,
 		mealPlan,
-		onDismiss
+		onDismiss,
+		onAdd,
+		onRemove,
+		onCopy
 	}: {
 		shareId: string;
+		ownerUserId: string;
 		ownerName: string;
 		ownerEmail: string;
 		permission: string;
 		mealPlan: MealPlanResponse;
 		onDismiss: (shareId: string) => void;
+		onAdd?: (day: string, category: string) => void;
+		onRemove?: (day: string, category: string, index: number) => void;
+		onCopy?: (day: string, category: string) => void;
 	} = $props();
 
 	let expanded = $state(false);
+	let canEdit = $derived(permission === 'ReadWrite' && !!onAdd && !!onRemove && !!onCopy);
 
 	function getItems(dayName: string, category: string): MealSlotItem[] {
 		const dayPlan = mealPlan.days.find((d) => d.day === dayName);
 		return dayPlan?.slots[category] ?? [];
-	}
-
-	function hasAnyItems(dayName: string): boolean {
-		const dayPlan = mealPlan.days.find((d) => d.day === dayName);
-		if (!dayPlan) return false;
-		return Object.values(dayPlan.slots).some((items) => items.length > 0);
 	}
 
 	let totalItems = $derived(
@@ -97,39 +101,50 @@
 				</button>
 			</div>
 
-			<!-- Compact grid -->
-			<div class="overflow-x-auto">
-				<div class="grid min-w-[640px] grid-cols-7 gap-1.5">
-					{#each WEEK_DAYS as dayName (dayName)}
-						<div class="flex flex-col gap-1">
-							<p
-								class="mb-0.5 text-center font-display text-[10px] font-bold uppercase tracking-wider text-charcoal/40"
-							>
-								{dayName.slice(0, 3)}
-							</p>
-
-							{#each MEAL_CATEGORIES as category (category)}
-								{@const items = getItems(dayName, category)}
-								<div
-									class="rounded-lg px-1.5 py-1 {items.length > 0
-										? 'bg-blue-50/60'
-										: 'bg-transparent'}"
+			{#if canEdit}
+				<!-- Full interactive grid for ReadWrite shares -->
+				<MealPlanGrid
+					days={mealPlan.days}
+					weekStart={mealPlan.weekStart}
+					onAdd={onAdd!}
+					onRemove={onRemove!}
+					onCopy={onCopy!}
+				/>
+			{:else}
+				<!-- Compact read-only grid for ReadOnly shares -->
+				<div class="overflow-x-auto">
+					<div class="grid min-w-[640px] grid-cols-7 gap-1.5">
+						{#each WEEK_DAYS as dayName (dayName)}
+							<div class="flex flex-col gap-1">
+								<p
+									class="mb-0.5 text-center font-display text-[10px] font-bold uppercase tracking-wider text-charcoal/40"
 								>
-									{#if items.length > 0}
-										{#each items as item (item.name)}
-											<p class="truncate text-[10px] text-charcoal/70" title={item.name}>
-												{item.name}
-											</p>
-										{/each}
-									{:else}
-										<p class="text-[10px] text-charcoal/15">—</p>
-									{/if}
-								</div>
-							{/each}
-						</div>
-					{/each}
+									{dayName.slice(0, 3)}
+								</p>
+
+								{#each MEAL_CATEGORIES as category (category)}
+									{@const items = getItems(dayName, category)}
+									<div
+										class="rounded-lg px-1.5 py-1 {items.length > 0
+											? 'bg-blue-50/60'
+											: 'bg-transparent'}"
+									>
+										{#if items.length > 0}
+											{#each items as item (item.name)}
+												<p class="truncate text-[10px] text-charcoal/70" title={item.name}>
+													{item.name}
+												</p>
+											{/each}
+										{:else}
+											<p class="text-[10px] text-charcoal/15">—</p>
+										{/if}
+									</div>
+								{/each}
+							</div>
+						{/each}
+					</div>
 				</div>
-			</div>
+			{/if}
 		</div>
 	{/if}
 </div>

@@ -22,6 +22,7 @@ export interface MealPlanShareResponse {
 
 export interface SharedMealPlanResponse {
 	shareId: string;
+	ownerUserId: string;
 	ownerName: string;
 	ownerEmail: string;
 	permission: string;

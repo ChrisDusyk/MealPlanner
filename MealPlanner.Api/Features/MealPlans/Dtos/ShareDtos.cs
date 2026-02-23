@@ -46,6 +46,7 @@ public record MealPlanShareResponse(
 /// </summary>
 public record SharedMealPlanResponse(
 	string ShareId,
+	string OwnerUserId,
 	string OwnerName,
 	string OwnerEmail,
 	string Permission,

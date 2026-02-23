@@ -307,6 +307,7 @@ public static class MealPlanEndpoints
 		return result.Match(
 			onSuccess: plans => Results.Ok(plans.Select(p => new SharedMealPlanResponse(
 				ShareId: p.Share.Id,
+				OwnerUserId: p.Share.OwnerUserId,
 				OwnerName: p.OwnerName,
 				OwnerEmail: p.OwnerEmail,
 				Permission: p.Share.Permission.ToString(),

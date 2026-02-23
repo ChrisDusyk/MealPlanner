@@ -11,6 +11,7 @@ export const PUT: RequestHandler = async ({ request, locals, fetch, url }) => {
 	const weekStart = url.searchParams.get('weekStart') ?? '';
 	const day = url.searchParams.get('day') ?? '';
 	const category = url.searchParams.get('category') ?? '';
+	const onBehalfOf = url.searchParams.get('onBehalfOf') ?? undefined;
 
 	try {
 		const body = await request.json();
@@ -20,7 +21,8 @@ export const PUT: RequestHandler = async ({ request, locals, fetch, url }) => {
 			day,
 			category,
 			body.items,
-			fetch
+			fetch,
+			onBehalfOf
 		);
 		return json(result);
 	} catch (err) {
@@ -37,6 +39,7 @@ export const POST: RequestHandler = async ({ request, locals, fetch, url }) => {
 	}
 
 	const weekStart = url.searchParams.get('weekStart') ?? '';
+	const onBehalfOf = url.searchParams.get('onBehalfOf') ?? undefined;
 
 	try {
 		const body = await request.json();
@@ -46,7 +49,8 @@ export const POST: RequestHandler = async ({ request, locals, fetch, url }) => {
 			body.sourceDay,
 			body.category,
 			body.targetDays,
-			fetch
+			fetch,
+			onBehalfOf
 		);
 		return json(result);
 	} catch (err) {
@@ -66,6 +70,7 @@ export const DELETE: RequestHandler = async ({ locals, fetch, url }) => {
 	const day = url.searchParams.get('day') ?? '';
 	const category = url.searchParams.get('category') ?? '';
 	const itemIndex = parseInt(url.searchParams.get('itemIndex') ?? '0', 10);
+	const onBehalfOf = url.searchParams.get('onBehalfOf') ?? undefined;
 
 	try {
 		const result = await removeSlotItem(
@@ -74,7 +79,8 @@ export const DELETE: RequestHandler = async ({ locals, fetch, url }) => {
 			day,
 			category,
 			itemIndex,
-			fetch
+			fetch,
+			onBehalfOf
 		);
 		return json(result);
 	} catch (err) {

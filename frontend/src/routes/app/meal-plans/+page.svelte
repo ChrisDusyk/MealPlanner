@@ -48,6 +48,9 @@
 
 	let shareModalOpen = $state(false);
 
+	// Track which shared plan is being edited (null = editing own plan)
+	let editingSharedPlan: { ownerUserId: string; shareId: string } | null = $state(null);
+
 	// Shared-with-me section collapsed state
 	let sharedSectionOpen = $state(true);
 
@@ -74,13 +77,44 @@
 	// ── Add Item ──
 
 	function handleOpenAdd(day: string, category: string) {
+		editingSharedPlan = null;
 		addModalDay = day;
 		addModalCategory = category;
 		addModalOpen = true;
 	}
 
+	/** Get the effective meal plan being edited (own or shared) */
+	function getActivePlan(): MealPlanResponse {
+		if (editingSharedPlan) {
+			const shared = sharedWithMe.find((s) => s.shareId === editingSharedPlan!.shareId);
+			return shared!.mealPlan;
+		}
+		return mealPlan;
+	}
+
+	/** Build query params, appending onBehalfOf when editing a shared plan */
+	function buildParams(base: Record<string, string>): URLSearchParams {
+		const params = new URLSearchParams(base);
+		if (editingSharedPlan) {
+			params.set('onBehalfOf', editingSharedPlan.ownerUserId);
+		}
+		return params;
+	}
+
+	/** Update the correct plan (own or shared) after a successful mutation */
+	function applyUpdatedPlan(updated: MealPlanResponse) {
+		if (editingSharedPlan) {
+			sharedWithMe = sharedWithMe.map((s) =>
+				s.shareId === editingSharedPlan!.shareId ? { ...s, mealPlan: updated } : s
+			);
+		} else {
+			mealPlan = updated;
+		}
+	}
+
 	async function handleAddItem(item: MealSlotItem) {
-		const dayPlan = mealPlan.days.find((d) => d.day === addModalDay);
+		const plan = getActivePlan();
+		const dayPlan = plan.days.find((d) => d.day === addModalDay);
 		if (!dayPlan) return;
 
 		// Optimistic update
@@ -89,8 +123,8 @@
 		dayPlan.slots[addModalCategory] = newItems;
 
 		try {
-			const params = new URLSearchParams({
-				weekStart: mealPlan.weekStart,
+			const params = buildParams({
+				weekStart: plan.weekStart,
 				day: addModalDay,
 				category: addModalCategory
 			});
@@ -102,7 +136,7 @@
 
 			if (!res.ok) throw new Error('Failed to save');
 			const updated: MealPlanResponse = await res.json();
-			mealPlan = updated;
+			applyUpdatedPlan(updated);
 		} catch {
 			// Revert
 			dayPlan.slots[addModalCategory] = currentItems;
@@ -113,7 +147,8 @@
 	// ── Remove Item ──
 
 	async function handleRemoveItem(day: string, category: string, index: number) {
-		const dayPlan = mealPlan.days.find((d) => d.day === day);
+		const plan = getActivePlan();
+		const dayPlan = plan.days.find((d) => d.day === day);
 		if (!dayPlan) return;
 
 		const currentItems = [...(dayPlan.slots[category] ?? [])];
@@ -123,8 +158,8 @@
 		dayPlan.slots[category] = newItems;
 
 		try {
-			const params = new URLSearchParams({
-				weekStart: mealPlan.weekStart,
+			const params = buildParams({
+				weekStart: plan.weekStart,
 				day,
 				category,
 				itemIndex: index.toString()
@@ -135,7 +170,7 @@
 
 			if (!res.ok) throw new Error('Failed to remove');
 			const updated: MealPlanResponse = await res.json();
-			mealPlan = updated;
+			applyUpdatedPlan(updated);
 		} catch {
 			// Revert
 			dayPlan.slots[category] = currentItems;
@@ -146,21 +181,23 @@
 	// ── Copy Category ──
 
 	function handleOpenCopy(day: string, category: string) {
+		editingSharedPlan = null;
 		copyModalDay = day;
 		copyModalCategory = category;
 		copyModalOpen = true;
 	}
 
 	async function handleCopyConfirm(targetDays: string[]) {
+		const plan = getActivePlan();
 		// Optimistic update: copy source items to targets
-		const sourceDayPlan = mealPlan.days.find((d) => d.day === copyModalDay);
+		const sourceDayPlan = plan.days.find((d) => d.day === copyModalDay);
 		if (!sourceDayPlan) return;
 
 		const sourceItems = sourceDayPlan.slots[copyModalCategory] ?? [];
 		const backups: Record<string, MealSlotItem[]> = {};
 
 		for (const td of targetDays) {
-			const targetDayPlan = mealPlan.days.find((d) => d.day === td);
+			const targetDayPlan = plan.days.find((d) => d.day === td);
 			if (targetDayPlan) {
 				backups[td] = [...(targetDayPlan.slots[copyModalCategory] ?? [])];
 				targetDayPlan.slots[copyModalCategory] = [...sourceItems];
@@ -168,7 +205,7 @@
 		}
 
 		try {
-			const params = new URLSearchParams({ weekStart: mealPlan.weekStart });
+			const params = buildParams({ weekStart: plan.weekStart });
 			const res = await fetch(`/app/meal-plans?${params}`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
@@ -181,20 +218,47 @@
 
 			if (!res.ok) throw new Error('Failed to copy');
 			const updated: MealPlanResponse = await res.json();
-			mealPlan = updated;
+			applyUpdatedPlan(updated);
 			showToast(
 				`Copied ${copyModalCategory} from ${copyModalDay} to ${targetDays.length} ${targetDays.length === 1 ? 'day' : 'days'}`
 			);
 		} catch {
 			// Revert
 			for (const td of targetDays) {
-				const targetDayPlan = mealPlan.days.find((d) => d.day === td);
+				const targetDayPlan = plan.days.find((d) => d.day === td);
 				if (targetDayPlan && backups[td]) {
 					targetDayPlan.slots[copyModalCategory] = backups[td];
 				}
 			}
 			showToast('Failed to copy. Please try again.', 'error');
 		}
+	}
+
+	// ── Shared Plan Edit Wrappers ──
+
+	function handleSharedOpenAdd(ownerUserId: string, shareId: string) {
+		return (day: string, category: string) => {
+			editingSharedPlan = { ownerUserId, shareId };
+			addModalDay = day;
+			addModalCategory = category;
+			addModalOpen = true;
+		};
+	}
+
+	function handleSharedRemove(ownerUserId: string, shareId: string) {
+		return (day: string, category: string, index: number) => {
+			editingSharedPlan = { ownerUserId, shareId };
+			handleRemoveItem(day, category, index);
+		};
+	}
+
+	function handleSharedOpenCopy(ownerUserId: string, shareId: string) {
+		return (day: string, category: string) => {
+			editingSharedPlan = { ownerUserId, shareId };
+			copyModalDay = day;
+			copyModalCategory = category;
+			copyModalOpen = true;
+		};
 	}
 
 	// ── Sharing ──
@@ -375,11 +439,21 @@
 					{#each sharedWithMe as shared (shared.shareId)}
 						<SharedMealPlanCard
 							shareId={shared.shareId}
+							ownerUserId={shared.ownerUserId}
 							ownerName={shared.ownerName}
 							ownerEmail={shared.ownerEmail}
 							permission={shared.permission}
 							mealPlan={shared.mealPlan}
 							onDismiss={handleDismiss}
+							onAdd={shared.permission === 'ReadWrite'
+								? handleSharedOpenAdd(shared.ownerUserId, shared.shareId)
+								: undefined}
+							onRemove={shared.permission === 'ReadWrite'
+								? handleSharedRemove(shared.ownerUserId, shared.shareId)
+								: undefined}
+							onCopy={shared.permission === 'ReadWrite'
+								? handleSharedOpenCopy(shared.ownerUserId, shared.shareId)
+								: undefined}
 						/>
 					{/each}
 				</div>
