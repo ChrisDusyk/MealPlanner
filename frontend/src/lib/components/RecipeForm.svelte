@@ -43,15 +43,32 @@
 
 	// Common units for the select dropdown
 	const units = [
-		'', 'tsp', 'tbsp', 'cup', 'oz', 'fl oz', 'lb', 'g', 'kg', 'ml', 'L',
-		'pinch', 'dash', 'piece', 'slice', 'clove', 'can', 'bottle', 'package', 'bunch', 'sprig', 'whole'
+		'',
+		'tsp',
+		'tbsp',
+		'cup',
+		'oz',
+		'fl oz',
+		'lb',
+		'g',
+		'kg',
+		'ml',
+		'L',
+		'pinch',
+		'dash',
+		'piece',
+		'slice',
+		'clove',
+		'can',
+		'bottle',
+		'package',
+		'bunch',
+		'sprig',
+		'whole'
 	];
 
 	function addIngredient() {
-		ingredients = [
-			...ingredients,
-			{ _id: nextId++, name: '', quantity: 0, unit: '' }
-		];
+		ingredients = [...ingredients, { _id: nextId++, name: '', quantity: 0, unit: '' }];
 	}
 
 	function removeIngredient(id: number) {
@@ -91,8 +108,30 @@
 		return Object.keys(errors).length === 0;
 	}
 
+	function focusFirstInvalidField() {
+		const fieldOrder: Array<{ id: string; errorKey: string }> = [
+			{ id: 'recipe-name', errorKey: 'name' },
+			{ id: 'recipe-url', errorKey: 'sourceUrl' },
+			...ingredients.flatMap((ingredient) => [
+				{ id: `ingredient-${ingredient._id}-name`, errorKey: `ingredient-${ingredient._id}-name` },
+				{ id: `ingredient-${ingredient._id}-qty`, errorKey: `ingredient-${ingredient._id}-qty` }
+			])
+		];
+
+		for (const { id, errorKey } of fieldOrder) {
+			const element = document.getElementById(id);
+			if (element instanceof HTMLElement && validationErrors[errorKey] !== undefined) {
+				element.focus();
+				return;
+			}
+		}
+	}
+
 	function handleSubmit() {
-		if (!validate()) return;
+		if (!validate()) {
+			focusFirstInvalidField();
+			return;
+		}
 
 		const request: CreateRecipeRequest = {
 			name: name.trim(),
@@ -109,6 +148,8 @@
 
 		onSubmitCallback(request);
 	}
+
+	let validationErrorMessages = $derived(Object.values(validationErrors));
 </script>
 
 <!-- Error banner -->
@@ -135,7 +176,7 @@
 		<span class="flex-1">{errorMessage}</span>
 		<button
 			type="button"
-			class="ml-auto inline-flex h-5 w-5 items-center justify-center rounded-full text-red-500 hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-red-300"
+			class="ml-auto inline-flex h-5 w-5 items-center justify-center rounded-full text-red-500 hover:bg-red-100 focus:ring-2 focus:ring-red-300 focus:outline-none"
 			aria-label="Dismiss error"
 			onclick={() => (errorMessage = '')}
 		>
@@ -159,8 +200,21 @@
 		e.preventDefault();
 		handleSubmit();
 	}}
+	aria-describedby={validationErrorMessages.length > 0 ? 'recipe-form-errors' : undefined}
 	class="space-y-8"
 >
+	{#if validationErrorMessages.length > 0}
+		<div
+			id="recipe-form-errors"
+			class="sr-only"
+			role="alert"
+			aria-live="assertive"
+			aria-atomic="true"
+		>
+			Please fix the following errors: {validationErrorMessages.join(', ')}
+		</div>
+	{/if}
+
 	<!-- Recipe Details Section -->
 	<section class="overflow-hidden rounded-xl border border-green-200/50 bg-white shadow-sm">
 		<div class="border-b border-green-100/60 bg-green-50/30 px-6 py-4">
@@ -179,13 +233,17 @@
 					placeholder="e.g. Grandma's Chicken Soup"
 					aria-invalid={!!validationErrors.name}
 					aria-describedby={validationErrors.name ? 'recipe-name-error' : undefined}
-					class="w-full rounded-lg border px-4 py-2.5 text-sm text-charcoal transition-colors placeholder:text-charcoal/30 focus:outline-none focus:ring-2 focus:ring-green-500/40
+					class="w-full rounded-lg border px-4 py-2.5 text-sm text-charcoal transition-colors placeholder:text-charcoal/30 focus:ring-2 focus:ring-green-500/40 focus:outline-none
 					{validationErrors.name
 						? 'border-red-300 bg-red-50/50 focus:border-red-400'
 						: 'border-green-200/60 bg-white focus:border-green-400'}"
 				/>
 				{#if validationErrors.name}
-					<p id="recipe-name-error" transition:slide={{ duration: 200 }} class="mt-1 text-xs text-red-500">
+					<p
+						id="recipe-name-error"
+						transition:slide={{ duration: 200 }}
+						class="mt-1 text-xs text-red-500"
+					>
 						{validationErrors.name}
 					</p>
 				{/if}
@@ -201,7 +259,7 @@
 					bind:value={description}
 					placeholder="A short description of this recipe..."
 					rows="3"
-					class="w-full resize-none rounded-lg border border-green-200/60 bg-white px-4 py-2.5 text-sm text-charcoal transition-colors placeholder:text-charcoal/30 focus:border-green-400 focus:outline-none focus:ring-2 focus:ring-green-500/40"
+					class="w-full resize-none rounded-lg border border-green-200/60 bg-white px-4 py-2.5 text-sm text-charcoal transition-colors placeholder:text-charcoal/30 focus:border-green-400 focus:ring-2 focus:ring-green-500/40 focus:outline-none"
 				></textarea>
 			</div>
 
@@ -217,13 +275,17 @@
 					placeholder="https://example.com/recipe"
 					aria-invalid={!!validationErrors.sourceUrl}
 					aria-describedby={validationErrors.sourceUrl ? 'recipe-url-error' : undefined}
-					class="w-full rounded-lg border px-4 py-2.5 text-sm text-charcoal transition-colors placeholder:text-charcoal/30 focus:outline-none focus:ring-2 focus:ring-green-500/40
+					class="w-full rounded-lg border px-4 py-2.5 text-sm text-charcoal transition-colors placeholder:text-charcoal/30 focus:ring-2 focus:ring-green-500/40 focus:outline-none
 					{validationErrors.sourceUrl
 						? 'border-red-300 bg-red-50/50 focus:border-red-400'
 						: 'border-green-200/60 bg-white focus:border-green-400'}"
 				/>
 				{#if validationErrors.sourceUrl}
-					<p id="recipe-url-error" transition:slide={{ duration: 200 }} class="mt-1 text-xs text-red-500">
+					<p
+						id="recipe-url-error"
+						transition:slide={{ duration: 200 }}
+						class="mt-1 text-xs text-red-500"
+					>
 						{validationErrors.sourceUrl}
 					</p>
 				{/if}
@@ -233,7 +295,9 @@
 
 	<!-- Ingredients Section -->
 	<section class="overflow-hidden rounded-xl border border-green-200/50 bg-white shadow-sm">
-		<div class="flex items-center justify-between border-b border-green-100/60 bg-green-50/30 px-6 py-4">
+		<div
+			class="flex items-center justify-between border-b border-green-100/60 bg-green-50/30 px-6 py-4"
+		>
 			<div>
 				<h2 class="font-display text-lg font-semibold text-charcoal">Ingredients</h2>
 				{#if ingredients.length > 0}
@@ -268,7 +332,9 @@
 					transition:fade={{ duration: 200 }}
 					class="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-green-200/40 py-12"
 				>
-					<div class="mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-green-100 text-green-500">
+					<div
+						class="mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-green-100 text-green-500"
+					>
 						<svg
 							xmlns="http://www.w3.org/2000/svg"
 							class="h-6 w-6"
@@ -285,11 +351,15 @@
 						</svg>
 					</div>
 					<p class="font-display text-sm font-medium text-charcoal/50">No ingredients yet</p>
-					<p class="mt-0.5 text-xs text-charcoal/30">Click "Add" above to start building your ingredient list</p>
+					<p class="mt-0.5 text-xs text-charcoal/30">
+						Click "Add" above to start building your ingredient list
+					</p>
 				</div>
 			{:else}
 				<!-- Column headers (hidden on mobile) -->
-				<div class="mb-3 hidden grid-cols-[1fr_5rem_7rem_2.5rem] gap-3 px-1 text-xs font-medium uppercase tracking-wider text-charcoal/40 sm:grid">
+				<div
+					class="mb-3 hidden grid-cols-[1fr_5rem_7rem_2.5rem] gap-3 px-1 text-xs font-medium tracking-wider text-charcoal/40 uppercase sm:grid"
+				>
 					<span>Ingredient</span>
 					<span>Qty</span>
 					<span>Unit</span>
@@ -307,20 +377,28 @@
 						>
 							<!-- Name -->
 							<div>
-								<span class="mb-1 block text-xs font-medium text-charcoal/40 sm:hidden">Ingredient</span>
+								<span class="mb-1 block text-xs font-medium text-charcoal/40 sm:hidden"
+									>Ingredient</span
+								>
 								<input
+									id="ingredient-{ingredient._id}-name"
 									type="text"
 									bind:value={ingredient.name}
 									placeholder="e.g. Chicken breast"
 									aria-label="Ingredient name"
 									aria-invalid={!!validationErrors[`ingredient-${ingredient._id}-name`]}
-									class="w-full rounded-md border border-green-200/50 bg-white px-3 py-2 text-sm text-charcoal transition-colors placeholder:text-charcoal/25 focus:border-green-400 focus:outline-none focus:ring-2 focus:ring-green-500/30
-									{validationErrors[`ingredient-${ingredient._id}-name`]
-										? 'border-red-300 bg-red-50/50'
-										: ''}"
+									aria-describedby={validationErrors[`ingredient-${ingredient._id}-name`]
+										? `ingredient-${ingredient._id}-name-error`
+										: undefined}
+									class="w-full rounded-md border border-green-200/50 bg-white px-3 py-2 text-sm text-charcoal transition-colors placeholder:text-charcoal/25 focus:border-green-400 focus:ring-2 focus:ring-green-500/30 focus:outline-none
+									{validationErrors[`ingredient-${ingredient._id}-name`] ? 'border-red-300 bg-red-50/50' : ''}"
 								/>
 								{#if validationErrors[`ingredient-${ingredient._id}-name`]}
-									<p transition:slide={{ duration: 150 }} class="mt-0.5 text-[11px] text-red-500">
+									<p
+										id="ingredient-{ingredient._id}-name-error"
+										transition:slide={{ duration: 150 }}
+										class="mt-0.5 text-[11px] text-red-500"
+									>
 										{validationErrors[`ingredient-${ingredient._id}-name`]}
 									</p>
 								{/if}
@@ -332,6 +410,7 @@
 								<div class="w-20 sm:w-auto">
 									<span class="mb-1 block text-xs font-medium text-charcoal/40 sm:hidden">Qty</span>
 									<input
+										id="ingredient-{ingredient._id}-qty"
 										type="number"
 										bind:value={ingredient.quantity}
 										min="0"
@@ -340,13 +419,18 @@
 										placeholder="0"
 										aria-label="Quantity"
 										aria-invalid={!!validationErrors[`ingredient-${ingredient._id}-qty`]}
-										class="w-full rounded-md border border-green-200/50 bg-white px-3 py-2 text-sm text-charcoal transition-colors placeholder:text-charcoal/25 focus:border-green-400 focus:outline-none focus:ring-2 focus:ring-green-500/30
-										{validationErrors[`ingredient-${ingredient._id}-qty`]
-											? 'border-red-300 bg-red-50/50'
-											: ''}"
+										aria-describedby={validationErrors[`ingredient-${ingredient._id}-qty`]
+											? `ingredient-${ingredient._id}-qty-error`
+											: undefined}
+										class="w-full rounded-md border border-green-200/50 bg-white px-3 py-2 text-sm text-charcoal transition-colors placeholder:text-charcoal/25 focus:border-green-400 focus:ring-2 focus:ring-green-500/30 focus:outline-none
+										{validationErrors[`ingredient-${ingredient._id}-qty`] ? 'border-red-300 bg-red-50/50' : ''}"
 									/>
 									{#if validationErrors[`ingredient-${ingredient._id}-qty`]}
-										<p transition:slide={{ duration: 150 }} class="mt-0.5 text-[11px] text-red-500">
+										<p
+											id="ingredient-{ingredient._id}-qty-error"
+											transition:slide={{ duration: 150 }}
+											class="mt-0.5 text-[11px] text-red-500"
+										>
 											{validationErrors[`ingredient-${ingredient._id}-qty`]}
 										</p>
 									{/if}
@@ -354,11 +438,12 @@
 
 								<!-- Unit -->
 								<div class="flex-1 sm:flex-initial">
-									<span class="mb-1 block text-xs font-medium text-charcoal/40 sm:hidden">Unit</span>
+									<span class="mb-1 block text-xs font-medium text-charcoal/40 sm:hidden">Unit</span
+									>
 									<select
 										bind:value={ingredient.unit}
 										aria-label="Unit"
-										class="w-full appearance-none rounded-md border border-green-200/50 bg-white px-3 py-2 text-sm text-charcoal transition-colors focus:border-green-400 focus:outline-none focus:ring-2 focus:ring-green-500/30"
+										class="w-full appearance-none rounded-md border border-green-200/50 bg-white px-3 py-2 text-sm text-charcoal transition-colors focus:border-green-400 focus:ring-2 focus:ring-green-500/30 focus:outline-none"
 									>
 										{#each units as u}
 											<option value={u}>{u || '—'}</option>
@@ -430,7 +515,14 @@
 		>
 			{#if submitting}
 				<svg class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
-					<circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" class="opacity-25" />
+					<circle
+						cx="12"
+						cy="12"
+						r="10"
+						stroke="currentColor"
+						stroke-width="3"
+						class="opacity-25"
+					/>
 					<path
 						fill="currentColor"
 						class="opacity-75"

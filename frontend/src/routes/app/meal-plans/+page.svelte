@@ -267,10 +267,7 @@
 
 	// ── Sharing ──
 
-	async function handleShare(
-		email: string,
-		permission: string
-	): Promise<string | null> {
+	async function handleShare(email: string, permission: string): Promise<string | null> {
 		try {
 			const params = new URLSearchParams();
 			const res = await fetch(`/app/meal-plans/sharing?${params}`, {
@@ -317,10 +314,9 @@
 
 	async function handleDismiss(shareId: string) {
 		try {
-			const res = await fetch(
-				`/app/meal-plans/sharing?action=dismiss&shareId=${shareId}`,
-				{ method: 'POST' }
-			);
+			const res = await fetch(`/app/meal-plans/sharing?action=dismiss&shareId=${shareId}`, {
+				method: 'POST'
+			});
 			if (!res.ok) throw new Error('Failed to dismiss');
 
 			sharedWithMe = sharedWithMe.filter((s) => s.shareId !== shareId);
@@ -412,8 +408,10 @@
 	{#if sharedWithMe.length > 0}
 		<div class="mt-8">
 			<button
+				type="button"
 				onclick={() => (sharedSectionOpen = !sharedSectionOpen)}
 				aria-expanded={sharedSectionOpen}
+				aria-controls="shared-meal-plans"
 				aria-label="Toggle shared meal plans section"
 				class="mb-3 flex items-center gap-2 text-left"
 			>
@@ -427,22 +425,16 @@
 					stroke="currentColor"
 					stroke-width="2"
 				>
-					<path
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						d="M19.5 8.25l-7.5 7.5-7.5-7.5"
-					/>
+					<path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
 				</svg>
 				<h2 class="font-display text-lg font-semibold text-charcoal">Shared with me</h2>
-				<span
-					class="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-semibold text-blue-600"
-				>
+				<span class="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-semibold text-blue-600">
 					{sharedWithMe.length}
 				</span>
 			</button>
 
 			{#if sharedSectionOpen}
-				<div class="flex flex-col gap-3">
+				<div id="shared-meal-plans" class="flex flex-col gap-3">
 					{#each sharedWithMe as shared (shared.shareId)}
 						<SharedMealPlanCard
 							shareId={shared.shareId}
@@ -471,7 +463,10 @@
 	<!-- Toast notification -->
 	{#if toastVisible}
 		<div
-			class="fixed bottom-6 left-6 right-6 z-50 flex items-center gap-2 rounded-lg px-4 py-3 shadow-lg transition-all sm:left-auto {toastType ===
+			role={toastType === 'error' ? 'alert' : 'status'}
+			aria-live={toastType === 'error' ? 'assertive' : 'polite'}
+			aria-atomic="true"
+			class="fixed right-6 bottom-6 left-6 z-50 flex items-center gap-2 rounded-lg px-4 py-3 shadow-lg transition-all sm:left-auto {toastType ===
 			'error'
 				? 'bg-red-600 text-white'
 				: 'bg-green-700 text-white'}"
