@@ -23,4 +23,26 @@ describe('navigation landmark structure', () => {
 			.toBeInTheDocument();
 		await expect.element(page.getByRole('navigation', { name: 'Application' })).toBeInTheDocument();
 	});
+
+	it('closes Navbar user menu when Escape is pressed', async () => {
+		render(Navbar, {
+			session: {
+				user: {
+					name: 'Test User',
+					email: 'test@example.com'
+				},
+				expires: new Date(Date.now() + 60_000).toISOString(),
+				accessToken: 'test-access-token'
+			}
+		});
+
+		const trigger = page.getByRole('button', { name: /test user/i });
+		await trigger.click();
+		await expect.element(trigger).toHaveAttribute('aria-expanded', 'true');
+		expect(document.getElementById('user-menu')).not.toBeNull();
+
+		document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+		await expect.element(trigger).toHaveAttribute('aria-expanded', 'false');
+		expect(document.getElementById('user-menu')).toBeNull();
+	});
 });
