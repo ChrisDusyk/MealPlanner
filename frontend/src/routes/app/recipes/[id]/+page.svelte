@@ -9,7 +9,7 @@
 </script>
 
 <svelte:head>
-	<title>{recipe.name} — MealPlanner</title>
+	<title>{recipe.name} — Simple Meal Planner</title>
 </svelte:head>
 
 <div class="mx-auto max-w-3xl">

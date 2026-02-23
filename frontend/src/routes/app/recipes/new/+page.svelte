@@ -42,7 +42,7 @@
 </script>
 
 <svelte:head>
-	<title>New Recipe — MealPlanner</title>
+	<title>New Recipe — Simple Meal Planner</title>
 </svelte:head>
 
 <div class="mx-auto max-w-3xl">

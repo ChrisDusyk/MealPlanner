@@ -72,7 +72,7 @@
 						<path d="M12 8v2" />
 					</svg>
 				</div>
-				<span class="font-display text-xl font-bold tracking-tight text-white"> MealPlanner </span>
+				<span class="font-display text-xl font-bold tracking-tight text-white"> Simple Meal Planner </span>
 			</a>
 
 			<!-- Desktop Nav -->

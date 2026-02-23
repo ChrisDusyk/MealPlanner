@@ -5,7 +5,7 @@
 </script>
 
 <svelte:head>
-	<title>My Recipes — MealPlanner</title>
+	<title>My Recipes — Simple Meal Planner</title>
 </svelte:head>
 
 <div class="mx-auto max-w-6xl">

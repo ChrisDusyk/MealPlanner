@@ -193,7 +193,7 @@
 				Meal planning, simplified
 			</h2>
 			<p class="text-lg text-charcoal/70">
-				Stop juggling spreadsheets and sticky notes. MealPlanner brings your recipes, calendar, and
+				Stop juggling spreadsheets and sticky notes. Simple Meal Planner brings your recipes, calendar, and
 				shopping list together.
 			</p>
 		</div>
@@ -451,7 +451,7 @@
 							<path d="M12 8v2" />
 						</svg>
 					</div>
-					<span class="font-display text-lg font-bold text-white">MealPlanner</span>
+					<span class="font-display text-lg font-bold text-white">Simple Meal Planner</span>
 				</div>
 				<p class="text-sm leading-relaxed text-green-300/60">
 					Making meal planning effortless for families and home cooks everywhere.
@@ -535,7 +535,7 @@
 			class="mt-10 flex flex-col items-center justify-between gap-4 border-t border-green-700/40 pt-8 md:flex-row"
 		>
 			<p class="font-display text-xs text-green-400/50">
-				© {new Date().getFullYear()} MealPlanner. All rights reserved.
+				© {new Date().getFullYear()} Simple Meal Planner. All rights reserved.
 			</p>
 			<div class="flex gap-4">
 				<!-- Twitter / X -->

@@ -53,7 +53,7 @@
 </script>
 
 <svelte:head>
-	<title>Edit {recipe.name} — MealPlanner</title>
+	<title>Edit {recipe.name} — Simple Meal Planner</title>
 </svelte:head>
 
 <div class="mx-auto max-w-3xl">

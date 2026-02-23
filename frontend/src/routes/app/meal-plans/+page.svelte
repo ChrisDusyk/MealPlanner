@@ -333,7 +333,7 @@
 </script>
 
 <svelte:head>
-	<title>Meal Plans — MealPlanner</title>
+	<title>Meal Plans — Simple Meal Planner</title>
 </svelte:head>
 
 <div class="mx-auto max-w-7xl">

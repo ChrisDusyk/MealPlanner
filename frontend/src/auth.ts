@@ -63,7 +63,7 @@ function buildSyncUserPayload(token: Record<string, unknown>, profile?: Record<s
 		getStringValue(profile, 'name') ||
 		getStringValue(token, 'name') ||
 		email ||
-		'MealPlanner User';
+		'Simple Meal Planner User';
 
 	return {
 		name,

@@ -1,6 +1,6 @@
-# sv
+# Simple Meal Planner Frontend
 
-Everything you need to build a Svelte project, powered by [`sv`](https://github.com/sveltejs/cli).
+Frontend for Simple Meal Planner, built with SvelteKit, TypeScript, Tailwind CSS, and powered by [`sv`](https://github.com/sveltejs/cli).
 
 ## Creating a project
 

@@ -6,13 +6,13 @@
 </script>
 
 <svelte:head>
-	<title>Dashboard — MealPlanner</title>
+	<title>Dashboard — Simple Meal Planner</title>
 </svelte:head>
 
 <div class="mx-auto max-w-7xl">
 	<!-- Welcome header -->
 	<div class="mb-8">
-		<h1 class="font-display text-2xl font-bold text-charcoal sm:text-3xl">Welcome to MealPlanner</h1>
+		<h1 class="font-display text-2xl font-bold text-charcoal sm:text-3xl">Welcome to Simple Meal Planner</h1>
 		<p class="mt-1 text-charcoal/60">
 			Plan your meals, organize your recipes, and simplify your cooking routine.
 		</p>
