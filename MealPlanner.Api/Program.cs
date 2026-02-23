@@ -1,3 +1,4 @@
+using MealPlanner.Api.Features.GroceryLists;
 using MealPlanner.Api.Features.MealPlans;
 using MealPlanner.Api.Features.Recipes;
 using MealPlanner.Api.Features.Users;
@@ -46,6 +47,7 @@ app.UseAuthorization();
 
 app.MapRecipeEndpoints();
 app.MapMealPlanEndpoints();
+app.MapGroceryListEndpoints();
 app.MapUserEndpoints();
 
 app.Run();
