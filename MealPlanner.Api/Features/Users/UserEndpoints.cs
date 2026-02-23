@@ -2,6 +2,7 @@ using System.Security.Claims;
 using MealPlanner.Api.Features.Users.Commands;
 using MealPlanner.Api.Features.Users.Dtos;
 using MealPlanner.Api.Features.Users.Models;
+using MealPlanner.Api.Features.Users.Queries;
 using MealPlanner.Api.Shared;
 
 namespace MealPlanner.Api.Features.Users;
@@ -18,6 +19,7 @@ public static class UserEndpoints
 			.RequireAuthorization();
 
 		group.MapPost("/sync", SyncUser);
+		group.MapGet("/search", SearchUserByEmail);
 
 		return app;
 	}
@@ -71,5 +73,29 @@ public static class UserEndpoints
 			onFailure: error => error.Code == ErrorCodes.ValidationFailed
 				? Results.BadRequest(error.Message)
 				: Results.Problem(error.Message, statusCode: 500));
+	}
+
+	private static async Task<IResult> SearchUserByEmail(
+		HttpContext httpContext,
+		IQueryHandler<FindUserByEmailQuery, User> handler,
+		CancellationToken cancellationToken,
+		string email)
+	{
+		var auth0UserId = GetAuth0UserId(httpContext);
+		if (auth0UserId is null)
+			return Results.Unauthorized();
+
+		if (string.IsNullOrWhiteSpace(email))
+			return Results.BadRequest("Email query parameter is required.");
+
+		var result = await handler.HandleAsync(new FindUserByEmailQuery(email), cancellationToken);
+		return result.Match(
+			onSuccess: user => Results.Ok(UserSummaryResponse.FromDomain(user)),
+			onFailure: error => error.Code switch
+			{
+				ErrorCodes.NotFound => Results.NotFound(error.Message),
+				ErrorCodes.ValidationFailed => Results.BadRequest(error.Message),
+				_ => Results.Problem(error.Message, statusCode: 500)
+			});
 	}
 }
