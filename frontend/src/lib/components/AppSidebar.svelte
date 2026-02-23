@@ -69,6 +69,7 @@
 		class="fixed inset-0 z-30 bg-black/40 backdrop-blur-sm md:hidden"
 		onclick={() => (mobileOpen = false)}
 		aria-label="Close sidebar"
+		tabindex="-1"
 	></button>
 {/if}
 

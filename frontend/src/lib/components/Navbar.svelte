@@ -214,6 +214,7 @@
 							class="fixed inset-0 z-40"
 							onclick={closeDropdown}
 							aria-label="Close user menu"
+							tabindex="-1"
 						></button>
 					{/if}
 				</div>

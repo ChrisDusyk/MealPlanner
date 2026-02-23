@@ -107,6 +107,7 @@
 			class="absolute inset-0 bg-black/30 backdrop-blur-sm"
 			onclick={onClose}
 			aria-label="Close"
+			tabindex="-1"
 		></button>
 
 		<div
