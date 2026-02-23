@@ -11,13 +11,21 @@ export const load: PageServerLoad = async ({ parent, fetch, url }) => {
 	const weekStart = url.searchParams.get('weekStart') ?? undefined;
 
 	try {
-		const [mealPlan, recipes, sharedWithMe, myShares] = await Promise.all([
+		// Fetch meal plan and recipes first — the plan response contains the
+		// resolved weekStart (computed by the API when not provided).
+		const [mealPlan, recipes] = await Promise.all([
 			fetchMealPlan(session.accessToken, weekStart, fetch),
-			fetchRecipes(session.accessToken, fetch),
-			getSharedWithMe(session.accessToken, weekStart ?? '', fetch).catch(
+			fetchRecipes(session.accessToken, fetch)
+		]);
+
+		// Use the resolved weekStart for sharing queries so they always match
+		const resolvedWeek = mealPlan.weekStart;
+
+		const [sharedWithMe, myShares] = await Promise.all([
+			getSharedWithMe(session.accessToken, resolvedWeek, fetch).catch(
 				(): SharedMealPlanResponse[] => []
 			),
-			getMyShares(session.accessToken, weekStart ?? '', fetch).catch(
+			getMyShares(session.accessToken, resolvedWeek, fetch).catch(
 				(): MealPlanShareResponse[] => []
 			)
 		]);
