@@ -126,7 +126,7 @@
 						<h3 id="copy-modal-title" class="font-display text-lg font-bold text-charcoal">
 							Copy {category}
 						</h3>
-						<p id="copy-modal-description" class="mt-0.5 text-xs text-charcoal/50">
+						<p id="copy-modal-description" class="mt-0.5 text-xs text-charcoal/70">
 							From {sourceDay} to other days
 						</p>
 					</div>
@@ -134,7 +134,7 @@
 						type="button"
 						onclick={onClose}
 						aria-label="Close"
-						class="flex h-8 w-8 items-center justify-center rounded-lg text-charcoal/40 transition-colors hover:bg-green-50 hover:text-charcoal"
+						class="flex h-8 w-8 items-center justify-center rounded-lg text-charcoal/60 transition-colors hover:bg-green-50 hover:text-charcoal"
 					>
 						<svg
 							xmlns="http://www.w3.org/2000/svg"
@@ -157,21 +157,21 @@
 					<button
 						type="button"
 						onclick={() => toggleAll(otherDays.filter((d) => !['Saturday', 'Sunday'].includes(d)))}
-						class="rounded-full border border-green-200/50 bg-green-50/50 px-3 py-1 text-xs font-medium text-green-700 transition-all hover:border-green-300 hover:bg-green-100/50"
+						class="min-h-10 rounded-full border border-green-200/50 bg-green-50/50 px-3 py-1 text-xs font-medium text-green-700 transition-all hover:border-green-300 hover:bg-green-100/50"
 					>
 						Weekdays
 					</button>
 					<button
 						type="button"
 						onclick={() => toggleAll(otherDays.filter((d) => ['Saturday', 'Sunday'].includes(d)))}
-						class="rounded-full border border-green-200/50 bg-green-50/50 px-3 py-1 text-xs font-medium text-green-700 transition-all hover:border-green-300 hover:bg-green-100/50"
+						class="min-h-10 rounded-full border border-green-200/50 bg-green-50/50 px-3 py-1 text-xs font-medium text-green-700 transition-all hover:border-green-300 hover:bg-green-100/50"
 					>
 						Weekend
 					</button>
 					<button
 						type="button"
 						onclick={() => toggleAll(otherDays)}
-						class="rounded-full border border-green-200/50 bg-green-50/50 px-3 py-1 text-xs font-medium text-green-700 transition-all hover:border-green-300 hover:bg-green-100/50"
+						class="min-h-10 rounded-full border border-green-200/50 bg-green-50/50 px-3 py-1 text-xs font-medium text-green-700 transition-all hover:border-green-300 hover:bg-green-100/50"
 					>
 						All Days
 					</button>
@@ -201,7 +201,7 @@
 				<button
 					type="button"
 					onclick={onClose}
-					class="rounded-lg px-4 py-2 font-display text-xs font-semibold text-charcoal/60 transition-colors hover:bg-green-50 hover:text-charcoal"
+					class="rounded-lg px-4 py-2 font-display text-xs font-semibold text-charcoal/80 transition-colors hover:bg-green-50 hover:text-charcoal"
 				>
 					Cancel
 				</button>

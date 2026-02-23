@@ -94,7 +94,7 @@
 						{session.user.name ?? 'User'}
 					</p>
 					{#if session.user.email}
-						<p class="truncate text-xs text-green-300/70">
+						<p class="truncate text-xs text-green-300/90">
 							{session.user.email}
 						</p>
 					{/if}
@@ -115,7 +115,7 @@
 							item.href
 						)
 							? 'bg-green-500/20 text-white'
-							: 'text-green-200/70 hover:bg-green-800/50 hover:text-white'}"
+							: 'text-green-200/90 hover:bg-green-800/50 hover:text-white'}"
 					>
 						<!-- Dashboard icon -->
 						{#if item.icon === 'dashboard'}
@@ -123,7 +123,7 @@
 								xmlns="http://www.w3.org/2000/svg"
 								class="h-5 w-5 shrink-0 transition-colors {isActive(item.href)
 									? 'text-green-400'
-									: 'text-green-400/50 group-hover:text-green-400/80'}"
+									: 'text-green-400/70 group-hover:text-green-300'}"
 								fill="none"
 								viewBox="0 0 24 24"
 								stroke="currentColor"
@@ -141,7 +141,7 @@
 								xmlns="http://www.w3.org/2000/svg"
 								class="h-5 w-5 shrink-0 transition-colors {isActive(item.href)
 									? 'text-green-400'
-									: 'text-green-400/50 group-hover:text-green-400/80'}"
+									: 'text-green-400/70 group-hover:text-green-300'}"
 								fill="none"
 								viewBox="0 0 24 24"
 								stroke="currentColor"
@@ -159,7 +159,7 @@
 								xmlns="http://www.w3.org/2000/svg"
 								class="h-5 w-5 shrink-0 transition-colors {isActive(item.href)
 									? 'text-green-400'
-									: 'text-green-400/50 group-hover:text-green-400/80'}"
+									: 'text-green-400/70 group-hover:text-green-300'}"
 								fill="none"
 								viewBox="0 0 24 24"
 								stroke="currentColor"
@@ -187,11 +187,11 @@
 		<button
 			type="button"
 			onclick={handleLogout}
-			class="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 font-display text-sm font-medium text-green-200/70 transition-all hover:bg-green-800/50 hover:text-white"
+			class="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 font-display text-sm font-medium text-green-200/90 transition-all hover:bg-green-800/50 hover:text-white"
 		>
 			<svg
 				xmlns="http://www.w3.org/2000/svg"
-				class="h-5 w-5 shrink-0 text-green-400/50"
+				class="h-5 w-5 shrink-0 text-green-400/70"
 				fill="none"
 				viewBox="0 0 24 24"
 				stroke="currentColor"

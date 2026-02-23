@@ -337,13 +337,14 @@
 	<div class="mb-6 flex items-start justify-between">
 		<div>
 			<h1 class="font-display text-2xl font-bold text-charcoal sm:text-3xl">Meal Plans</h1>
-			<p class="mt-1 text-charcoal/60">
+			<p class="mt-1 text-charcoal/80">
 				Plan your weekly meals — drag recipes into slots and copy across days.
 			</p>
 		</div>
 		<button
+			type="button"
 			onclick={() => (shareModalOpen = true)}
-			class="flex items-center gap-1.5 rounded-lg bg-charcoal/5 px-3 py-2 text-sm font-medium text-charcoal transition-colors hover:bg-charcoal/10"
+			class="min-h-10 flex items-center gap-1.5 rounded-lg bg-charcoal/5 px-3 py-2 text-sm font-medium text-charcoal transition-colors hover:bg-charcoal/10"
 		>
 			<svg
 				xmlns="http://www.w3.org/2000/svg"
@@ -413,11 +414,11 @@
 				aria-expanded={sharedSectionOpen}
 				aria-controls="shared-meal-plans"
 				aria-label="Toggle shared meal plans section"
-				class="mb-3 flex items-center gap-2 text-left"
+				class="mb-3 min-h-10 flex items-center gap-2 text-left"
 			>
 				<svg
 					xmlns="http://www.w3.org/2000/svg"
-					class="h-4 w-4 text-charcoal/40 transition-transform {sharedSectionOpen
+					class="h-4 w-4 text-charcoal/60 transition-transform {sharedSectionOpen
 						? 'rotate-180'
 						: ''}"
 					fill="none"

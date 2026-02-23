@@ -82,19 +82,19 @@
 			<div class="hidden items-center gap-8 md:flex">
 				<a
 					href="#features"
-					class="font-display text-sm font-medium tracking-wide text-green-200/80 transition-colors hover:text-white"
+					class="font-display text-sm font-medium tracking-wide text-green-200/95 transition-colors hover:text-white"
 				>
 					Features
 				</a>
 				<a
 					href="#how-it-works"
-					class="font-display text-sm font-medium tracking-wide text-green-200/80 transition-colors hover:text-white"
+					class="font-display text-sm font-medium tracking-wide text-green-200/95 transition-colors hover:text-white"
 				>
 					How It Works
 				</a>
 				<a
 					href="#testimonials"
-					class="font-display text-sm font-medium tracking-wide text-green-200/80 transition-colors hover:text-white"
+					class="font-display text-sm font-medium tracking-wide text-green-200/95 transition-colors hover:text-white"
 				>
 					Testimonials
 				</a>
@@ -109,7 +109,7 @@
 					<button
 						type="button"
 						onclick={toggleDropdown}
-						class="flex items-center gap-2 rounded-lg px-3 py-2 font-display text-sm font-medium text-green-200/80 transition-all hover:bg-green-800/50 hover:text-white"
+						class="flex items-center gap-2 rounded-lg px-3 py-2 font-display text-sm font-medium text-green-200/95 transition-all hover:bg-green-800/50 hover:text-white"
 						aria-expanded={dropdownOpen}
 						aria-haspopup="true"
 						aria-controls="user-menu"

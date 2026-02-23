@@ -145,7 +145,7 @@
 						<h3 id="share-modal-title" class="font-display text-lg font-bold text-charcoal">
 							Share Meal Plan
 						</h3>
-						<p id="share-modal-description" class="mt-0.5 text-xs text-charcoal/50">
+						<p id="share-modal-description" class="mt-0.5 text-xs text-charcoal/70">
 							Week of {weekStart}
 						</p>
 					</div>
@@ -153,7 +153,7 @@
 						type="button"
 						onclick={reset}
 						aria-label="Close"
-						class="flex h-8 w-8 items-center justify-center rounded-lg text-charcoal/40 transition-colors hover:bg-green-50 hover:text-charcoal"
+						class="flex h-8 w-8 items-center justify-center rounded-lg text-charcoal/60 transition-colors hover:bg-green-50 hover:text-charcoal"
 					>
 						<svg
 							xmlns="http://www.w3.org/2000/svg"
@@ -200,7 +200,7 @@
 								class="flex-1 rounded-md px-3 py-1.5 font-display text-xs font-semibold transition-all {permission ===
 								'ReadOnly'
 									? 'bg-white text-green-700 shadow-sm'
-									: 'text-charcoal/50 hover:text-charcoal'}"
+									: 'text-charcoal/70 hover:text-charcoal'}"
 							>
 								View only
 							</button>
@@ -210,7 +210,7 @@
 								class="flex-1 rounded-md px-3 py-1.5 font-display text-xs font-semibold transition-all {permission ===
 								'ReadWrite'
 									? 'bg-white text-green-700 shadow-sm'
-									: 'text-charcoal/50 hover:text-charcoal'}"
+									: 'text-charcoal/70 hover:text-charcoal'}"
 							>
 								Can edit
 							</button>
@@ -253,7 +253,7 @@
 				<!-- Existing shares -->
 				{#if shares.length > 0}
 					<div class="mt-5 border-t border-green-100/60 pt-4">
-						<h4 class="mb-2 text-xs font-semibold tracking-wider text-charcoal/60 uppercase">
+						<h4 class="mb-2 text-xs font-semibold tracking-wider text-charcoal/80 uppercase">
 							Shared with
 						</h4>
 						<ul class="space-y-2">
@@ -265,7 +265,7 @@
 										<p class="truncate text-sm font-medium text-charcoal">
 											{share.sharedWithName}
 										</p>
-										<p class="truncate text-xs text-charcoal/50">
+										<p class="truncate text-xs text-charcoal/70">
 											{share.sharedWithEmail}
 										</p>
 									</div>
@@ -282,7 +282,7 @@
 											type="button"
 											onclick={() => handleRevoke(share.id)}
 											aria-label="Revoke share with {share.sharedWithName}"
-											class="flex h-6 w-6 items-center justify-center rounded text-charcoal/30 transition-colors hover:bg-red-50 hover:text-red-500"
+											class="flex h-8 w-8 items-center justify-center rounded text-charcoal/60 transition-colors hover:bg-red-50 hover:text-red-600"
 										>
 											<svg
 												xmlns="http://www.w3.org/2000/svg"

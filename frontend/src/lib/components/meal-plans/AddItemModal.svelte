@@ -130,7 +130,7 @@
 						type="button"
 						onclick={reset}
 						aria-label="Close"
-						class="flex h-8 w-8 items-center justify-center rounded-lg text-charcoal/40 transition-colors hover:bg-green-50 hover:text-charcoal"
+						class="flex h-8 w-8 items-center justify-center rounded-lg text-charcoal/60 transition-colors hover:bg-green-50 hover:text-charcoal"
 					>
 						<svg
 							xmlns="http://www.w3.org/2000/svg"
@@ -153,7 +153,7 @@
 						class="flex-1 rounded-md px-3 py-1.5 font-display text-xs font-semibold transition-all {mode ===
 						'recipes'
 							? 'bg-white text-green-700 shadow-sm'
-							: 'text-charcoal/50 hover:text-charcoal/70'}"
+							: 'text-charcoal/70 hover:text-charcoal'}"
 					>
 						My Recipes
 					</button>
@@ -163,7 +163,7 @@
 						class="flex-1 rounded-md px-3 py-1.5 font-display text-xs font-semibold transition-all {mode ===
 						'quick'
 							? 'bg-white text-green-700 shadow-sm'
-							: 'text-charcoal/50 hover:text-charcoal/70'}"
+							: 'text-charcoal/70 hover:text-charcoal'}"
 					>
 						Quick Entry
 					</button>
@@ -184,7 +184,7 @@
 					</div>
 
 					{#if filteredRecipes.length === 0}
-						<p class="py-6 text-center text-sm text-charcoal/40">
+						<p class="py-6 text-center text-sm text-charcoal/60">
 							{searchTerm.trim()
 								? 'No recipes match your search.'
 								: 'No recipes yet. Create some first!'}
@@ -208,7 +208,7 @@
 												{recipe.name}
 											</p>
 											{#if recipe.description}
-												<p class="truncate text-xs text-charcoal/40">
+												<p class="truncate text-xs text-charcoal/60">
 													{recipe.description}
 												</p>
 											{/if}
@@ -235,7 +235,7 @@
 				{:else}
 					<!-- Quick entry -->
 					<div class="space-y-3">
-						<p class="text-xs text-charcoal/50">
+						<p class="text-xs text-charcoal/70">
 							Add a quick entry like "Leftovers", "Eat out", or any custom text.
 						</p>
 						<div class="flex gap-2">
@@ -255,7 +255,7 @@
 								type="button"
 								onclick={addQuickEntry}
 								disabled={!quickText.trim()}
-								class="rounded-lg bg-green-600 px-4 py-2 font-display text-xs font-semibold text-white shadow-sm transition-all hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-40"
+								class="min-h-10 rounded-lg bg-green-600 px-4 py-2 font-display text-xs font-semibold text-white shadow-sm transition-all hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-40"
 							>
 								Add
 							</button>
@@ -270,7 +270,7 @@
 										quickText = suggestion;
 										addQuickEntry();
 									}}
-									class="rounded-full border border-green-200/50 bg-green-50/50 px-3 py-1 text-xs text-charcoal/60 transition-all hover:border-green-300 hover:bg-green-100/50 hover:text-charcoal/80"
+									class="min-h-10 rounded-full border border-green-200/50 bg-green-50/50 px-3 py-1 text-xs text-charcoal/80 transition-all hover:border-green-300 hover:bg-green-100/50 hover:text-charcoal"
 								>
 									{suggestion}
 								</button>

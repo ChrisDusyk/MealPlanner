@@ -266,7 +266,7 @@
 			<!-- Source URL -->
 			<div>
 				<label for="recipe-url" class="mb-1.5 block text-sm font-medium text-charcoal/80">
-					Source URL <span class="text-xs text-charcoal/40">(optional)</span>
+					Source URL <span class="text-xs text-charcoal/60">(optional)</span>
 				</label>
 				<input
 					id="recipe-url"
@@ -301,7 +301,7 @@
 			<div>
 				<h2 class="font-display text-lg font-semibold text-charcoal">Ingredients</h2>
 				{#if ingredients.length > 0}
-					<p transition:fade={{ duration: 200 }} class="mt-0.5 text-xs text-charcoal/40">
+					<p transition:fade={{ duration: 200 }} class="mt-0.5 text-xs text-charcoal/60">
 						{ingredients.length} ingredient{ingredients.length !== 1 ? 's' : ''} added
 					</p>
 				{/if}
@@ -351,14 +351,14 @@
 						</svg>
 					</div>
 					<p class="font-display text-sm font-medium text-charcoal/50">No ingredients yet</p>
-					<p class="mt-0.5 text-xs text-charcoal/30">
+					<p class="mt-0.5 text-xs text-charcoal/50">
 						Click "Add" above to start building your ingredient list
 					</p>
 				</div>
 			{:else}
 				<!-- Column headers (hidden on mobile) -->
 				<div
-					class="mb-3 hidden grid-cols-[1fr_5rem_7rem_2.5rem] gap-3 px-1 text-xs font-medium tracking-wider text-charcoal/40 uppercase sm:grid"
+					class="mb-3 hidden grid-cols-[1fr_5rem_7rem_2.5rem] gap-3 px-1 text-xs font-medium tracking-wider text-charcoal/60 uppercase sm:grid"
 				>
 					<span>Ingredient</span>
 					<span>Qty</span>
@@ -377,7 +377,7 @@
 						>
 							<!-- Name -->
 							<div>
-								<span class="mb-1 block text-xs font-medium text-charcoal/40 sm:hidden"
+								<span class="mb-1 block text-xs font-medium text-charcoal/60 sm:hidden"
 									>Ingredient</span
 								>
 								<input
@@ -408,7 +408,7 @@
 							<div class="flex items-start gap-2 sm:contents">
 								<!-- Quantity -->
 								<div class="w-20 sm:w-auto">
-									<span class="mb-1 block text-xs font-medium text-charcoal/40 sm:hidden">Qty</span>
+									<span class="mb-1 block text-xs font-medium text-charcoal/60 sm:hidden">Qty</span>
 									<input
 										id="ingredient-{ingredient._id}-qty"
 										type="number"
@@ -438,7 +438,7 @@
 
 								<!-- Unit -->
 								<div class="flex-1 sm:flex-initial">
-									<span class="mb-1 block text-xs font-medium text-charcoal/40 sm:hidden">Unit</span
+									<span class="mb-1 block text-xs font-medium text-charcoal/60 sm:hidden">Unit</span
 									>
 									<select
 										bind:value={ingredient.unit}
@@ -455,7 +455,7 @@
 								<button
 									type="button"
 									onclick={() => removeIngredient(ingredient._id)}
-									class="mt-5 flex h-9 w-9 items-center justify-center rounded-md text-charcoal/30 transition-all hover:bg-red-50 hover:text-red-500 active:scale-90 sm:mt-0.5"
+									class="mt-5 flex h-9 w-9 items-center justify-center rounded-md text-charcoal/50 transition-all hover:bg-red-50 hover:text-red-500 active:scale-90 sm:mt-0.5"
 									aria-label="Remove ingredient"
 								>
 									<svg
