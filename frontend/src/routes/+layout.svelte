@@ -15,7 +15,14 @@
 	/>
 </svelte:head>
 
+<a
+	href="#main-content"
+	class="sr-only z-[60] rounded-md bg-green-500 px-4 py-2 font-display text-sm font-semibold text-white focus:not-sr-only focus:fixed focus:top-3 focus:left-3"
+>
+	Skip to main content
+</a>
+
 <Navbar session={data.session} />
-<main class="pt-[72px]">
+<main id="main-content" class="pt-[72px]" tabindex="-1">
 	{@render children()}
 </main>

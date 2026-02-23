@@ -39,9 +39,12 @@
 
 <!-- Mobile sidebar toggle -->
 <button
+	type="button"
 	class="fixed top-[78px] left-4 z-40 flex h-10 w-10 items-center justify-center rounded-lg bg-green-900 text-green-200 shadow-lg transition-colors hover:bg-green-800 md:hidden"
 	onclick={() => (mobileOpen = !mobileOpen)}
 	aria-label="Toggle sidebar"
+	aria-expanded={mobileOpen}
+	aria-controls="app-sidebar"
 >
 	<svg
 		xmlns="http://www.w3.org/2000/svg"
@@ -62,6 +65,7 @@
 <!-- Mobile backdrop -->
 {#if mobileOpen}
 	<button
+		type="button"
 		class="fixed inset-0 z-30 bg-black/40 backdrop-blur-sm md:hidden"
 		onclick={() => (mobileOpen = false)}
 		aria-label="Close sidebar"
@@ -71,6 +75,8 @@
 
 <!-- Sidebar -->
 <aside
+	id="app-sidebar"
+	aria-label="Application sidebar"
 	class="fixed top-[72px] bottom-0 left-0 z-40 flex w-64 flex-col border-r border-green-800/30 bg-green-900 transition-transform duration-300 {mobileOpen
 		? 'translate-x-0'
 		: '-translate-x-full'} md:translate-x-0"
@@ -89,7 +95,7 @@
 						{session.user.name ?? 'User'}
 					</p>
 					{#if session.user.email}
-						<p class="truncate text-xs text-green-300/70">
+						<p class="truncate text-xs text-green-300/90">
 							{session.user.email}
 						</p>
 					{/if}
@@ -99,7 +105,7 @@
 	{/if}
 
 	<!-- Navigation -->
-	<nav class="flex-1 overflow-y-auto px-3 py-4">
+	<nav class="flex-1 overflow-y-auto px-3 py-4" aria-label="Application">
 		<ul class="flex flex-col gap-1">
 			{#each navItems as item (item.href)}
 				<li>
@@ -110,7 +116,7 @@
 							item.href
 						)
 							? 'bg-green-500/20 text-white'
-							: 'text-green-200/70 hover:bg-green-800/50 hover:text-white'}"
+							: 'text-green-200/90 hover:bg-green-800/50 hover:text-white'}"
 					>
 						<!-- Dashboard icon -->
 						{#if item.icon === 'dashboard'}
@@ -118,7 +124,7 @@
 								xmlns="http://www.w3.org/2000/svg"
 								class="h-5 w-5 shrink-0 transition-colors {isActive(item.href)
 									? 'text-green-400'
-									: 'text-green-400/50 group-hover:text-green-400/80'}"
+									: 'text-green-400/70 group-hover:text-green-300'}"
 								fill="none"
 								viewBox="0 0 24 24"
 								stroke="currentColor"
@@ -130,13 +136,13 @@
 									d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
 								/>
 							</svg>
-						<!-- Calendar icon for Meal Plans -->
+							<!-- Calendar icon for Meal Plans -->
 						{:else if item.icon === 'calendar'}
 							<svg
 								xmlns="http://www.w3.org/2000/svg"
 								class="h-5 w-5 shrink-0 transition-colors {isActive(item.href)
 									? 'text-green-400'
-									: 'text-green-400/50 group-hover:text-green-400/80'}"
+									: 'text-green-400/70 group-hover:text-green-300'}"
 								fill="none"
 								viewBox="0 0 24 24"
 								stroke="currentColor"
@@ -148,13 +154,13 @@
 									d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5m-9-6h.008v.008H12v-.008ZM12 15h.008v.008H12V15Zm0 2.25h.008v.008H12v-.008ZM9.75 15h.008v.008H9.75V15Zm0 2.25h.008v.008H9.75v-.008ZM7.5 15h.008v.008H7.5V15Zm0 2.25h.008v.008H7.5v-.008Zm6.75-4.5h.008v.008h-.008v-.008Zm0 2.25h.008v.008h-.008V15Zm0 2.25h.008v.008h-.008v-.008Zm2.25-4.5h.008v.008H16.5v-.008Zm0 2.25h.008v.008H16.5V15Z"
 								/>
 							</svg>
-						<!-- Recipe book icon -->
+							<!-- Recipe book icon -->
 						{:else if item.icon === 'recipe'}
 							<svg
 								xmlns="http://www.w3.org/2000/svg"
 								class="h-5 w-5 shrink-0 transition-colors {isActive(item.href)
 									? 'text-green-400'
-									: 'text-green-400/50 group-hover:text-green-400/80'}"
+									: 'text-green-400/70 group-hover:text-green-300'}"
 								fill="none"
 								viewBox="0 0 24 24"
 								stroke="currentColor"
@@ -169,10 +175,7 @@
 						{/if}
 						{item.label}
 						{#if isActive(item.href)}
-							<span
-								class="ml-auto h-1.5 w-1.5 rounded-full bg-green-400"
-								aria-hidden="true"
-							></span>
+							<span class="ml-auto h-1.5 w-1.5 rounded-full bg-green-400" aria-hidden="true"></span>
 						{/if}
 					</a>
 				</li>
@@ -183,12 +186,13 @@
 	<!-- Bottom actions -->
 	<div class="border-t border-green-800/40 px-3 py-4">
 		<button
+			type="button"
 			onclick={handleLogout}
-			class="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 font-display text-sm font-medium text-green-200/70 transition-all hover:bg-green-800/50 hover:text-white"
+			class="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 font-display text-sm font-medium text-green-200/90 transition-all hover:bg-green-800/50 hover:text-white"
 		>
 			<svg
 				xmlns="http://www.w3.org/2000/svg"
-				class="h-5 w-5 shrink-0 text-green-400/50"
+				class="h-5 w-5 shrink-0 text-green-400/70"
 				fill="none"
 				viewBox="0 0 24 24"
 				stroke="currentColor"
