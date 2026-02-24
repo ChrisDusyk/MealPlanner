@@ -5,6 +5,7 @@ WORKDIR /source
 
 # Copy project file and restore as distinct layers
 COPY MealPlanner.slnx .
+COPY Directory.Packages.props .
 COPY MealPlanner.Api/MealPlanner.Api.csproj MealPlanner.Api/
 COPY MealPlanner.AppHost/MealPlanner.AppHost.csproj MealPlanner.AppHost/
 COPY MealPlanner.ServiceDefaults/MealPlanner.ServiceDefaults.csproj MealPlanner.ServiceDefaults/
