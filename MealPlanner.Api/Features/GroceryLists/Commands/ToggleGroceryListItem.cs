@@ -25,7 +25,8 @@ public class ToggleGroceryListItemCommandHandler(IMongoClient mongoClient)
 	{
 		try
 		{
-			var weekStartStr = command.WeekStart.ToString("yyyy-MM-dd");
+			var weekStartStr = GenerateGroceryListCommandHandler.NormalizeToMonday(command.WeekStart)
+				.ToString("yyyy-MM-dd");
 			var collection = mongoClient
 				.GetDatabase("mealplannerDb")
 				.GetCollection<GroceryListDocument>("grocerylists");

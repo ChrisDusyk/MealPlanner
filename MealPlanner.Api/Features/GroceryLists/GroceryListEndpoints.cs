@@ -41,7 +41,8 @@ public static class GroceryListEndpoints
 		if (userId is null)
 			return Results.Unauthorized();
 
-		var week = DateOnly.ParseExact(weekStart, "yyyy-MM-dd");
+		if (!DateOnly.TryParseExact(weekStart, "yyyy-MM-dd", out var week))
+			return Results.BadRequest("weekStart must be a valid date in yyyy-MM-dd format.");
 		var result = await handler.HandleAsync(new GenerateGroceryListCommand(userId, week), cancellationToken);
 		return result.Match(
 			onSuccess: list => Results.Ok(GroceryListResponse.FromDomain(list)),
@@ -62,7 +63,8 @@ public static class GroceryListEndpoints
 		if (userId is null)
 			return Results.Unauthorized();
 
-		var week = DateOnly.ParseExact(weekStart, "yyyy-MM-dd");
+		if (!DateOnly.TryParseExact(weekStart, "yyyy-MM-dd", out var week))
+			return Results.BadRequest("weekStart must be a valid date in yyyy-MM-dd format.");
 		var result = await handler.HandleAsync(new GetGroceryListQuery(userId, week), cancellationToken);
 		return result.Match(
 			onSuccess: list => Results.Ok(GroceryListResponse.FromDomain(list)),
@@ -84,7 +86,8 @@ public static class GroceryListEndpoints
 		if (userId is null)
 			return Results.Unauthorized();
 
-		var week = DateOnly.ParseExact(weekStart, "yyyy-MM-dd");
+		if (!DateOnly.TryParseExact(weekStart, "yyyy-MM-dd", out var week))
+			return Results.BadRequest("weekStart must be a valid date in yyyy-MM-dd format.");
 		var result = await handler.HandleAsync(
 			new ToggleGroceryListItemCommand(userId, week, itemIndex), cancellationToken);
 		return result.Match(
@@ -108,7 +111,8 @@ public static class GroceryListEndpoints
 		if (userId is null)
 			return Results.Unauthorized();
 
-		var week = DateOnly.ParseExact(weekStart, "yyyy-MM-dd");
+		if (!DateOnly.TryParseExact(weekStart, "yyyy-MM-dd", out var week))
+			return Results.BadRequest("weekStart must be a valid date in yyyy-MM-dd format.");
 		var result = await handler.HandleAsync(
 			new AddCustomItemCommand(userId, week, request.Name), cancellationToken);
 		return result.Match(
@@ -131,7 +135,8 @@ public static class GroceryListEndpoints
 		if (userId is null)
 			return Results.Unauthorized();
 
-		var week = DateOnly.ParseExact(weekStart, "yyyy-MM-dd");
+		if (!DateOnly.TryParseExact(weekStart, "yyyy-MM-dd", out var week))
+			return Results.BadRequest("weekStart must be a valid date in yyyy-MM-dd format.");
 		var result = await handler.HandleAsync(
 			new DeleteGroceryListCommand(userId, week), cancellationToken);
 		return result.Match(

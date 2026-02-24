@@ -26,7 +26,8 @@ public class GenerateGroceryListCommandHandler(IMongoClient mongoClient)
 		try
 		{
 			var db = mongoClient.GetDatabase("mealplannerDb");
-			var weekStartStr = command.WeekStart.ToString("yyyy-MM-dd");
+			var weekStart = NormalizeToMonday(command.WeekStart);
+			var weekStartStr = weekStart.ToString("yyyy-MM-dd");
 
 			// 1. Fetch the meal plan
 			var mealPlanCollection = db.GetCollection<MealPlanDocument>("mealplans");
@@ -69,7 +70,9 @@ public class GenerateGroceryListCommandHandler(IMongoClient mongoClient)
 
 			// 4. Aggregate ingredients by (name, unit) — case-insensitive
 			// Key: (lowered name, lowered unit) → (display name, total quantity, display unit, source recipe names)
-			var aggregated = new Dictionary<(string, string), (string DisplayName, decimal TotalQuantity, string DisplayUnit, HashSet<string> Sources)>();
+			var aggregated =
+				new Dictionary<(string, string), (string DisplayName, decimal TotalQuantity, string DisplayUnit,
+					HashSet<string> Sources)>();
 
 			foreach (var day in mealPlanDoc.Days)
 			{
@@ -77,7 +80,8 @@ public class GenerateGroceryListCommandHandler(IMongoClient mongoClient)
 				{
 					foreach (var item in slot)
 					{
-						if (string.IsNullOrEmpty(item.RecipeId) || !recipeMap.TryGetValue(item.RecipeId, out var recipe))
+						if (string.IsNullOrEmpty(item.RecipeId) ||
+						    !recipeMap.TryGetValue(item.RecipeId, out var recipe))
 							continue;
 
 						foreach (var ingredient in recipe.Ingredients)
@@ -91,7 +95,8 @@ public class GenerateGroceryListCommandHandler(IMongoClient mongoClient)
 							}
 							else
 							{
-								aggregated[key] = (ingredient.Name, ingredient.Quantity, ingredient.Unit, [recipe.Name]);
+								aggregated[key] = (ingredient.Name, ingredient.Quantity, ingredient.Unit,
+									[recipe.Name]);
 							}
 						}
 					}
@@ -186,4 +191,10 @@ public class GenerateGroceryListCommandHandler(IMongoClient mongoClient)
 			CreatedAt: doc.CreatedAt,
 			UpdatedAt: doc.UpdatedAt
 		);
+
+	internal static DateOnly NormalizeToMonday(DateOnly date)
+	{
+		var diff = ((int)date.DayOfWeek - (int)DayOfWeek.Monday + 7) % 7;
+		return date.AddDays(-diff);
+	}
 }
