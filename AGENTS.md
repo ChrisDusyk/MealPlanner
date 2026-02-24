@@ -69,6 +69,32 @@ IMPORTANT! Always prefer official documentation when available. The following si
 2. https://learn.microsoft.com/dotnet/aspire
 3. https://nuget.org (for specific integration package details)
 
+## NuGet package management (CPM)
+
+This repository uses .NET Central Package Management (CPM) with a repo-level `Directory.Packages.props`.
+
+1. Use the .NET CLI to add package references to a specific project:
+
+```
+dotnet add <path-to-project.csproj> package <PackageId>
+```
+
+Optional explicit version:
+
+```
+dotnet add <path-to-project.csproj> package <PackageId> --version <x.y.z>
+```
+
+2. Keep package versions in `Directory.Packages.props` using `<PackageVersion />` entries.
+3. Do not keep `Version="..."` on `PackageReference` items in project files when the package is centrally managed.
+4. After dependency changes, validate with:
+
+```
+dotnet restore MealPlanner.slnx
+dotnet build MealPlanner.slnx -c Release --no-restore
+dotnet test --solution MealPlanner.slnx -c Release --no-build
+```
+
 ---
 
 # API Architecture Patterns

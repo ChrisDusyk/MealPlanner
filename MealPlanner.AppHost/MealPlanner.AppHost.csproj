@@ -5,9 +5,9 @@
     </ItemGroup>
 
     <ItemGroup>
-      <PackageReference Include="Aspire.Hosting.JavaScript" Version="13.1.1" />
-      <PackageReference Include="Aspire.Hosting.MongoDB" Version="13.1.1" />
-      <PackageReference Include="CommunityToolkit.Aspire.Hosting.MongoDB.Extensions" Version="13.1.2-beta.518" />
+      <PackageReference Include="Aspire.Hosting.JavaScript" />
+      <PackageReference Include="Aspire.Hosting.MongoDB" />
+      <PackageReference Include="CommunityToolkit.Aspire.Hosting.MongoDB.Extensions" />
     </ItemGroup>
 
     <PropertyGroup>
