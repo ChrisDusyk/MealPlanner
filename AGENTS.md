@@ -233,7 +233,7 @@ The API test project is `MealPlanner.Api.Tests` and uses xUnit v3.
 
 - API tests MUST be unit tests (no real databases, no containers, no network calls).
 - Handlers and mappers should be tested with mocked/faked dependencies.
-- Tests MUST be deterministic (fixed dates, stable inputs, no reliance on local machine state).
+- Tests SHOULD be deterministic (fixed dates, stable inputs, no reliance on local machine state); when production code uses `DateTime.UtcNow`, use clock-tolerant assertions instead of exact timestamp equality.
 
 ### Runner and Execution
 

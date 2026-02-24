@@ -16,6 +16,7 @@ builder.AddViteApp("frontend", "..\\frontend")
 	.WithEnvironment("AUTH_API_AUDIENCE", builder.Configuration["AUTH_API_AUDIENCE"])
 	.WithEnvironment("AUTH_SECRET", builder.Configuration["AUTH_SECRET"])
 	.WithPnpm()
+	.PublishAsDockerFile()
 	.WithEndpoint("http", cfg =>
 	{
 		cfg.Port = 3000;

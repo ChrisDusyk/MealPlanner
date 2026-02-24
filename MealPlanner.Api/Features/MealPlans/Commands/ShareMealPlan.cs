@@ -118,9 +118,20 @@ public class ShareMealPlanCommandHandler(IMongoClient mongoClient)
 
 			await collection.Indexes.CreateOneAsync(indexModel, cancellationToken: cancellationToken);
 		}
-		catch (MongoCommandException ex) when (ex.CodeName is "IndexOptionsConflict" or "IndexKeySpecsConflict")
+		catch (MongoCommandException ex) when (IsIndexConflict(ex))
 		{
 			// Index already exists with compatible options
 		}
+	}
+
+	private static bool IsIndexConflict(MongoCommandException ex)
+	{
+		if (ex.CodeName is "IndexOptionsConflict" or "IndexKeySpecsConflict")
+			return true;
+
+		return ex.Result is not null
+			&& ex.Result.TryGetValue("codeName", out var value)
+			&& value.IsString
+			&& value.AsString is "IndexOptionsConflict" or "IndexKeySpecsConflict";
 	}
 }
