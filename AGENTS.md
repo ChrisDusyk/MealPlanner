@@ -225,6 +225,88 @@ return await ValidateCommand(command)
 
 This pattern ensures errors short-circuit the chain while success flows through transformations.
 
+## API Unit Testing (xUnit v3)
+
+The API test project is `MealPlanner.Api.Tests` and uses xUnit v3.
+
+### Scope and Isolation
+
+- API tests MUST be unit tests (no real databases, no containers, no network calls).
+- Handlers and mappers should be tested with mocked/faked dependencies.
+- Tests MUST be deterministic (fixed dates, stable inputs, no reliance on local machine state).
+
+### Runner and Execution
+
+- xUnit v3 is the required framework for API tests.
+- Prefer Microsoft Testing Platform (MTP) mode for xUnit v3 test execution.
+- Keep `dotnet test` as the standard command surface for local runs and CI.
+- If test-runner configuration is changed, keep it consistent across the whole API test project.
+
+### Required Test Coverage
+
+1. **All Query Handlers** must have unit tests.
+2. **All Command Handlers** must have unit tests.
+3. **All mappers** must have unit tests, including:
+   - DTO ↔ domain mapping methods
+   - helper mapper methods
+   - internal static mapper methods inside handlers
+
+### Internal Mapper Testing
+
+- Direct mapper tests are required for internal mapper methods.
+- Use `InternalsVisibleTo` so `MealPlanner.Api.Tests` can validate internal mapping logic directly.
+- Do not rely only on handler-level assertions when direct mapper methods exist.
+
+### Test Organization
+
+- Organize tests to mirror API vertical slices in `MealPlanner.Api/Features`.
+- Use a mostly mirrored structure under `MealPlanner.Api.Tests` with minor flattening allowed when it improves readability.
+- Keep Commands and Queries separated in tests the same way as API source.
+
+**Preferred pattern:**
+
+```
+MealPlanner.Api/
+  Features/
+    Recipes/
+      Queries/
+        GetRecipeById.cs
+      Commands/
+        CreateRecipe.cs
+      Dtos/
+        RecipeDtos.cs
+
+MealPlanner.Api.Tests/
+  Features/
+    Recipes/
+      Queries/
+        GetRecipeByIdTests.cs
+      Commands/
+        CreateRecipeTests.cs
+      Dtos/
+        RecipeDtosTests.cs
+```
+
+### Minimum Test Matrix per Handler
+
+- Happy path success result.
+- Validation failure path (when applicable).
+- Not found / unauthorized path (when applicable).
+- Exception-to-error mapping path (for try/catch handlers).
+
+### Minimum Test Matrix per Mapper
+
+- Correct field mapping in both directions (when applicable).
+- Null/empty/optional value handling (`Option<T>` boundaries).
+- Date and normalization edge cases where mapping contains date logic.
+
+### Naming and Style
+
+- Name test files by source file intent, ending with `Tests`.
+- Use clear scenario names (for example: `HandleAsync_ReturnsFailure_WhenEntityMissing`).
+- Follow Arrange/Act/Assert structure for readability.
+- Keep each test focused on one behavior.
+
 ---
 
 # Authentication (Auth0)
