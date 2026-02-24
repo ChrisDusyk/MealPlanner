@@ -96,7 +96,7 @@ public class UpsertUserFromAuthCommandHandler(IMongoClient mongoClient)
 		}
 	}
 
-	private static User MapToDomain(UserDocument document) =>
+	internal static User MapToDomain(UserDocument document) =>
 		new(
 			Id: document.Id ?? string.Empty,
 			Auth0UserId: document.Auth0UserId,

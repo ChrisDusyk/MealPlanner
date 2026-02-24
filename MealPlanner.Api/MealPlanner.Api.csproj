@@ -16,4 +16,8 @@
     <ProjectReference Include="..\MealPlanner.ServiceDefaults\MealPlanner.ServiceDefaults.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="MealPlanner.Api.Tests" />
+  </ItemGroup>
+
 </Project>
