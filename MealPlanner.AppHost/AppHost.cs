@@ -1,7 +1,5 @@
 var builder = DistributedApplication.CreateBuilder(args);
 
-builder.AddDockerComposeEnvironment("compose");
-
 var mongoDb = builder.AddMongoDB("mongodb")
 	.WithLifetime(ContainerLifetime.Persistent)
 	.WithDbGate();
@@ -18,12 +16,12 @@ builder.AddViteApp("frontend", "..\\frontend")
 	.WithEnvironment("AUTH_API_AUDIENCE", builder.Configuration["AUTH_API_AUDIENCE"])
 	.WithEnvironment("AUTH_SECRET", builder.Configuration["AUTH_SECRET"])
 	.WithPnpm()
+	.PublishAsDockerFile()
 	.WithEndpoint("http", cfg =>
 	{
 		cfg.Port = 3000;
 		cfg.IsProxied = false;
 		cfg.IsExternal = true;
-	})
-	.PublishAsDockerFile();
+	});
 
 builder.Build().Run();

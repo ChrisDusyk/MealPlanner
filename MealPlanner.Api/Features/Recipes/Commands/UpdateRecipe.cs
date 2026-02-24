@@ -81,7 +81,7 @@ public class UpdateRecipeCommandHandler(IMongoClient mongoClient)
 		}
 	}
 
-	private static Recipe MapToRecipe(RecipeDocument doc) =>
+	internal static Recipe MapToRecipe(RecipeDocument doc) =>
 		new(
 			Id: doc.Id!,
 			UserId: doc.UserId,
