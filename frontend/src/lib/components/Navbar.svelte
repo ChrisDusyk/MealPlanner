@@ -21,7 +21,7 @@
 	}
 
 	function handleLogout() {
-		signOut();
+		signOut({ redirectTo: '/auth/logout-auth0' });
 		dropdownOpen = false;
 	}
 
