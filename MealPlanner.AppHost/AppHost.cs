@@ -1,7 +1,5 @@
 var builder = DistributedApplication.CreateBuilder(args);
 
-builder.AddDockerComposeEnvironment("compose");
-
 var mongoDb = builder.AddMongoDB("mongodb")
 	.WithLifetime(ContainerLifetime.Persistent)
 	.WithDbGate();
@@ -23,7 +21,6 @@ builder.AddViteApp("frontend", "..\\frontend")
 		cfg.Port = 3000;
 		cfg.IsProxied = false;
 		cfg.IsExternal = true;
-	})
-	.PublishAsDockerFile();
+	});
 
 builder.Build().Run();
