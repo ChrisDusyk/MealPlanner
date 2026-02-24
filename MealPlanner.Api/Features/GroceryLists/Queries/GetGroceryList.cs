@@ -22,7 +22,7 @@ public class GetGroceryListQueryHandler(IMongoClient mongoClient)
 	{
 		try
 		{
-			var weekStartStr = query.WeekStart.ToString("yyyy-MM-dd");
+			var weekStartStr = GroceryListHelpers.NormalizeToMonday(query.WeekStart).ToString("yyyy-MM-dd");
 			var collection = mongoClient
 				.GetDatabase("mealplannerDb")
 				.GetCollection<GroceryListDocument>("grocerylists");
