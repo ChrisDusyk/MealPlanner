@@ -25,7 +25,7 @@ public class ToggleGroceryListItemCommandHandler(IMongoClient mongoClient)
 	{
 		try
 		{
-			var weekStartStr = GenerateGroceryListCommandHandler.NormalizeToMonday(command.WeekStart)
+			var weekStartStr = GroceryListHelpers.NormalizeToMonday(command.WeekStart)
 				.ToString("yyyy-MM-dd");
 			var collection = mongoClient
 				.GetDatabase("mealplannerDb")
@@ -56,7 +56,7 @@ public class ToggleGroceryListItemCommandHandler(IMongoClient mongoClient)
 			await collection.ReplaceOneAsync(filter, document, cancellationToken: cancellationToken);
 
 			return Result<GroceryList>.Success(
-				GenerateGroceryListCommandHandler.MapToDomain(document));
+				GroceryListHelpers.MapToDomain(document));
 		}
 		catch (Exception ex)
 		{

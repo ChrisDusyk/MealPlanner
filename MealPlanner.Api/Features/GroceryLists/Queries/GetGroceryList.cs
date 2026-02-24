@@ -1,4 +1,3 @@
-using MealPlanner.Api.Features.GroceryLists.Commands;
 using MealPlanner.Api.Features.GroceryLists.Models;
 using MealPlanner.Api.Shared;
 using MongoDB.Driver;
@@ -39,7 +38,7 @@ public class GetGroceryListQueryHandler(IMongoClient mongoClient)
 			}
 
 			return Result<GroceryList>.Success(
-				GenerateGroceryListCommandHandler.MapToDomain(document));
+				GroceryListHelpers.MapToDomain(document));
 		}
 		catch (Exception ex)
 		{

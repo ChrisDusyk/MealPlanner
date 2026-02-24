@@ -32,7 +32,7 @@ public class AddCustomItemCommandHandler(IMongoClient mongoClient)
 					new Error(ErrorCodes.ValidationFailed, "Item name cannot be empty."));
 			}
 
-			var weekStartStr = GenerateGroceryListCommandHandler.NormalizeToMonday(command.WeekStart).ToString("yyyy-MM-dd");
+			var weekStartStr = GroceryListHelpers.NormalizeToMonday(command.WeekStart).ToString("yyyy-MM-dd");
 			var collection = mongoClient
 				.GetDatabase("mealplannerDb")
 				.GetCollection<GroceryListDocument>("grocerylists");
@@ -44,7 +44,8 @@ public class AddCustomItemCommandHandler(IMongoClient mongoClient)
 			if (document is null)
 			{
 				return Result<GroceryList>.Failure(
-					new Error(ErrorCodes.NotFound, "No grocery list found for the specified week. Generate a list first."));
+					new Error(ErrorCodes.NotFound,
+						"No grocery list found for the specified week. Generate a list first."));
 			}
 
 			document.Items.Add(new GroceryListItemDocument
@@ -61,7 +62,7 @@ public class AddCustomItemCommandHandler(IMongoClient mongoClient)
 			await collection.ReplaceOneAsync(filter, document, cancellationToken: cancellationToken);
 
 			return Result<GroceryList>.Success(
-				GenerateGroceryListCommandHandler.MapToDomain(document));
+				GroceryListHelpers.MapToDomain(document));
 		}
 		catch (Exception ex)
 		{

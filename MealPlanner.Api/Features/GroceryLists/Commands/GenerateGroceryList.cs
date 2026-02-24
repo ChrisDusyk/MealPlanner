@@ -26,7 +26,7 @@ public class GenerateGroceryListCommandHandler(IMongoClient mongoClient)
 		try
 		{
 			var db = mongoClient.GetDatabase("mealplannerDb");
-			var weekStart = NormalizeToMonday(command.WeekStart);
+			var weekStart = GroceryListHelpers.NormalizeToMonday(command.WeekStart);
 			var weekStartStr = weekStart.ToString("yyyy-MM-dd");
 
 			// 1. Fetch the meal plan
@@ -167,34 +167,12 @@ public class GenerateGroceryListCommandHandler(IMongoClient mongoClient)
 				await groceryCollection.InsertOneAsync(document, cancellationToken: cancellationToken);
 			}
 
-			return Result<GroceryList>.Success(MapToDomain(document));
+			return Result<GroceryList>.Success(GroceryListHelpers.MapToDomain(document));
 		}
 		catch (Exception ex)
 		{
 			return Result<GroceryList>.Failure(
 				new Error(ErrorCodes.DatabaseError, "Failed to generate grocery list.", ex));
 		}
-	}
-
-	internal static GroceryList MapToDomain(GroceryListDocument doc) =>
-		new(
-			Id: doc.Id!,
-			UserId: doc.UserId,
-			WeekStart: DateOnly.ParseExact(doc.WeekStart, "yyyy-MM-dd"),
-			Items: doc.Items.Select(i => new GroceryListItem(
-				Name: i.Name,
-				Quantity: i.Quantity,
-				Unit: i.Unit,
-				IsChecked: i.IsChecked,
-				SourceRecipeNames: i.SourceRecipeNames
-			)).ToList(),
-			CreatedAt: doc.CreatedAt,
-			UpdatedAt: doc.UpdatedAt
-		);
-
-	internal static DateOnly NormalizeToMonday(DateOnly date)
-	{
-		var diff = ((int)date.DayOfWeek - (int)DayOfWeek.Monday + 7) % 7;
-		return date.AddDays(-diff);
 	}
 }

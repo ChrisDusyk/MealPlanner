@@ -21,7 +21,7 @@ public class DeleteGroceryListCommandHandler(IMongoClient mongoClient)
 	{
 		try
 		{
-			var weekStartStr = GenerateGroceryListCommandHandler.NormalizeToMonday(command.WeekStart)
+			var weekStartStr = GroceryListHelpers.NormalizeToMonday(command.WeekStart)
 				.ToString("yyyy-MM-dd");
 			var collection = mongoClient
 				.GetDatabase("mealplannerDb")
