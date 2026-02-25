@@ -1,9 +1,33 @@
 <script lang="ts">
 	import './layout.css';
+	import { setContext } from 'svelte';
 	import favicon from '$lib/assets/favicon.svg';
 	import Navbar from '$lib/components/Navbar.svelte';
+	import {
+		APP_USER_CONTEXT_KEY,
+		type AppUserContextValue,
+		type AppUserState
+	} from '$lib/context/appUserContext';
 
 	let { children, data } = $props();
+
+	// svelte-ignore state_referenced_locally
+	let appUserState: AppUserState = $state({
+		current: data.appUser ?? null
+	});
+
+	function setAppUser(user: AppUserState['current']) {
+		appUserState.current = user;
+	}
+
+	$effect(() => {
+		appUserState.current = data.appUser ?? null;
+	});
+
+	setContext<AppUserContextValue>(APP_USER_CONTEXT_KEY, {
+		appUserState,
+		setAppUser
+	});
 </script>
 
 <svelte:head>

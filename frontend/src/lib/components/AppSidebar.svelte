@@ -1,9 +1,23 @@
 <script lang="ts">
 	import { page } from '$app/state';
+	import { getContext } from 'svelte';
 	import { signOut } from '@auth/sveltekit/client';
 	import type { Session } from '@auth/sveltekit';
+	import { APP_USER_CONTEXT_KEY, type AppUserContextValue } from '$lib/context/appUserContext';
 
 	let { session }: { session: Session | null } = $props();
+	const appUserContext = getContext<AppUserContextValue | undefined>(APP_USER_CONTEXT_KEY);
+
+	let displayName = $derived(
+		appUserContext?.appUserState.current?.name?.trim() ||
+			session?.user?.name?.trim() ||
+			session?.user?.email ||
+			'User'
+	);
+	let displayEmail = $derived(
+		appUserContext?.appUserState.current?.email || session?.user?.email || ''
+	);
+	let displayInitial = $derived(displayName.charAt(0).toUpperCase());
 
 	let mobileOpen = $state(false);
 
@@ -93,15 +107,15 @@
 				<div
 					class="flex h-10 w-10 items-center justify-center rounded-full bg-green-500 font-display text-sm font-bold text-white"
 				>
-					{(session.user.name ?? session.user.email ?? 'U').charAt(0).toUpperCase()}
+					{displayInitial}
 				</div>
 				<div class="min-w-0 flex-1">
 					<p class="truncate font-display text-sm font-semibold text-white">
-						{session.user.name ?? 'User'}
+						{displayName}
 					</p>
-					{#if session.user.email}
+					{#if displayEmail}
 						<p class="truncate text-xs text-green-300/90">
-							{session.user.email}
+							{displayEmail}
 						</p>
 					{/if}
 				</div>
