@@ -114,7 +114,8 @@ public static class GroceryListEndpoints
 		HttpContext httpContext,
 		ICommandHandler<AddCustomItemCommand, GroceryList> handler,
 		CancellationToken cancellationToken,
-		string weekStart)
+		string weekStart,
+		string? ownerUserId = null)
 	{
 		var userId = GetUserId(httpContext);
 		if (userId is null)
@@ -123,7 +124,7 @@ public static class GroceryListEndpoints
 		if (!DateOnly.TryParseExact(weekStart, "yyyy-MM-dd", out var week))
 			return Results.BadRequest("weekStart must be a valid date in yyyy-MM-dd format.");
 		var result = await handler.HandleAsync(
-			new AddCustomItemCommand(userId, week, request.Name), cancellationToken);
+			new AddCustomItemCommand(userId, week, request.Name, ownerUserId), cancellationToken);
 		return result.Match(
 			onSuccess: list => Results.Ok(GroceryListResponse.FromDomain(list)),
 			onFailure: error => error.Code switch
