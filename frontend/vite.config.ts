@@ -11,6 +11,11 @@ export default defineConfig({
 			'/api': {
 				target: process.env.services__api__https__0 || process.env.services__api__http__0,
 				changeOrigin: true
+			},
+			'/hubs': {
+				target: process.env.services__api__https__0 || process.env.services__api__http__0,
+				changeOrigin: true,
+				ws: true
 			}
 		}
 	},
