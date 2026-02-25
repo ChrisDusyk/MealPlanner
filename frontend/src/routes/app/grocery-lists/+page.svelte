@@ -1,8 +1,13 @@
 <script lang="ts">
 	import { goto, invalidateAll } from '$app/navigation';
 	import { enhance } from '$app/forms';
+	import { onMount } from 'svelte';
 	import type { GroceryListResponse, GroceryListItem } from '$lib/api/groceryListApi';
 	import type { GroceryListShareResponse, SharedGroceryListResponse } from '$lib/api/sharingApi';
+	import {
+		GroceryListRealtimeClient,
+		type GroceryListUpdatedEvent
+	} from '$lib/realtime/groceryListRealtime';
 	import WeekNavigator from '$lib/components/meal-plans/WeekNavigator.svelte';
 	import type { PageData } from './$types';
 
@@ -31,6 +36,7 @@
 	let toastMessage = $state('');
 	let toastType: 'success' | 'error' = $state('success');
 	let toastVisible = $state(false);
+	const realtimeClient = new GroceryListRealtimeClient();
 
 	// Re-sync when server data changes
 	let serverVersion = $derived(data.weekStart + (data.groceryList?.id ?? 'none'));
@@ -56,6 +62,54 @@
 			toastVisible = false;
 		}, 3000);
 	}
+
+	function applyRealtimeUpdate(event: GroceryListUpdatedEvent) {
+		if (event.weekStart !== weekStart) {
+			return;
+		}
+
+		if (groceryList && groceryList.id === event.groceryList.id) {
+			groceryList = event.groceryList;
+		}
+
+		let sharedListUpdated = false;
+		const nextSharedWithMe = sharedWithMe.map((shared) => {
+			if (
+				shared.ownerUserId === event.ownerUserId &&
+				shared.groceryList.id === event.groceryList.id
+			) {
+				sharedListUpdated = true;
+				return {
+					...shared,
+					groceryList: event.groceryList
+				};
+			}
+
+			return shared;
+		});
+
+		if (sharedListUpdated) {
+			sharedWithMe = nextSharedWithMe;
+		}
+	}
+
+	onMount(() => {
+		let disposed = false;
+
+		void realtimeClient
+			.start((event) => {
+				if (disposed) return;
+				applyRealtimeUpdate(event);
+			})
+			.catch((err) => {
+				console.error('Failed to start grocery list realtime connection', err);
+			});
+
+		return () => {
+			disposed = true;
+			void realtimeClient.stop();
+		};
+	});
 
 	// ── Navigation ──
 
