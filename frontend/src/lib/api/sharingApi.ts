@@ -218,3 +218,141 @@ export async function dismissShare(
 		throw new ApiError(response.status, message, body);
 	}
 }
+
+// ── Grocery List Sharing Types ──────────────────────────
+
+export interface GroceryListShareResponse {
+	id: string;
+	ownerUserId: string;
+	sharedWithUserId: string;
+	sharedWithName: string;
+	sharedWithEmail: string;
+	weekStart: string;
+	permission: string;
+	sharedAt: string;
+}
+
+export interface SharedGroceryListResponse {
+	shareId: string;
+	ownerUserId: string;
+	ownerName: string;
+	ownerEmail: string;
+	permission: string;
+	groceryList: import('./groceryListApi').GroceryListResponse;
+}
+
+export interface ShareGroceryListRequest {
+	email: string;
+	weekStart: string;
+	permission: string;
+}
+
+// ── Grocery List Sharing API ────────────────────────────
+
+/**
+ * Share a grocery list with another user.
+ */
+export async function shareGroceryList(
+	accessToken: string,
+	request: ShareGroceryListRequest,
+	fetchFn: typeof fetch = fetch
+): Promise<GroceryListShareResponse> {
+	const response = await fetchFn(`${getApiBase()}/api/grocery-lists/shares`, {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/json',
+			Authorization: `Bearer ${accessToken}`
+		},
+		body: JSON.stringify(request)
+	});
+
+	if (!response.ok) {
+		const { message, body } = await parseErrorBody(response);
+		throw new ApiError(response.status, message, body);
+	}
+
+	return response.json();
+}
+
+/**
+ * Get all grocery list shares the current user has created for a given week.
+ */
+export async function getMyGroceryListShares(
+	accessToken: string,
+	weekStart: string,
+	fetchFn: typeof fetch = fetch
+): Promise<GroceryListShareResponse[]> {
+	const params = new URLSearchParams({ weekStart });
+	const response = await fetchFn(`${getApiBase()}/api/grocery-lists/shares?${params}`, {
+		headers: { Authorization: `Bearer ${accessToken}` }
+	});
+
+	if (!response.ok) {
+		const { message, body } = await parseErrorBody(response);
+		throw new ApiError(response.status, message, body);
+	}
+
+	return response.json();
+}
+
+/**
+ * Revoke (delete) a grocery list share.
+ */
+export async function revokeGroceryListShare(
+	accessToken: string,
+	shareId: string,
+	fetchFn: typeof fetch = fetch
+): Promise<void> {
+	const response = await fetchFn(`${getApiBase()}/api/grocery-lists/shares/${shareId}`, {
+		method: 'DELETE',
+		headers: { Authorization: `Bearer ${accessToken}` }
+	});
+
+	if (!response.ok) {
+		const { message, body } = await parseErrorBody(response);
+		throw new ApiError(response.status, message, body);
+	}
+}
+
+/**
+ * Get grocery lists shared with the current user for a given week.
+ */
+export async function getGroceryListsSharedWithMe(
+	accessToken: string,
+	weekStart: string,
+	fetchFn: typeof fetch = fetch
+): Promise<SharedGroceryListResponse[]> {
+	const params = new URLSearchParams({ weekStart });
+	const response = await fetchFn(`${getApiBase()}/api/grocery-lists/shared-with-me?${params}`, {
+		headers: { Authorization: `Bearer ${accessToken}` }
+	});
+
+	if (!response.ok) {
+		const { message, body } = await parseErrorBody(response);
+		throw new ApiError(response.status, message, body);
+	}
+
+	return response.json();
+}
+
+/**
+ * Dismiss a grocery list that was shared with the current user.
+ */
+export async function dismissGroceryListShare(
+	accessToken: string,
+	shareId: string,
+	fetchFn: typeof fetch = fetch
+): Promise<void> {
+	const response = await fetchFn(
+		`${getApiBase()}/api/grocery-lists/shared-with-me/${shareId}/dismiss`,
+		{
+			method: 'POST',
+			headers: { Authorization: `Bearer ${accessToken}` }
+		}
+	);
+
+	if (!response.ok) {
+		const { message, body } = await parseErrorBody(response);
+		throw new ApiError(response.status, message, body);
+	}
+}
