@@ -77,8 +77,8 @@ public record GroceryListShareResponse(
 			Id: share.Id,
 			OwnerUserId: share.OwnerUserId,
 			SharedWithUserId: share.SharedWithUserId,
-			SharedWithName: sharedWithName,
-			SharedWithEmail: sharedWithEmail,
+			SharedWithName: string.IsNullOrWhiteSpace(sharedWithName) ? share.SharedWithName : sharedWithName,
+			SharedWithEmail: string.IsNullOrWhiteSpace(sharedWithEmail) ? share.SharedWithEmail : sharedWithEmail,
 			WeekStart: share.WeekStart,
 			Permission: share.Permission.ToString(),
 			SharedAt: share.SharedAt

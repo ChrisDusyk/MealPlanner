@@ -161,6 +161,10 @@
 	async function handleToggleShared(ownerUserId: string, shareId: string, itemIndex: number) {
 		const sharedEntry = sharedWithMe.find((s) => s.shareId === shareId);
 		if (!sharedEntry) return;
+		if (sharedEntry.permission !== 'ReadWrite') {
+			showToast('You only have view access to this list', 'error');
+			return;
+		}
 
 		// Optimistic toggle
 		sharedEntry.groceryList.items[itemIndex].isChecked =
@@ -243,6 +247,7 @@
 						if (result.type === 'success' && result.data?.groceryList) {
 							groceryList = result.data.groceryList as GroceryListResponse;
 							showToast('Grocery list regenerated');
+							await invalidateAll();
 						} else {
 							showToast('Failed to regenerate list', 'error');
 						}
@@ -560,6 +565,7 @@
 						if (result.type === 'success' && result.data?.groceryList) {
 							groceryList = result.data.groceryList as GroceryListResponse;
 							showToast('Grocery list generated!');
+							await invalidateAll();
 						} else {
 							showToast('Failed to generate grocery list', 'error');
 						}

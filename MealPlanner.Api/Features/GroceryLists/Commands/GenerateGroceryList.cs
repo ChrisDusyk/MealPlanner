@@ -234,6 +234,19 @@ public class GenerateGroceryListCommandHandler(IMongoClient mongoClient)
 			.ToList();
 
 		if (newShares.Count > 0)
-			await groceryListSharesCollection.InsertManyAsync(newShares, cancellationToken: cancellationToken);
+		{
+			try
+			{
+				await groceryListSharesCollection.InsertManyAsync(newShares, cancellationToken: cancellationToken);
+			}
+			catch (MongoBulkWriteException<GroceryListShareDocument> ex)
+			{
+				var hasNonDuplicateErrors = ex.WriteErrors.Any(e =>
+					e.Code is not (11000 or 11001 or 12582));
+
+				if (hasNonDuplicateErrors)
+					throw;
+			}
+		}
 	}
 }

@@ -22,7 +22,7 @@ export async function POST({ request, locals, fetch, url }: RequestEvent): Promi
 
 	try {
 		if (action === 'dismiss') {
-			const shareId = url.searchParams.get('shareId') ?? '';
+			const shareId = url.searchParams.get('shareId')?.trim() ?? '';
 			if (!shareId) {
 				return json({ error: 'shareId is required' }, { status: 400 });
 			}
@@ -85,7 +85,7 @@ export async function DELETE({ locals, fetch, url }: RequestEvent): Promise<Resp
 		error(401, 'Unauthorized');
 	}
 
-	const shareId = url.searchParams.get('shareId') ?? '';
+	const shareId = url.searchParams.get('shareId')?.trim() ?? '';
 	if (!shareId) {
 		return json({ error: 'shareId is required' }, { status: 400 });
 	}

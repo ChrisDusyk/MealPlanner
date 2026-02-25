@@ -33,16 +33,21 @@ public class GroceryListShareDocument
 
 	// ── Mapping helpers ──
 
-	public GroceryListShare ToDomain() =>
-		new(
+	public GroceryListShare ToDomain()
+	{
+		if (!Enum.TryParse<SharePermission>(Permission, ignoreCase: true, out var parsedPermission))
+			parsedPermission = SharePermission.ReadOnly;
+
+		return new(
 			Id: Id ?? string.Empty,
 			OwnerUserId: OwnerUserId,
 			SharedWithUserId: SharedWithUserId,
 			WeekStart: WeekStart,
-			Permission: Enum.Parse<SharePermission>(Permission),
+			Permission: parsedPermission,
 			SharedAt: SharedAt,
 			DismissedByRecipient: DismissedByRecipient
 		);
+	}
 
 	public static GroceryListShareDocument FromDomain(GroceryListShare share) =>
 		new()

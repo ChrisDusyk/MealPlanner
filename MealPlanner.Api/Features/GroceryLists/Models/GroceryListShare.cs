@@ -12,5 +12,7 @@ public record GroceryListShare(
 	string WeekStart,
 	SharePermission Permission,
 	DateTime SharedAt,
-	bool DismissedByRecipient
+	bool DismissedByRecipient,
+	string SharedWithName = "",
+	string SharedWithEmail = ""
 );

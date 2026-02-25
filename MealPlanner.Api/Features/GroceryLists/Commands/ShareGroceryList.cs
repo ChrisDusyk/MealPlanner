@@ -39,6 +39,7 @@ public class ShareGroceryListCommandHandler(IMongoClient mongoClient)
 		{
 			var db = mongoClient.GetDatabase("mealplannerDb");
 			var usersCollection = db.GetCollection<UserDocument>("users");
+			var groceryListsCollection = db.GetCollection<GroceryListDocument>("grocerylists");
 			var sharesCollection = db.GetCollection<GroceryListShareDocument>("grocerylist_shares");
 
 			await EnsureIndexesAsync(sharesCollection, cancellationToken);
@@ -66,6 +67,16 @@ public class ShareGroceryListCommandHandler(IMongoClient mongoClient)
 				return Result<GroceryListShare>.Failure(
 					new Error(ErrorCodes.ValidationFailed, "You cannot share a grocery list with yourself."));
 
+			// Ensure a grocery list exists for this owner/week before sharing
+			var groceryListFilter = Builders<GroceryListDocument>.Filter.And(
+				Builders<GroceryListDocument>.Filter.Eq(g => g.UserId, command.OwnerUserId),
+				Builders<GroceryListDocument>.Filter.Eq(g => g.WeekStart, command.WeekStart));
+			var groceryList =
+				await groceryListsCollection.Find(groceryListFilter).FirstOrDefaultAsync(cancellationToken);
+			if (groceryList is null)
+				return Result<GroceryListShare>.Failure(
+					new Error(ErrorCodes.NotFound, "No grocery list exists for the specified week."));
+
 			// Check for existing share
 			var existingFilter = Builders<GroceryListShareDocument>.Filter.And(
 				Builders<GroceryListShareDocument>.Filter.Eq(s => s.OwnerUserId, command.OwnerUserId),
@@ -90,7 +101,13 @@ public class ShareGroceryListCommandHandler(IMongoClient mongoClient)
 
 			await sharesCollection.InsertOneAsync(document, cancellationToken: cancellationToken);
 
-			return Result<GroceryListShare>.Success(document.ToDomain());
+			var share = document.ToDomain() with
+			{
+				SharedWithName = recipient.Name,
+				SharedWithEmail = recipient.Email ?? string.Empty
+			};
+
+			return Result<GroceryListShare>.Success(share);
 		}
 		catch (MongoWriteException ex) when (ex.WriteError?.Category == ServerErrorCategory.DuplicateKey)
 		{
@@ -131,8 +148,8 @@ public class ShareGroceryListCommandHandler(IMongoClient mongoClient)
 			return true;
 
 		return ex.Result is not null
-			&& ex.Result.TryGetValue("codeName", out var value)
-			&& value.IsString
-			&& value.AsString is "IndexOptionsConflict" or "IndexKeySpecsConflict";
+		       && ex.Result.TryGetValue("codeName", out var value)
+		       && value.IsString
+		       && value.AsString is "IndexOptionsConflict" or "IndexKeySpecsConflict";
 	}
 }
