@@ -155,9 +155,13 @@ export async function addCustomItem(
 	accessToken: string,
 	weekStart: string,
 	name: string,
-	fetchFn: typeof fetch = fetch
+	fetchFn: typeof fetch = fetch,
+	ownerUserId?: string
 ): Promise<GroceryListResponse> {
-	const response = await fetchFn(`${getApiBase()}/api/grocery-lists/items?weekStart=${weekStart}`, {
+	const params = new URLSearchParams({ weekStart });
+	if (ownerUserId) params.set('ownerUserId', ownerUserId);
+
+	const response = await fetchFn(`${getApiBase()}/api/grocery-lists/items?${params}`, {
 		method: 'POST',
 		headers: {
 			'Content-Type': 'application/json',

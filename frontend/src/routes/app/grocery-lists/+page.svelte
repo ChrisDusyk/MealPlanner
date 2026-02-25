@@ -25,6 +25,7 @@
 	let shareLoading = $state(false);
 	let myShares: GroceryListShareResponse[] = $state([]);
 	let sharesLoaded = $state(false);
+	let sharedDraftNames: Record<string, string> = $state({});
 
 	// Toast state
 	let toastMessage = $state('');
@@ -44,6 +45,7 @@
 		sharePanelOpen = false;
 		myShares = [];
 		sharesLoaded = false;
+		sharedDraftNames = {};
 	});
 
 	function showToast(message: string, type: 'success' | 'error' = 'success') {
@@ -77,6 +79,16 @@
 	let checkedCount = $derived(groceryList?.items.filter((i) => i.isChecked).length ?? 0);
 	let totalCount = $derived(groceryList?.items.length ?? 0);
 	let progress = $derived(totalCount > 0 ? (checkedCount / totalCount) * 100 : 0);
+
+	function getSortedSharedItems(shared: SharedGroceryListResponse) {
+		const unchecked = shared.groceryList.items
+			.map((item, index) => ({ ...item, originalIndex: index }))
+			.filter((i) => !i.isChecked);
+		const checked = shared.groceryList.items
+			.map((item, index) => ({ ...item, originalIndex: index }))
+			.filter((i) => i.isChecked);
+		return [...unchecked, ...checked];
+	}
 
 	// ── Sharing ──
 
@@ -199,6 +211,40 @@
 				!sharedEntry.groceryList.items[itemIndex].isChecked;
 			sharedWithMe = [...sharedWithMe];
 			showToast('Failed to update item', 'error');
+		}
+	}
+
+	async function handleAddSharedItem(shareId: string, ownerUserId: string) {
+		const sharedEntry = sharedWithMe.find((s) => s.shareId === shareId);
+		if (!sharedEntry) return;
+		if (sharedEntry.permission !== 'ReadWrite') {
+			showToast('You only have view access to this list', 'error');
+			return;
+		}
+
+		const name = (sharedDraftNames[shareId] ?? '').trim();
+		if (!name) return;
+
+		try {
+			const params = new URLSearchParams({ weekStart, ownerUserId });
+			const resp = await fetch(`/app/grocery-lists/add-shared-item?${params}`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ name })
+			});
+
+			if (resp.ok) {
+				const updated = await resp.json();
+				sharedEntry.groceryList = updated;
+				sharedWithMe = [...sharedWithMe];
+				sharedDraftNames = { ...sharedDraftNames, [shareId]: '' };
+				showToast('Item added');
+			} else {
+				const body = await resp.json().catch(() => ({}));
+				showToast(body?.error ?? 'Failed to add item', 'error');
+			}
+		} catch {
+			showToast('Failed to add item', 'error');
 		}
 	}
 </script>
@@ -636,8 +682,30 @@
 								aria-label="Dismiss {shared.ownerName || shared.ownerEmail}'s list">Dismiss</button
 							>
 						</div>
+						{#if shared.permission === 'ReadWrite'}
+							<div class="mb-3 flex gap-2">
+								<input
+									type="text"
+									value={sharedDraftNames[shared.shareId] ?? ''}
+									oninput={(e) => {
+										const value = (e.currentTarget as HTMLInputElement).value;
+										sharedDraftNames = { ...sharedDraftNames, [shared.shareId]: value };
+									}}
+									placeholder="Add a custom item..."
+									class="flex-1 rounded-lg border border-purple-200 bg-white px-3 py-2 text-sm text-charcoal placeholder-charcoal/40 shadow-sm transition-colors focus:border-purple-400 focus:ring-1 focus:ring-purple-400 focus:outline-none"
+								/>
+								<button
+									type="button"
+									disabled={!(sharedDraftNames[shared.shareId] ?? '').trim()}
+									onclick={() => handleAddSharedItem(shared.shareId, shared.ownerUserId)}
+									class="rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-purple-700 disabled:opacity-40"
+								>
+									Add
+								</button>
+							</div>
+						{/if}
 						<ul class="flex flex-col gap-1" role="list" aria-label="Shared grocery items">
-							{#each shared.groceryList.items as item, i}
+							{#each getSortedSharedItems(shared) as item (item.originalIndex)}
 								<li
 									class="flex items-start gap-3 rounded-lg border border-purple-100 px-4 py-2 {item.isChecked
 										? 'bg-purple-50/40 opacity-60'
@@ -646,7 +714,8 @@
 									{#if shared.permission === 'ReadWrite'}
 										<button
 											type="button"
-											onclick={() => handleToggleShared(shared.ownerUserId, shared.shareId, i)}
+											onclick={() =>
+												handleToggleShared(shared.ownerUserId, shared.shareId, item.originalIndex)}
 											class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded border-2 transition-colors {item.isChecked
 												? 'border-purple-500 bg-purple-500 text-white'
 												: 'border-purple-300 hover:border-purple-400'}"
