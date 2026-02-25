@@ -3,6 +3,7 @@ using MealPlanner.Api.Features.GroceryLists.Commands;
 using MealPlanner.Api.Features.GroceryLists.Dtos;
 using MealPlanner.Api.Features.GroceryLists.Models;
 using MealPlanner.Api.Features.GroceryLists.Queries;
+using MealPlanner.Api.Features.GroceryLists.Realtime;
 using MealPlanner.Api.Features.MealPlans.Models;
 using MealPlanner.Api.Shared;
 
@@ -87,6 +88,7 @@ public static class GroceryListEndpoints
 		int itemIndex,
 		HttpContext httpContext,
 		ICommandHandler<ToggleGroceryListItemCommand, GroceryList> handler,
+		IGroceryListRealtimeNotifier realtimeNotifier,
 		CancellationToken cancellationToken,
 		string weekStart,
 		string? ownerUserId = null)
@@ -99,20 +101,35 @@ public static class GroceryListEndpoints
 			return Results.BadRequest("weekStart must be a valid date in yyyy-MM-dd format.");
 		var result = await handler.HandleAsync(
 			new ToggleGroceryListItemCommand(userId, week, itemIndex, ownerUserId), cancellationToken);
-		return result.Match(
-			onSuccess: list => Results.Ok(GroceryListResponse.FromDomain(list)),
-			onFailure: error => error.Code switch
+
+		if (!result.IsSuccess)
+		{
+			var error = result.Error!;
+			return error.Code switch
 			{
 				ErrorCodes.ValidationFailed => Results.BadRequest(error.Message),
 				ErrorCodes.NotFound => Results.NotFound(error.Message),
 				_ => Results.Problem(error.Message, statusCode: 500)
-			});
+			};
+		}
+
+		var list = result.Value!;
+		await realtimeNotifier.PublishListUpdatedAsync(
+			ownerUserId: list.UserId,
+			weekStart: list.WeekStart,
+			updatedList: list,
+			changedByUserId: userId,
+			eventType: GroceryListRealtimeEventType.ItemToggled,
+			cancellationToken: cancellationToken);
+
+		return Results.Ok(GroceryListResponse.FromDomain(list));
 	}
 
 	private static async Task<IResult> AddCustomItem(
 		AddCustomItemRequest request,
 		HttpContext httpContext,
 		ICommandHandler<AddCustomItemCommand, GroceryList> handler,
+		IGroceryListRealtimeNotifier realtimeNotifier,
 		CancellationToken cancellationToken,
 		string weekStart,
 		string? ownerUserId = null)
@@ -125,14 +142,28 @@ public static class GroceryListEndpoints
 			return Results.BadRequest("weekStart must be a valid date in yyyy-MM-dd format.");
 		var result = await handler.HandleAsync(
 			new AddCustomItemCommand(userId, week, request.Name, ownerUserId), cancellationToken);
-		return result.Match(
-			onSuccess: list => Results.Ok(GroceryListResponse.FromDomain(list)),
-			onFailure: error => error.Code switch
+
+		if (!result.IsSuccess)
+		{
+			var error = result.Error!;
+			return error.Code switch
 			{
 				ErrorCodes.ValidationFailed => Results.BadRequest(error.Message),
 				ErrorCodes.NotFound => Results.NotFound(error.Message),
 				_ => Results.Problem(error.Message, statusCode: 500)
-			});
+			};
+		}
+
+		var list = result.Value!;
+		await realtimeNotifier.PublishListUpdatedAsync(
+			ownerUserId: list.UserId,
+			weekStart: list.WeekStart,
+			updatedList: list,
+			changedByUserId: userId,
+			eventType: GroceryListRealtimeEventType.CustomItemAdded,
+			cancellationToken: cancellationToken);
+
+		return Results.Ok(GroceryListResponse.FromDomain(list));
 	}
 
 	private static async Task<IResult> DeleteGroceryList(
