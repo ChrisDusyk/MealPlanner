@@ -19,6 +19,8 @@ public static class UserEndpoints
 			.RequireAuthorization();
 
 		group.MapPost("/sync", SyncUser);
+		group.MapGet("/me", GetCurrentUser);
+		group.MapPut("/me", UpdateCurrentUser);
 		group.MapGet("/search", SearchUserByEmail);
 
 		return app;
@@ -59,8 +61,8 @@ public static class UserEndpoints
 		var resolvedName = !string.IsNullOrWhiteSpace(request.Name)
 			? request.Name
 			: GetClaimValue(httpContext, ClaimTypes.Name, "name", "nickname")
-				?? resolvedEmail
-				?? auth0UserId;
+			  ?? resolvedEmail
+			  ?? auth0UserId;
 
 		var command = new UpsertUserFromAuthCommand(
 			auth0UserId,
@@ -73,6 +75,51 @@ public static class UserEndpoints
 			onFailure: error => error.Code == ErrorCodes.ValidationFailed
 				? Results.BadRequest(error.Message)
 				: Results.Problem(error.Message, statusCode: 500));
+	}
+
+	private static async Task<IResult> GetCurrentUser(
+		HttpContext httpContext,
+		IQueryHandler<FindUserByAuth0IdQuery, User> handler,
+		CancellationToken cancellationToken)
+	{
+		var auth0UserId = GetAuth0UserId(httpContext);
+		if (auth0UserId is null)
+			return Results.Unauthorized();
+
+		var result = await handler.HandleAsync(new FindUserByAuth0IdQuery(auth0UserId), cancellationToken);
+		return result.Match(
+			onSuccess: user => Results.Ok(UserResponse.FromDomain(user)),
+			onFailure: error => error.Code switch
+			{
+				ErrorCodes.NotFound => Results.NotFound(error.Message),
+				ErrorCodes.ValidationFailed => Results.BadRequest(error.Message),
+				_ => Results.Problem(error.Message, statusCode: 500)
+			});
+	}
+
+	private static async Task<IResult> UpdateCurrentUser(
+		UpdateCurrentUserRequest request,
+		HttpContext httpContext,
+		ICommandHandler<UpdateCurrentUserNameCommand, User> handler,
+		CancellationToken cancellationToken)
+	{
+		var auth0UserId = GetAuth0UserId(httpContext);
+		if (auth0UserId is null)
+			return Results.Unauthorized();
+
+		var command = new UpdateCurrentUserNameCommand(
+			auth0UserId,
+			request.Name?.Trim() ?? string.Empty);
+
+		var result = await handler.HandleAsync(command, cancellationToken);
+		return result.Match(
+			onSuccess: user => Results.Ok(UserResponse.FromDomain(user)),
+			onFailure: error => error.Code switch
+			{
+				ErrorCodes.NotFound => Results.NotFound(error.Message),
+				ErrorCodes.ValidationFailed => Results.BadRequest(error.Message),
+				_ => Results.Problem(error.Message, statusCode: 500)
+			});
 	}
 
 	private static async Task<IResult> SearchUserByEmail(
