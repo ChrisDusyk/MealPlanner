@@ -80,6 +80,8 @@ public class GenerateGroceryListTests
 		var mealCursor = MongoTestHelpers.CreateCursor((IReadOnlyCollection<MealPlanDocument>)new List<MealPlanDocument> { CreateMealPlan() });
 		var recipeCursor = MongoTestHelpers.CreateCursor((IReadOnlyCollection<RecipeDocument>)new List<RecipeDocument> { CreateRecipe() });
 		var emptyListCursor = MongoTestHelpers.CreateCursor((IReadOnlyCollection<GroceryListDocument>)Array.Empty<GroceryListDocument>());
+		var emptyShareCursor = MongoTestHelpers.CreateCursor((IReadOnlyCollection<MealPlanShareDocument>)Array.Empty<MealPlanShareDocument>());
+		var emptyGroceryShareCursor = MongoTestHelpers.CreateCursor((IReadOnlyCollection<GroceryListShareDocument>)Array.Empty<GroceryListShareDocument>());
 
 		var mealPlans = new Mock<IMongoCollection<MealPlanDocument>>();
 		mealPlans.Setup(c => c.FindAsync(It.IsAny<FilterDefinition<MealPlanDocument>>(), It.IsAny<FindOptions<MealPlanDocument, MealPlanDocument>>(), It.IsAny<CancellationToken>())).ReturnsAsync(mealCursor.Object);
@@ -88,6 +90,14 @@ public class GenerateGroceryListTests
 		var recipes = new Mock<IMongoCollection<RecipeDocument>>();
 		recipes.Setup(c => c.FindAsync(It.IsAny<FilterDefinition<RecipeDocument>>(), It.IsAny<FindOptions<RecipeDocument, RecipeDocument>>(), It.IsAny<CancellationToken>())).ReturnsAsync(recipeCursor.Object);
 		recipes.Setup(c => c.FindSync(It.IsAny<FilterDefinition<RecipeDocument>>(), It.IsAny<FindOptions<RecipeDocument, RecipeDocument>>(), It.IsAny<CancellationToken>())).Returns(recipeCursor.Object);
+
+		var shares = new Mock<IMongoCollection<MealPlanShareDocument>>();
+		shares.Setup(c => c.FindAsync(It.IsAny<FilterDefinition<MealPlanShareDocument>>(), It.IsAny<FindOptions<MealPlanShareDocument, MealPlanShareDocument>>(), It.IsAny<CancellationToken>())).ReturnsAsync(emptyShareCursor.Object);
+		shares.Setup(c => c.FindSync(It.IsAny<FilterDefinition<MealPlanShareDocument>>(), It.IsAny<FindOptions<MealPlanShareDocument, MealPlanShareDocument>>(), It.IsAny<CancellationToken>())).Returns(emptyShareCursor.Object);
+
+		var groceryShares = new Mock<IMongoCollection<GroceryListShareDocument>>();
+		groceryShares.Setup(c => c.FindAsync(It.IsAny<FilterDefinition<GroceryListShareDocument>>(), It.IsAny<FindOptions<GroceryListShareDocument, GroceryListShareDocument>>(), It.IsAny<CancellationToken>())).ReturnsAsync(emptyGroceryShareCursor.Object);
+		groceryShares.Setup(c => c.FindSync(It.IsAny<FilterDefinition<GroceryListShareDocument>>(), It.IsAny<FindOptions<GroceryListShareDocument, GroceryListShareDocument>>(), It.IsAny<CancellationToken>())).Returns(emptyGroceryShareCursor.Object);
 
 		GroceryListDocument? inserted = null;
 		var groceries = new Mock<IMongoCollection<GroceryListDocument>>();
@@ -101,6 +111,8 @@ public class GenerateGroceryListTests
 		db.Setup(d => d.GetCollection<MealPlanDocument>("mealplans", null)).Returns(mealPlans.Object);
 		db.Setup(d => d.GetCollection<RecipeDocument>("recipes", null)).Returns(recipes.Object);
 		db.Setup(d => d.GetCollection<GroceryListDocument>("grocerylists", null)).Returns(groceries.Object);
+		db.Setup(d => d.GetCollection<MealPlanShareDocument>("shares", null)).Returns(shares.Object);
+		db.Setup(d => d.GetCollection<GroceryListShareDocument>("grocerylist_shares", null)).Returns(groceryShares.Object);
 
 		var client = new Mock<IMongoClient>();
 		client.Setup(c => c.GetDatabase("mealplannerDb", null)).Returns(db.Object);
@@ -122,6 +134,8 @@ public class GenerateGroceryListTests
 		var mealCursor = MongoTestHelpers.CreateCursor((IReadOnlyCollection<MealPlanDocument>)new List<MealPlanDocument> { CreateMealPlan() });
 		var recipeCursor = MongoTestHelpers.CreateCursor((IReadOnlyCollection<RecipeDocument>)new List<RecipeDocument> { CreateRecipe() });
 		var existingCursor = MongoTestHelpers.CreateCursor((IReadOnlyCollection<GroceryListDocument>)new List<GroceryListDocument> { existing });
+		var emptyShareCursor = MongoTestHelpers.CreateCursor((IReadOnlyCollection<MealPlanShareDocument>)Array.Empty<MealPlanShareDocument>());
+		var emptyGroceryShareCursor = MongoTestHelpers.CreateCursor((IReadOnlyCollection<GroceryListShareDocument>)Array.Empty<GroceryListShareDocument>());
 
 		var mealPlans = new Mock<IMongoCollection<MealPlanDocument>>();
 		mealPlans.Setup(c => c.FindAsync(It.IsAny<FilterDefinition<MealPlanDocument>>(), It.IsAny<FindOptions<MealPlanDocument, MealPlanDocument>>(), It.IsAny<CancellationToken>())).ReturnsAsync(mealCursor.Object);
@@ -130,6 +144,14 @@ public class GenerateGroceryListTests
 		var recipes = new Mock<IMongoCollection<RecipeDocument>>();
 		recipes.Setup(c => c.FindAsync(It.IsAny<FilterDefinition<RecipeDocument>>(), It.IsAny<FindOptions<RecipeDocument, RecipeDocument>>(), It.IsAny<CancellationToken>())).ReturnsAsync(recipeCursor.Object);
 		recipes.Setup(c => c.FindSync(It.IsAny<FilterDefinition<RecipeDocument>>(), It.IsAny<FindOptions<RecipeDocument, RecipeDocument>>(), It.IsAny<CancellationToken>())).Returns(recipeCursor.Object);
+
+		var shares = new Mock<IMongoCollection<MealPlanShareDocument>>();
+		shares.Setup(c => c.FindAsync(It.IsAny<FilterDefinition<MealPlanShareDocument>>(), It.IsAny<FindOptions<MealPlanShareDocument, MealPlanShareDocument>>(), It.IsAny<CancellationToken>())).ReturnsAsync(emptyShareCursor.Object);
+		shares.Setup(c => c.FindSync(It.IsAny<FilterDefinition<MealPlanShareDocument>>(), It.IsAny<FindOptions<MealPlanShareDocument, MealPlanShareDocument>>(), It.IsAny<CancellationToken>())).Returns(emptyShareCursor.Object);
+
+		var groceryShares = new Mock<IMongoCollection<GroceryListShareDocument>>();
+		groceryShares.Setup(c => c.FindAsync(It.IsAny<FilterDefinition<GroceryListShareDocument>>(), It.IsAny<FindOptions<GroceryListShareDocument, GroceryListShareDocument>>(), It.IsAny<CancellationToken>())).ReturnsAsync(emptyGroceryShareCursor.Object);
+		groceryShares.Setup(c => c.FindSync(It.IsAny<FilterDefinition<GroceryListShareDocument>>(), It.IsAny<FindOptions<GroceryListShareDocument, GroceryListShareDocument>>(), It.IsAny<CancellationToken>())).Returns(emptyGroceryShareCursor.Object);
 
 		GroceryListDocument? replaced = null;
 		var groceries = new Mock<IMongoCollection<GroceryListDocument>>();
@@ -143,6 +165,8 @@ public class GenerateGroceryListTests
 		db.Setup(d => d.GetCollection<MealPlanDocument>("mealplans", null)).Returns(mealPlans.Object);
 		db.Setup(d => d.GetCollection<RecipeDocument>("recipes", null)).Returns(recipes.Object);
 		db.Setup(d => d.GetCollection<GroceryListDocument>("grocerylists", null)).Returns(groceries.Object);
+		db.Setup(d => d.GetCollection<MealPlanShareDocument>("shares", null)).Returns(shares.Object);
+		db.Setup(d => d.GetCollection<GroceryListShareDocument>("grocerylist_shares", null)).Returns(groceryShares.Object);
 
 		var client = new Mock<IMongoClient>();
 		client.Setup(c => c.GetDatabase("mealplannerDb", null)).Returns(db.Object);
