@@ -3,6 +3,7 @@ using MealPlanner.Api.Features.GroceryLists.Commands;
 using MealPlanner.Api.Features.GroceryLists.Dtos;
 using MealPlanner.Api.Features.GroceryLists.Models;
 using MealPlanner.Api.Features.GroceryLists.Queries;
+using MealPlanner.Api.Features.MealPlans.Models;
 using MealPlanner.Api.Shared;
 
 namespace MealPlanner.Api.Features.GroceryLists;
@@ -23,6 +24,13 @@ public static class GroceryListEndpoints
 		group.MapPut("/items/{itemIndex:int}/toggle", ToggleGroceryListItem);
 		group.MapPost("/items", AddCustomItem);
 		group.MapDelete("/", DeleteGroceryList);
+
+		// Sharing endpoints
+		group.MapPost("/shares", ShareGroceryList);
+		group.MapGet("/shares", GetSharesForGroceryList);
+		group.MapDelete("/shares/{shareId}", RevokeGroceryListShare);
+		group.MapGet("/shared-with-me", GetGroceryListsSharedWithMe);
+		group.MapPost("/shared-with-me/{shareId}/dismiss", DismissSharedGroceryList);
 
 		return app;
 	}
@@ -80,7 +88,8 @@ public static class GroceryListEndpoints
 		HttpContext httpContext,
 		ICommandHandler<ToggleGroceryListItemCommand, GroceryList> handler,
 		CancellationToken cancellationToken,
-		string weekStart)
+		string weekStart,
+		string? ownerUserId = null)
 	{
 		var userId = GetUserId(httpContext);
 		if (userId is null)
@@ -89,7 +98,7 @@ public static class GroceryListEndpoints
 		if (!DateOnly.TryParseExact(weekStart, "yyyy-MM-dd", out var week))
 			return Results.BadRequest("weekStart must be a valid date in yyyy-MM-dd format.");
 		var result = await handler.HandleAsync(
-			new ToggleGroceryListItemCommand(userId, week, itemIndex), cancellationToken);
+			new ToggleGroceryListItemCommand(userId, week, itemIndex, ownerUserId), cancellationToken);
 		return result.Match(
 			onSuccess: list => Results.Ok(GroceryListResponse.FromDomain(list)),
 			onFailure: error => error.Code switch
@@ -105,7 +114,8 @@ public static class GroceryListEndpoints
 		HttpContext httpContext,
 		ICommandHandler<AddCustomItemCommand, GroceryList> handler,
 		CancellationToken cancellationToken,
-		string weekStart)
+		string weekStart,
+		string? ownerUserId = null)
 	{
 		var userId = GetUserId(httpContext);
 		if (userId is null)
@@ -114,7 +124,7 @@ public static class GroceryListEndpoints
 		if (!DateOnly.TryParseExact(weekStart, "yyyy-MM-dd", out var week))
 			return Results.BadRequest("weekStart must be a valid date in yyyy-MM-dd format.");
 		var result = await handler.HandleAsync(
-			new AddCustomItemCommand(userId, week, request.Name), cancellationToken);
+			new AddCustomItemCommand(userId, week, request.Name, ownerUserId), cancellationToken);
 		return result.Match(
 			onSuccess: list => Results.Ok(GroceryListResponse.FromDomain(list)),
 			onFailure: error => error.Code switch
@@ -139,6 +149,118 @@ public static class GroceryListEndpoints
 			return Results.BadRequest("weekStart must be a valid date in yyyy-MM-dd format.");
 		var result = await handler.HandleAsync(
 			new DeleteGroceryListCommand(userId, week), cancellationToken);
+		return result.Match(
+			onSuccess: _ => Results.NoContent(),
+			onFailure: error => error.Code switch
+			{
+				ErrorCodes.NotFound => Results.NotFound(error.Message),
+				_ => Results.Problem(error.Message, statusCode: 500)
+			});
+	}
+
+	// ── Sharing Handlers ───────────────────────────────────
+
+	private static async Task<IResult> ShareGroceryList(
+		ShareGroceryListRequest request,
+		HttpContext httpContext,
+		ICommandHandler<ShareGroceryListCommand, GroceryListShare> handler,
+		CancellationToken cancellationToken)
+	{
+		var userId = GetUserId(httpContext);
+		if (userId is null)
+			return Results.Unauthorized();
+
+		if (!Enum.TryParse<SharePermission>(request.Permission, true, out var permission))
+			return Results.BadRequest($"Invalid permission: {request.Permission}. Use 'ReadOnly' or 'ReadWrite'.");
+
+		var command = new ShareGroceryListCommand(userId, request.Email, request.WeekStart, permission);
+		var result = await handler.HandleAsync(command, cancellationToken);
+		return result.Match(
+			onSuccess: share => Results.Created($"/api/grocery-lists/shares/{share.Id}",
+				GroceryListShareResponse.FromDomain(share)),
+			onFailure: error => error.Code switch
+			{
+				ErrorCodes.NotFound => Results.NotFound(error.Message),
+				ErrorCodes.ValidationFailed => Results.BadRequest(error.Message),
+				_ => Results.Problem(error.Message, statusCode: 500)
+			});
+	}
+
+	private static async Task<IResult> GetSharesForGroceryList(
+		HttpContext httpContext,
+		IQueryHandler<GetSharesForGroceryListQuery, List<GroceryListShareWithRecipientInfo>> handler,
+		CancellationToken cancellationToken,
+		string weekStart)
+	{
+		var userId = GetUserId(httpContext);
+		if (userId is null)
+			return Results.Unauthorized();
+
+		var result = await handler.HandleAsync(
+			new GetSharesForGroceryListQuery(userId, weekStart), cancellationToken);
+		return result.Match(
+			onSuccess: shares => Results.Ok(shares.Select(s =>
+				GroceryListShareResponse.FromDomain(s.Share, s.RecipientName, s.RecipientEmail)).ToList()),
+			onFailure: error => Results.Problem(error.Message, statusCode: 500));
+	}
+
+	private static async Task<IResult> RevokeGroceryListShare(
+		string shareId,
+		HttpContext httpContext,
+		ICommandHandler<RevokeGroceryListShareCommand, Unit> handler,
+		CancellationToken cancellationToken)
+	{
+		var userId = GetUserId(httpContext);
+		if (userId is null)
+			return Results.Unauthorized();
+
+		var result = await handler.HandleAsync(
+			new RevokeGroceryListShareCommand(userId, shareId), cancellationToken);
+		return result.Match(
+			onSuccess: _ => Results.NoContent(),
+			onFailure: error => error.Code switch
+			{
+				ErrorCodes.NotFound => Results.NotFound(error.Message),
+				_ => Results.Problem(error.Message, statusCode: 500)
+			});
+	}
+
+	private static async Task<IResult> GetGroceryListsSharedWithMe(
+		HttpContext httpContext,
+		IQueryHandler<GetGroceryListsSharedWithMeQuery, List<SharedGroceryListResult>> handler,
+		CancellationToken cancellationToken,
+		string weekStart)
+	{
+		var userId = GetUserId(httpContext);
+		if (userId is null)
+			return Results.Unauthorized();
+
+		var result = await handler.HandleAsync(
+			new GetGroceryListsSharedWithMeQuery(userId, weekStart), cancellationToken);
+		return result.Match(
+			onSuccess: lists => Results.Ok(lists.Select(l => new SharedGroceryListResponse(
+				ShareId: l.Share.Id,
+				OwnerUserId: l.Share.OwnerUserId,
+				OwnerName: l.OwnerName,
+				OwnerEmail: l.OwnerEmail,
+				Permission: l.Share.Permission.ToString(),
+				GroceryList: GroceryListResponse.FromDomain(l.GroceryList)
+			)).ToList()),
+			onFailure: error => Results.Problem(error.Message, statusCode: 500));
+	}
+
+	private static async Task<IResult> DismissSharedGroceryList(
+		string shareId,
+		HttpContext httpContext,
+		ICommandHandler<DismissSharedGroceryListCommand, Unit> handler,
+		CancellationToken cancellationToken)
+	{
+		var userId = GetUserId(httpContext);
+		if (userId is null)
+			return Results.Unauthorized();
+
+		var result = await handler.HandleAsync(
+			new DismissSharedGroceryListCommand(userId, shareId), cancellationToken);
 		return result.Match(
 			onSuccess: _ => Results.NoContent(),
 			onFailure: error => error.Code switch

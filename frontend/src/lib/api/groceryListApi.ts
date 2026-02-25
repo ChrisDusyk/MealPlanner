@@ -121,15 +121,19 @@ export async function fetchGroceryList(
 
 /**
  * Toggle the checked state of a grocery list item by index.
+ * Pass ownerUserId to toggle an item on a list shared with you (requires ReadWrite permission).
  */
 export async function toggleGroceryListItem(
 	accessToken: string,
 	weekStart: string,
 	itemIndex: number,
-	fetchFn: typeof fetch = fetch
+	fetchFn: typeof fetch = fetch,
+	ownerUserId?: string
 ): Promise<GroceryListResponse> {
+	const params = new URLSearchParams({ weekStart });
+	if (ownerUserId) params.set('ownerUserId', ownerUserId);
 	const response = await fetchFn(
-		`${getApiBase()}/api/grocery-lists/items/${itemIndex}/toggle?weekStart=${weekStart}`,
+		`${getApiBase()}/api/grocery-lists/items/${itemIndex}/toggle?${params}`,
 		{
 			method: 'PUT',
 			headers: { Authorization: `Bearer ${accessToken}` }
@@ -151,9 +155,13 @@ export async function addCustomItem(
 	accessToken: string,
 	weekStart: string,
 	name: string,
-	fetchFn: typeof fetch = fetch
+	fetchFn: typeof fetch = fetch,
+	ownerUserId?: string
 ): Promise<GroceryListResponse> {
-	const response = await fetchFn(`${getApiBase()}/api/grocery-lists/items?weekStart=${weekStart}`, {
+	const params = new URLSearchParams({ weekStart });
+	if (ownerUserId) params.set('ownerUserId', ownerUserId);
+
+	const response = await fetchFn(`${getApiBase()}/api/grocery-lists/items?${params}`, {
 		method: 'POST',
 		headers: {
 			'Content-Type': 'application/json',

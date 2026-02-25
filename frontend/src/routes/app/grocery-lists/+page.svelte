@@ -2,6 +2,7 @@
 	import { goto, invalidateAll } from '$app/navigation';
 	import { enhance } from '$app/forms';
 	import type { GroceryListResponse, GroceryListItem } from '$lib/api/groceryListApi';
+	import type { GroceryListShareResponse, SharedGroceryListResponse } from '$lib/api/sharingApi';
 	import WeekNavigator from '$lib/components/meal-plans/WeekNavigator.svelte';
 	import type { PageData } from './$types';
 
@@ -11,9 +12,20 @@
 	let groceryList: GroceryListResponse | null = $state(data.groceryList);
 	// svelte-ignore state_referenced_locally
 	let weekStart: string = $state(data.weekStart);
+	// svelte-ignore state_referenced_locally
+	let sharedWithMe: SharedGroceryListResponse[] = $state(data.sharedWithMe);
 	let newItemName = $state('');
 	let loading = $state(false);
 	let deleteConfirmOpen = $state(false);
+
+	// Sharing panel state
+	let sharePanelOpen = $state(false);
+	let shareEmail = $state('');
+	let sharePermission = $state('ReadOnly');
+	let shareLoading = $state(false);
+	let myShares: GroceryListShareResponse[] = $state([]);
+	let sharesLoaded = $state(false);
+	let sharedDraftNames: Record<string, string> = $state({});
 
 	// Toast state
 	let toastMessage = $state('');
@@ -27,6 +39,13 @@
 		void serverVersion;
 		groceryList = data.groceryList;
 		weekStart = data.weekStart;
+		sharedWithMe = data.sharedWithMe;
+		// Reset share state when week changes
+		shareEmail = '';
+		sharePanelOpen = false;
+		myShares = [];
+		sharesLoaded = false;
+		sharedDraftNames = {};
 	});
 
 	function showToast(message: string, type: 'success' | 'error' = 'success') {
@@ -60,6 +79,174 @@
 	let checkedCount = $derived(groceryList?.items.filter((i) => i.isChecked).length ?? 0);
 	let totalCount = $derived(groceryList?.items.length ?? 0);
 	let progress = $derived(totalCount > 0 ? (checkedCount / totalCount) * 100 : 0);
+
+	function getSortedSharedItems(shared: SharedGroceryListResponse) {
+		const unchecked = shared.groceryList.items
+			.map((item, index) => ({ ...item, originalIndex: index }))
+			.filter((i) => !i.isChecked);
+		const checked = shared.groceryList.items
+			.map((item, index) => ({ ...item, originalIndex: index }))
+			.filter((i) => i.isChecked);
+		return [...unchecked, ...checked];
+	}
+
+	// ── Sharing ──
+
+	async function openSharePanel() {
+		sharePanelOpen = true;
+		if (!sharesLoaded) {
+			try {
+				const resp = await fetch(
+					`/app/grocery-lists/sharing?type=my-shares&weekStart=${weekStart}`
+				);
+				if (resp.ok) {
+					myShares = await resp.json();
+				}
+			} catch {
+				// ignore
+			}
+			sharesLoaded = true;
+		}
+	}
+
+	async function handleShare() {
+		if (!shareEmail.trim()) return;
+		shareLoading = true;
+		try {
+			const resp = await fetch('/app/grocery-lists/sharing', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					email: shareEmail.trim(),
+					weekStart,
+					permission: sharePermission
+				})
+			});
+			if (resp.ok) {
+				const newShare = await resp.json();
+				myShares = [...myShares, newShare];
+				shareEmail = '';
+				showToast(`Shared with ${newShare.sharedWithEmail}`);
+			} else {
+				const body = await resp.json().catch(() => ({}));
+				showToast(body?.error ?? 'Failed to share', 'error');
+			}
+		} catch {
+			showToast('Failed to share', 'error');
+		} finally {
+			shareLoading = false;
+		}
+	}
+
+	async function handleRevoke(shareId: string, email: string) {
+		try {
+			const resp = await fetch(`/app/grocery-lists/sharing?shareId=${shareId}`, {
+				method: 'DELETE'
+			});
+			if (resp.ok) {
+				myShares = myShares.filter((s) => s.id !== shareId);
+				showToast(`Revoked access for ${email}`);
+			} else {
+				showToast('Failed to revoke', 'error');
+			}
+		} catch {
+			showToast('Failed to revoke', 'error');
+		}
+	}
+
+	async function handleDismiss(shareId: string) {
+		try {
+			const resp = await fetch(`/app/grocery-lists/sharing?action=dismiss&shareId=${shareId}`, {
+				method: 'POST'
+			});
+			if (resp.ok) {
+				sharedWithMe = sharedWithMe.filter((s) => s.shareId !== shareId);
+				showToast('Dismissed');
+			} else {
+				showToast('Failed to dismiss', 'error');
+			}
+		} catch {
+			showToast('Failed to dismiss', 'error');
+		}
+	}
+
+	async function handleToggleShared(ownerUserId: string, shareId: string, itemIndex: number) {
+		const sharedEntry = sharedWithMe.find((s) => s.shareId === shareId);
+		if (!sharedEntry) return;
+		if (sharedEntry.permission !== 'ReadWrite') {
+			showToast('You only have view access to this list', 'error');
+			return;
+		}
+
+		// Optimistic toggle
+		sharedEntry.groceryList.items[itemIndex].isChecked =
+			!sharedEntry.groceryList.items[itemIndex].isChecked;
+		sharedWithMe = [...sharedWithMe];
+
+		try {
+			const params = new URLSearchParams({
+				weekStart,
+				ownerUserId
+			});
+			const resp = await fetch(
+				`/app/grocery-lists/toggle-shared?itemIndex=${itemIndex}&${params}`,
+				{
+					method: 'PUT'
+				}
+			);
+			if (resp.ok) {
+				const updated = await resp.json();
+				sharedEntry.groceryList = updated;
+				sharedWithMe = [...sharedWithMe];
+			} else {
+				// Revert optimistic toggle
+				sharedEntry.groceryList.items[itemIndex].isChecked =
+					!sharedEntry.groceryList.items[itemIndex].isChecked;
+				sharedWithMe = [...sharedWithMe];
+				showToast('Failed to update item', 'error');
+			}
+		} catch {
+			// Revert
+			sharedEntry.groceryList.items[itemIndex].isChecked =
+				!sharedEntry.groceryList.items[itemIndex].isChecked;
+			sharedWithMe = [...sharedWithMe];
+			showToast('Failed to update item', 'error');
+		}
+	}
+
+	async function handleAddSharedItem(shareId: string, ownerUserId: string) {
+		const sharedEntry = sharedWithMe.find((s) => s.shareId === shareId);
+		if (!sharedEntry) return;
+		if (sharedEntry.permission !== 'ReadWrite') {
+			showToast('You only have view access to this list', 'error');
+			return;
+		}
+
+		const name = (sharedDraftNames[shareId] ?? '').trim();
+		if (!name) return;
+
+		try {
+			const params = new URLSearchParams({ weekStart, ownerUserId });
+			const resp = await fetch(`/app/grocery-lists/add-shared-item?${params}`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ name })
+			});
+
+			if (resp.ok) {
+				const updated = await resp.json();
+				sharedEntry.groceryList = updated;
+				sharedWithMe = [...sharedWithMe];
+				sharedDraftNames = { ...sharedDraftNames, [shareId]: '' };
+				showToast('Item added');
+			} else {
+				const body = await resp.json().catch(() => ({}));
+				showToast(body?.error ?? 'Failed to add item', 'error');
+			}
+		} catch {
+			showToast('Failed to add item', 'error');
+		}
+	}
 </script>
 
 <svelte:head>
@@ -109,6 +296,7 @@
 						if (result.type === 'success' && result.data?.groceryList) {
 							groceryList = result.data.groceryList as GroceryListResponse;
 							showToast('Grocery list regenerated');
+							await invalidateAll();
 						} else {
 							showToast('Failed to regenerate list', 'error');
 						}
@@ -139,6 +327,112 @@
 					Regenerate
 				</button>
 			</form>
+
+			<div class="relative">
+				<button
+					type="button"
+					onclick={openSharePanel}
+					class="flex items-center gap-1.5 rounded-lg bg-blue-50 px-3 py-2 text-sm font-medium text-blue-700 transition-colors hover:bg-blue-100"
+					aria-label="Share this grocery list"
+				>
+					<svg
+						xmlns="http://www.w3.org/2000/svg"
+						class="h-4 w-4"
+						fill="none"
+						viewBox="0 0 24 24"
+						stroke="currentColor"
+						stroke-width="2"
+					>
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							d="M7.217 10.907a2.25 2.25 0 1 0 0 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186 9.566-5.314m-9.566 7.5 9.566 5.314m0 0a2.25 2.25 0 1 0 3.935 2.186 2.25 2.25 0 0 0-3.935-2.186Zm0-12.814a2.25 2.25 0 1 0 3.933-2.185 2.25 2.25 0 0 0-3.933 2.185Z"
+						/>
+					</svg>
+					Share
+				</button>
+
+				{#if sharePanelOpen}
+					<div
+						class="absolute top-full left-0 z-20 mt-2 w-[min(38rem,calc(100vw-2rem))] rounded-xl border border-blue-200/60 bg-blue-50 p-4 shadow-lg"
+					>
+						<div class="mb-3 flex items-center justify-between">
+							<h3 class="font-display text-sm font-semibold text-charcoal">Share this list</h3>
+							<button
+								type="button"
+								onclick={() => (sharePanelOpen = false)}
+								class="text-charcoal/40 hover:text-charcoal/70"
+								aria-label="Close share panel"
+							>
+								<svg
+									xmlns="http://www.w3.org/2000/svg"
+									class="h-4 w-4"
+									fill="none"
+									viewBox="0 0 24 24"
+									stroke="currentColor"
+									stroke-width="2"
+									><path
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										d="M6 18L18 6M6 6l12 12"
+									/></svg
+								>
+							</button>
+						</div>
+						<div class="flex gap-2">
+							<input
+								type="email"
+								bind:value={shareEmail}
+								placeholder="Recipient email..."
+								class="flex-1 rounded-lg border border-blue-200 bg-white px-3 py-2 text-sm text-charcoal placeholder-charcoal/40 shadow-sm focus:border-blue-400 focus:ring-1 focus:ring-blue-400 focus:outline-none"
+							/>
+							<select
+								bind:value={sharePermission}
+								class="rounded-lg border border-blue-200 bg-white px-2 py-2 text-sm text-charcoal shadow-sm focus:border-blue-400 focus:outline-none"
+							>
+								<option value="ReadOnly">View only</option>
+								<option value="ReadWrite">Can edit</option>
+							</select>
+							<button
+								type="button"
+								onclick={handleShare}
+								disabled={!shareEmail.trim() || shareLoading}
+								class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:opacity-50"
+								>Share</button
+							>
+						</div>
+
+						{#if myShares.length > 0}
+							<ul class="mt-3 flex flex-col gap-1" role="list" aria-label="Current shares">
+								{#each myShares as share (share.id)}
+									<li
+										class="flex items-center justify-between rounded-lg bg-white px-3 py-2 text-sm shadow-sm"
+									>
+										<div>
+											<span class="font-medium text-charcoal">{share.sharedWithEmail}</span>
+											{#if share.sharedWithName}
+												<span class="ml-1 text-charcoal/50">({share.sharedWithName})</span>
+											{/if}
+											<span
+												class="ml-2 rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-medium text-blue-700"
+												>{share.permission === 'ReadOnly' ? 'View only' : 'Can edit'}</span
+											>
+										</div>
+										<button
+											type="button"
+											onclick={() => handleRevoke(share.id, share.sharedWithEmail)}
+											class="text-xs text-red-500 hover:text-red-700"
+											aria-label="Revoke access for {share.sharedWithEmail}">Revoke</button
+										>
+									</li>
+								{/each}
+							</ul>
+						{:else if sharesLoaded}
+							<p class="mt-3 text-xs text-charcoal/50">Not shared with anyone yet.</p>
+						{/if}
+					</div>
+				{/if}
+			</div>
 
 			<button
 				type="button"
@@ -327,6 +621,7 @@
 						if (result.type === 'success' && result.data?.groceryList) {
 							groceryList = result.data.groceryList as GroceryListResponse;
 							showToast('Grocery list generated!');
+							await invalidateAll();
 						} else {
 							showToast('Failed to generate grocery list', 'error');
 						}
@@ -358,6 +653,131 @@
 				</button>
 			</form>
 		</div>
+	{/if}
+
+	<!-- Shared with me -->
+	{#if sharedWithMe.length > 0}
+		<section class="mt-10" aria-labelledby="shared-with-me-heading">
+			<h2 id="shared-with-me-heading" class="mb-4 font-display text-lg font-semibold text-charcoal">
+				Shared with me
+			</h2>
+			<div class="flex flex-col gap-6">
+				{#each sharedWithMe as shared (shared.shareId)}
+					<div class="rounded-xl border border-purple-200/60 bg-white p-4 shadow-sm">
+						<div class="mb-3 flex items-center justify-between">
+							<div>
+								<span class="font-display text-sm font-semibold text-charcoal"
+									>{shared.ownerName || shared.ownerEmail}'s list</span
+								>
+								<span
+									class="ml-2 rounded-full bg-purple-100 px-2 py-0.5 text-[10px] font-medium text-purple-700"
+								>
+									{shared.permission === 'ReadOnly' ? 'View only' : 'Can edit'}
+								</span>
+							</div>
+							<button
+								type="button"
+								onclick={() => handleDismiss(shared.shareId)}
+								class="text-xs text-charcoal/40 hover:text-charcoal/70"
+								aria-label="Dismiss {shared.ownerName || shared.ownerEmail}'s list">Dismiss</button
+							>
+						</div>
+						{#if shared.permission === 'ReadWrite'}
+							<div class="mb-3 flex gap-2">
+								<input
+									type="text"
+									value={sharedDraftNames[shared.shareId] ?? ''}
+									oninput={(e) => {
+										const value = (e.currentTarget as HTMLInputElement).value;
+										sharedDraftNames = { ...sharedDraftNames, [shared.shareId]: value };
+									}}
+									placeholder="Add a custom item..."
+									class="flex-1 rounded-lg border border-purple-200 bg-white px-3 py-2 text-sm text-charcoal placeholder-charcoal/40 shadow-sm transition-colors focus:border-purple-400 focus:ring-1 focus:ring-purple-400 focus:outline-none"
+								/>
+								<button
+									type="button"
+									disabled={!(sharedDraftNames[shared.shareId] ?? '').trim()}
+									onclick={() => handleAddSharedItem(shared.shareId, shared.ownerUserId)}
+									class="rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-purple-700 disabled:opacity-40"
+								>
+									Add
+								</button>
+							</div>
+						{/if}
+						<ul class="flex flex-col gap-1" role="list" aria-label="Shared grocery items">
+							{#each getSortedSharedItems(shared) as item (item.originalIndex)}
+								<li
+									class="flex items-start gap-3 rounded-lg border border-purple-100 px-4 py-2 {item.isChecked
+										? 'bg-purple-50/40 opacity-60'
+										: 'bg-white'}"
+								>
+									{#if shared.permission === 'ReadWrite'}
+										<button
+											type="button"
+											onclick={() =>
+												handleToggleShared(shared.ownerUserId, shared.shareId, item.originalIndex)}
+											class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded border-2 transition-colors {item.isChecked
+												? 'border-purple-500 bg-purple-500 text-white'
+												: 'border-purple-300 hover:border-purple-400'}"
+											aria-label="Toggle {item.name}"
+										>
+											{#if item.isChecked}
+												<svg
+													xmlns="http://www.w3.org/2000/svg"
+													class="h-3 w-3"
+													fill="none"
+													viewBox="0 0 24 24"
+													stroke="currentColor"
+													stroke-width="3"
+													><path
+														stroke-linecap="round"
+														stroke-linejoin="round"
+														d="M4.5 12.75l6 6 9-13.5"
+													/></svg
+												>
+											{/if}
+										</button>
+									{:else}
+										<span
+											class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded border-2 {item.isChecked
+												? 'border-purple-300 bg-purple-300'
+												: 'border-purple-200'}"
+											aria-hidden="true"
+										>
+											{#if item.isChecked}
+												<svg
+													xmlns="http://www.w3.org/2000/svg"
+													class="h-3 w-3 text-white"
+													fill="none"
+													viewBox="0 0 24 24"
+													stroke="currentColor"
+													stroke-width="3"
+													><path
+														stroke-linecap="round"
+														stroke-linejoin="round"
+														d="M4.5 12.75l6 6 9-13.5"
+													/></svg
+												>
+											{/if}
+										</span>
+									{/if}
+									<div class="min-w-0 flex-1">
+										<span
+											class="block text-sm font-medium {item.isChecked
+												? 'text-charcoal/40 line-through'
+												: 'text-charcoal'}">{item.name}</span
+										>
+										{#if item.quantity > 0}
+											<span class="text-xs text-charcoal/50">{item.quantity} {item.unit}</span>
+										{/if}
+									</div>
+								</li>
+							{/each}
+						</ul>
+					</div>
+				{/each}
+			</div>
+		</section>
 	{/if}
 
 	<!-- Delete confirmation dialog -->

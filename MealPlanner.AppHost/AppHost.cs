@@ -2,6 +2,7 @@ var builder = DistributedApplication.CreateBuilder(args);
 
 var mongoDb = builder.AddMongoDB("mongodb")
 	.WithLifetime(ContainerLifetime.Persistent)
+	.WithDataVolume()
 	.WithDbGate();
 var mealPlannerDb = mongoDb.AddDatabase("mealplannerDb");
 

@@ -167,12 +167,86 @@ public class GenerateGroceryListCommandHandler(IMongoClient mongoClient)
 				await groceryCollection.InsertOneAsync(document, cancellationToken: cancellationToken);
 			}
 
+			// 7. Auto-share the grocery list with everyone the meal plan is shared with
+			await PropagateSharesFromMealPlanAsync(db, command.UserId, weekStartStr, cancellationToken);
+
 			return Result<GroceryList>.Success(GroceryListHelpers.MapToDomain(document));
 		}
 		catch (Exception ex)
 		{
 			return Result<GroceryList>.Failure(
 				new Error(ErrorCodes.DatabaseError, "Failed to generate grocery list.", ex));
+		}
+	}
+
+	/// <summary>
+	/// Upserts grocery list shares for all active meal plan shares that do not already
+	/// have a corresponding grocery list share. No-ops if there are no meal plan shares.
+	/// </summary>
+	private static async Task PropagateSharesFromMealPlanAsync(
+		IMongoDatabase db,
+		string ownerUserId,
+		string weekStartStr,
+		CancellationToken cancellationToken)
+	{
+		var mealPlanSharesCollection = db.GetCollection<MealPlanShareDocument>("shares");
+		var groceryListSharesCollection = db.GetCollection<GroceryListShareDocument>("grocerylist_shares");
+
+		// Find all active (non-dismissed) meal plan shares for this owner and week
+		var mealShareFilter = Builders<MealPlanShareDocument>.Filter.And(
+			Builders<MealPlanShareDocument>.Filter.Eq(s => s.OwnerUserId, ownerUserId),
+			Builders<MealPlanShareDocument>.Filter.Eq(s => s.WeekStart, weekStartStr),
+			Builders<MealPlanShareDocument>.Filter.Eq(s => s.DismissedByRecipient, false));
+
+		var mealPlanShares = await mealPlanSharesCollection
+			.Find(mealShareFilter)
+			.ToListAsync(cancellationToken);
+
+		if (mealPlanShares.Count == 0)
+			return;
+
+		// Fetch existing grocery list shares so we do not create duplicates
+		var recipientIds = mealPlanShares.Select(s => s.SharedWithUserId).Distinct().ToList();
+		var existingShareFilter = Builders<GroceryListShareDocument>.Filter.And(
+			Builders<GroceryListShareDocument>.Filter.Eq(s => s.OwnerUserId, ownerUserId),
+			Builders<GroceryListShareDocument>.Filter.Eq(s => s.WeekStart, weekStartStr),
+			Builders<GroceryListShareDocument>.Filter.In(s => s.SharedWithUserId, recipientIds));
+
+		var existingShares = await groceryListSharesCollection
+			.Find(existingShareFilter)
+			.ToListAsync(cancellationToken);
+
+		var alreadySharedWith = existingShares
+			.Select(s => s.SharedWithUserId)
+			.ToHashSet();
+
+		var newShares = mealPlanShares
+			.Where(s => !alreadySharedWith.Contains(s.SharedWithUserId))
+			.Select(s => new GroceryListShareDocument
+			{
+				OwnerUserId = s.OwnerUserId,
+				SharedWithUserId = s.SharedWithUserId,
+				WeekStart = s.WeekStart,
+				Permission = s.Permission,
+				SharedAt = DateTime.UtcNow,
+				DismissedByRecipient = false
+			})
+			.ToList();
+
+		if (newShares.Count > 0)
+		{
+			try
+			{
+				await groceryListSharesCollection.InsertManyAsync(newShares, cancellationToken: cancellationToken);
+			}
+			catch (MongoBulkWriteException<GroceryListShareDocument> ex)
+			{
+				var hasNonDuplicateErrors = ex.WriteErrors.Any(e =>
+					e.Code is not (11000 or 11001 or 12582));
+
+				if (hasNonDuplicateErrors)
+					throw;
+			}
 		}
 	}
 }
