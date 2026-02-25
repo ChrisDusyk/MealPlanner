@@ -1,8 +1,18 @@
 <script lang="ts">
+	import { getContext } from 'svelte';
 	import { signIn, signOut } from '@auth/sveltekit/client';
 	import type { Session } from '@auth/sveltekit';
+	import { APP_USER_CONTEXT_KEY, type AppUserContextValue } from '$lib/context/appUserContext';
 
 	let { session }: { session: Session | null } = $props();
+	const appUserContext = getContext<AppUserContextValue | undefined>(APP_USER_CONTEXT_KEY);
+
+	let displayName = $derived(
+		appUserContext?.appUserState.current?.name?.trim() ||
+			session?.user?.name?.trim() ||
+			session?.user?.email ||
+			'User'
+	);
 
 	let scrolled = $state(false);
 	let mobileOpen = $state(false);
@@ -114,7 +124,7 @@
 						aria-haspopup="true"
 						aria-controls="user-menu"
 					>
-						<span>{session.user.name ?? session.user.email}</span>
+						<span>{displayName}</span>
 						<svg
 							xmlns="http://www.w3.org/2000/svg"
 							class="h-4 w-4 transition-transform duration-200 {dropdownOpen ? 'rotate-180' : ''}"
@@ -302,7 +312,7 @@
 				<hr class="border-green-700/40" />
 				{#if session?.user}
 					<span class="rounded-lg px-3 py-2.5 font-display text-sm font-medium text-green-200/90">
-						{session.user.name ?? session.user.email}
+						{displayName}
 					</span>
 					<a
 						href="/app"
@@ -324,6 +334,27 @@
 							/>
 						</svg>
 						Dashboard
+					</a>
+					<a
+						href="/app/account"
+						onclick={() => (mobileOpen = false)}
+						class="flex items-center gap-3 rounded-lg px-3 py-2.5 font-display text-sm font-medium text-green-200/90 transition-colors hover:bg-green-800/50 hover:text-white"
+					>
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							class="h-4 w-4"
+							fill="none"
+							viewBox="0 0 24 24"
+							stroke="currentColor"
+							stroke-width="2"
+						>
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+							/>
+						</svg>
+						Account
 					</a>
 					<button
 						type="button"

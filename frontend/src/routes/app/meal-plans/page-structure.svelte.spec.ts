@@ -14,6 +14,7 @@ function buildData() {
 			expires: new Date(Date.now() + 60_000).toISOString(),
 			accessToken: 'test-access-token'
 		},
+		appUser: null,
 		mealPlan: {
 			id: 'plan-1',
 			weekStart: '2026-02-23',
@@ -33,7 +34,9 @@ describe('meal plans route structure', () => {
 			data: buildData()
 		});
 
-		await expect.element(page.getByRole('heading', { level: 1, name: 'Meal Plans' })).toBeInTheDocument();
+		await expect
+			.element(page.getByRole('heading', { level: 1, name: 'Meal Plans' }))
+			.toBeInTheDocument();
 		await expect.element(page.getByRole('button', { name: 'Share' })).toBeInTheDocument();
 		await expect.element(page.getByRole('button', { name: 'Previous week' })).toBeInTheDocument();
 		await expect.element(page.getByRole('button', { name: 'Next week' })).toBeInTheDocument();

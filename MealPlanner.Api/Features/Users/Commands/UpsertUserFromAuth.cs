@@ -43,10 +43,10 @@ public class UpsertUserFromAuthCommandHandler(IMongoClient mongoClient)
 			var email = command.Email.GetValueOrNull();
 
 			var updateDefinition = Builders<UserDocument>.Update
-				.Set(u => u.Name, command.Name)
 				.Set(u => u.Email, email)
 				.Set(u => u.UpdatedAt, now)
 				.SetOnInsert(u => u.Auth0UserId, command.Auth0UserId)
+				.SetOnInsert(u => u.Name, command.Name)
 				.SetOnInsert(u => u.CreatedAt, now);
 
 			var options = new FindOneAndUpdateOptions<UserDocument>

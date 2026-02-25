@@ -37,4 +37,23 @@ public class UserHandlerMappersTests
 		Assert.Equal("u1", user.Id);
 		Assert.False(user.Email.HasValue);
 	}
+
+	[Fact]
+	public void FindUserByAuth0Id_MapToDomain_MapsEmailSome_WhenPresent()
+	{
+		var user = FindUserByAuth0IdQueryHandler.MapToDomain(CreateDocument("pat@example.com"));
+
+		Assert.Equal("u1", user.Id);
+		Assert.True(user.Email.HasValue);
+		Assert.Equal("pat@example.com", user.Email.Value);
+	}
+
+	[Fact]
+	public void UpdateCurrentUserName_MapToDomain_MapsEmailNone_WhenMissing()
+	{
+		var user = UpdateCurrentUserNameCommandHandler.MapToDomain(CreateDocument(null));
+
+		Assert.Equal("u1", user.Id);
+		Assert.False(user.Email.HasValue);
+	}
 }
