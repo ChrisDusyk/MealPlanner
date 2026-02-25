@@ -282,28 +282,111 @@
 				</button>
 			</form>
 
-			<button
-				type="button"
-				onclick={openSharePanel}
-				class="flex items-center gap-1.5 rounded-lg bg-blue-50 px-3 py-2 text-sm font-medium text-blue-700 transition-colors hover:bg-blue-100"
-				aria-label="Share this grocery list"
-			>
-				<svg
-					xmlns="http://www.w3.org/2000/svg"
-					class="h-4 w-4"
-					fill="none"
-					viewBox="0 0 24 24"
-					stroke="currentColor"
-					stroke-width="2"
+			<div class="relative">
+				<button
+					type="button"
+					onclick={openSharePanel}
+					class="flex items-center gap-1.5 rounded-lg bg-blue-50 px-3 py-2 text-sm font-medium text-blue-700 transition-colors hover:bg-blue-100"
+					aria-label="Share this grocery list"
 				>
-					<path
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						d="M7.217 10.907a2.25 2.25 0 1 0 0 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186 9.566-5.314m-9.566 7.5 9.566 5.314m0 0a2.25 2.25 0 1 0 3.935 2.186 2.25 2.25 0 0 0-3.935-2.186Zm0-12.814a2.25 2.25 0 1 0 3.933-2.185 2.25 2.25 0 0 0-3.933 2.185Z"
-					/>
-				</svg>
-				Share
-			</button>
+					<svg
+						xmlns="http://www.w3.org/2000/svg"
+						class="h-4 w-4"
+						fill="none"
+						viewBox="0 0 24 24"
+						stroke="currentColor"
+						stroke-width="2"
+					>
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							d="M7.217 10.907a2.25 2.25 0 1 0 0 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186 9.566-5.314m-9.566 7.5 9.566 5.314m0 0a2.25 2.25 0 1 0 3.935 2.186 2.25 2.25 0 0 0-3.935-2.186Zm0-12.814a2.25 2.25 0 1 0 3.933-2.185 2.25 2.25 0 0 0-3.933 2.185Z"
+						/>
+					</svg>
+					Share
+				</button>
+
+				{#if sharePanelOpen}
+					<div
+						class="absolute top-full left-0 z-20 mt-2 w-[min(38rem,calc(100vw-2rem))] rounded-xl border border-blue-200/60 bg-blue-50 p-4 shadow-lg"
+					>
+						<div class="mb-3 flex items-center justify-between">
+							<h3 class="font-display text-sm font-semibold text-charcoal">Share this list</h3>
+							<button
+								type="button"
+								onclick={() => (sharePanelOpen = false)}
+								class="text-charcoal/40 hover:text-charcoal/70"
+								aria-label="Close share panel"
+							>
+								<svg
+									xmlns="http://www.w3.org/2000/svg"
+									class="h-4 w-4"
+									fill="none"
+									viewBox="0 0 24 24"
+									stroke="currentColor"
+									stroke-width="2"
+									><path
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										d="M6 18L18 6M6 6l12 12"
+									/></svg
+								>
+							</button>
+						</div>
+						<div class="flex gap-2">
+							<input
+								type="email"
+								bind:value={shareEmail}
+								placeholder="Recipient email..."
+								class="flex-1 rounded-lg border border-blue-200 bg-white px-3 py-2 text-sm text-charcoal placeholder-charcoal/40 shadow-sm focus:border-blue-400 focus:ring-1 focus:ring-blue-400 focus:outline-none"
+							/>
+							<select
+								bind:value={sharePermission}
+								class="rounded-lg border border-blue-200 bg-white px-2 py-2 text-sm text-charcoal shadow-sm focus:border-blue-400 focus:outline-none"
+							>
+								<option value="ReadOnly">View only</option>
+								<option value="ReadWrite">Can edit</option>
+							</select>
+							<button
+								type="button"
+								onclick={handleShare}
+								disabled={!shareEmail.trim() || shareLoading}
+								class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:opacity-50"
+								>Share</button
+							>
+						</div>
+
+						{#if myShares.length > 0}
+							<ul class="mt-3 flex flex-col gap-1" role="list" aria-label="Current shares">
+								{#each myShares as share (share.id)}
+									<li
+										class="flex items-center justify-between rounded-lg bg-white px-3 py-2 text-sm shadow-sm"
+									>
+										<div>
+											<span class="font-medium text-charcoal">{share.sharedWithEmail}</span>
+											{#if share.sharedWithName}
+												<span class="ml-1 text-charcoal/50">({share.sharedWithName})</span>
+											{/if}
+											<span
+												class="ml-2 rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-medium text-blue-700"
+												>{share.permission === 'ReadOnly' ? 'View only' : 'Can edit'}</span
+											>
+										</div>
+										<button
+											type="button"
+											onclick={() => handleRevoke(share.id, share.sharedWithEmail)}
+											class="text-xs text-red-500 hover:text-red-700"
+											aria-label="Revoke access for {share.sharedWithEmail}">Revoke</button
+										>
+									</li>
+								{/each}
+							</ul>
+						{:else if sharesLoaded}
+							<p class="mt-3 text-xs text-charcoal/50">Not shared with anyone yet.</p>
+						{/if}
+					</div>
+				{/if}
+			</div>
 
 			<button
 				type="button"
@@ -456,82 +539,6 @@
 				<p class="text-charcoal/60">
 					Your grocery list is empty. Add some meals to your plan and regenerate.
 				</p>
-			</div>
-		{/if}
-
-		<!-- Share panel -->
-		{#if sharePanelOpen}
-			<div class="mt-6 rounded-xl border border-blue-200/60 bg-blue-50/40 p-4">
-				<div class="mb-3 flex items-center justify-between">
-					<h3 class="font-display text-sm font-semibold text-charcoal">Share this list</h3>
-					<button
-						type="button"
-						onclick={() => (sharePanelOpen = false)}
-						class="text-charcoal/40 hover:text-charcoal/70"
-						aria-label="Close share panel"
-					>
-						<svg
-							xmlns="http://www.w3.org/2000/svg"
-							class="h-4 w-4"
-							fill="none"
-							viewBox="0 0 24 24"
-							stroke="currentColor"
-							stroke-width="2"
-							><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg
-						>
-					</button>
-				</div>
-				<div class="flex gap-2">
-					<input
-						type="email"
-						bind:value={shareEmail}
-						placeholder="Recipient email..."
-						class="flex-1 rounded-lg border border-blue-200 bg-white px-3 py-2 text-sm text-charcoal placeholder-charcoal/40 shadow-sm focus:border-blue-400 focus:ring-1 focus:ring-blue-400 focus:outline-none"
-					/>
-					<select
-						bind:value={sharePermission}
-						class="rounded-lg border border-blue-200 bg-white px-2 py-2 text-sm text-charcoal shadow-sm focus:border-blue-400 focus:outline-none"
-					>
-						<option value="ReadOnly">View only</option>
-						<option value="ReadWrite">Can edit</option>
-					</select>
-					<button
-						type="button"
-						onclick={handleShare}
-						disabled={!shareEmail.trim() || shareLoading}
-						class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:opacity-50"
-						>Share</button
-					>
-				</div>
-
-				{#if myShares.length > 0}
-					<ul class="mt-3 flex flex-col gap-1" role="list" aria-label="Current shares">
-						{#each myShares as share (share.id)}
-							<li
-								class="flex items-center justify-between rounded-lg bg-white px-3 py-2 text-sm shadow-sm"
-							>
-								<div>
-									<span class="font-medium text-charcoal">{share.sharedWithEmail}</span>
-									{#if share.sharedWithName}
-										<span class="ml-1 text-charcoal/50">({share.sharedWithName})</span>
-									{/if}
-									<span
-										class="ml-2 rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-medium text-blue-700"
-										>{share.permission === 'ReadOnly' ? 'View only' : 'Can edit'}</span
-									>
-								</div>
-								<button
-									type="button"
-									onclick={() => handleRevoke(share.id, share.sharedWithEmail)}
-									class="text-xs text-red-500 hover:text-red-700"
-									aria-label="Revoke access for {share.sharedWithEmail}">Revoke</button
-								>
-							</li>
-						{/each}
-					</ul>
-				{:else if sharesLoaded}
-					<p class="mt-3 text-xs text-charcoal/50">Not shared with anyone yet.</p>
-				{/if}
 			</div>
 		{/if}
 	{:else}
