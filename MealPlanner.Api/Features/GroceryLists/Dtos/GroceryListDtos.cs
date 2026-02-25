@@ -42,3 +42,57 @@ public record GroceryListResponse(
 /// Request body for adding a custom item to an existing grocery list.
 /// </summary>
 public record AddCustomItemRequest(string Name);
+
+// ── Sharing DTOs ──────────────────────────────────────
+
+/// <summary>
+/// Request body for sharing a grocery list with another user.
+/// </summary>
+public record ShareGroceryListRequest(
+	string Email,
+	string WeekStart,
+	string Permission
+);
+
+/// <summary>
+/// Response body representing a single grocery list share record.
+/// Includes enriched recipient info when available.
+/// </summary>
+public record GroceryListShareResponse(
+	string Id,
+	string OwnerUserId,
+	string SharedWithUserId,
+	string SharedWithName,
+	string SharedWithEmail,
+	string WeekStart,
+	string Permission,
+	DateTime SharedAt
+)
+{
+	public static GroceryListShareResponse FromDomain(
+		GroceryListShare share,
+		string sharedWithName = "",
+		string sharedWithEmail = "") =>
+		new(
+			Id: share.Id,
+			OwnerUserId: share.OwnerUserId,
+			SharedWithUserId: share.SharedWithUserId,
+			SharedWithName: sharedWithName,
+			SharedWithEmail: sharedWithEmail,
+			WeekStart: share.WeekStart,
+			Permission: share.Permission.ToString(),
+			SharedAt: share.SharedAt
+		);
+}
+
+/// <summary>
+/// A shared grocery list as seen by the recipient, including full list data and owner info.
+/// </summary>
+public record SharedGroceryListResponse(
+	string ShareId,
+	string OwnerUserId,
+	string OwnerName,
+	string OwnerEmail,
+	string Permission,
+	GroceryListResponse GroceryList
+);
