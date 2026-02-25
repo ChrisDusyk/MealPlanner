@@ -176,9 +176,12 @@
 				weekStart,
 				ownerUserId
 			});
-			const resp = await fetch(`/api/grocery-lists/items/${itemIndex}/toggle?${params}`, {
-				method: 'PUT'
-			});
+			const resp = await fetch(
+				`/app/grocery-lists/toggle-shared?itemIndex=${itemIndex}&${params}`,
+				{
+					method: 'PUT'
+				}
+			);
 			if (resp.ok) {
 				const updated = await resp.json();
 				sharedEntry.groceryList = updated;
