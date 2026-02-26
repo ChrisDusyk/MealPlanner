@@ -40,6 +40,10 @@
 
 	// Validation state
 	let validationErrors: Record<string, string> = $state({});
+	let importingIngredients = $state(false);
+	let importErrorMessage = $state('');
+	let importSuccessMessage = $state('');
+	let importWarnings: string[] = $state([]);
 
 	// Common units for the select dropdown
 	const units = [
@@ -147,6 +151,122 @@
 		};
 
 		onSubmitCallback(request);
+	}
+
+	function clearImportFeedback() {
+		importErrorMessage = '';
+		importSuccessMessage = '';
+		importWarnings = [];
+	}
+
+	function validateSourceUrlForImport(): boolean {
+		const trimmed = sourceUrl.trim();
+		if (!trimmed) {
+			validationErrors = {
+				...validationErrors,
+				sourceUrl: 'Enter a source URL before importing ingredients.'
+			};
+			return false;
+		}
+
+		try {
+			const url = new URL(trimmed);
+			if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+				validationErrors = {
+					...validationErrors,
+					sourceUrl: 'URL must start with http:// or https://'
+				};
+				return false;
+			}
+		} catch {
+			validationErrors = {
+				...validationErrors,
+				sourceUrl: 'Please enter a valid URL.'
+			};
+			return false;
+		}
+
+		if (validationErrors.sourceUrl) {
+			const { sourceUrl: _ignored, ...remaining } = validationErrors;
+			validationErrors = remaining;
+		}
+
+		return true;
+	}
+
+	function replaceIngredientRows(imported: Ingredient[]) {
+		ingredients = imported.map((ingredient, index) => ({
+			_id: index + 1,
+			name: ingredient.name,
+			quantity: ingredient.quantity,
+			unit: ingredient.unit
+		}));
+		nextId = ingredients.length + 1;
+	}
+
+	async function importFromSourceUrl() {
+		if (importingIngredients || submitting) return;
+
+		clearImportFeedback();
+
+		if (!validateSourceUrlForImport()) {
+			focusFirstInvalidField();
+			return;
+		}
+
+		importingIngredients = true;
+		try {
+			const response = await fetch('/app/recipes/import-ingredients', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ sourceUrl: sourceUrl.trim() })
+			});
+
+			const payload: { ingredients?: unknown; warnings?: unknown; error?: unknown } | null =
+				await response.json().catch(() => null);
+
+			if (!response.ok) {
+				importErrorMessage =
+					typeof payload?.error === 'string'
+						? payload.error
+						: 'Failed to import ingredients from the provided URL.';
+				return;
+			}
+
+			const rawIngredients = Array.isArray(payload?.ingredients)
+				? (payload.ingredients as unknown[])
+				: [];
+
+			const importedIngredients: Ingredient[] = rawIngredients
+				.filter(
+					(item): item is { name: string; quantity: number; unit: string } =>
+						typeof item === 'object' &&
+						item !== null &&
+						typeof (item as { name?: unknown }).name === 'string' &&
+						typeof (item as { quantity?: unknown }).quantity === 'number' &&
+						typeof (item as { unit?: unknown }).unit === 'string'
+				)
+				.map((item) => ({
+					name: item.name.trim(),
+					quantity: Number.isFinite(item.quantity) ? item.quantity : 0,
+					unit: item.unit.trim()
+				}))
+				.filter((item) => item.name.length > 0);
+
+			const rawWarnings = Array.isArray(payload?.warnings)
+				? (payload.warnings as unknown[])
+				: [];
+			importWarnings = rawWarnings.filter((warning): warning is string => typeof warning === 'string');
+
+			replaceIngredientRows(importedIngredients);
+			importSuccessMessage = importedIngredients.length
+				? `Imported ${importedIngredients.length} ingredient${importedIngredients.length === 1 ? '' : 's'} and replaced current rows.`
+				: 'No ingredients were detected on that page.';
+		} catch {
+			importErrorMessage = 'An unexpected error occurred while importing ingredients.';
+		} finally {
+			importingIngredients = false;
+		}
 	}
 
 	let validationErrorMessages = $derived(Object.values(validationErrors));
@@ -289,6 +409,50 @@
 						{validationErrors.sourceUrl}
 					</p>
 				{/if}
+				<div class="mt-3 flex flex-wrap items-center gap-3">
+					<button
+						type="button"
+						onclick={importFromSourceUrl}
+						disabled={importingIngredients || submitting}
+						class="inline-flex items-center gap-2 rounded-lg border border-green-300 bg-green-50 px-3.5 py-2 font-display text-xs font-semibold text-green-700 transition-all hover:bg-green-100 disabled:cursor-not-allowed disabled:opacity-60"
+					>
+						{#if importingIngredients}
+							<svg class="h-3.5 w-3.5 animate-spin" viewBox="0 0 24 24" fill="none">
+								<circle
+									cx="12"
+									cy="12"
+									r="10"
+									stroke="currentColor"
+									stroke-width="3"
+									class="opacity-25"
+								/>
+								<path
+									fill="currentColor"
+									class="opacity-75"
+									d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+								/>
+							</svg>
+							Importing...
+						{:else}
+							Import ingredients from URL
+						{/if}
+					</button>
+					<span class="text-xs text-charcoal/55">Import replaces existing ingredient rows.</span>
+				</div>
+
+				{#if importErrorMessage}
+					<p class="mt-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+						{importErrorMessage}
+					</p>
+				{/if}
+
+				{#if importSuccessMessage}
+					<p
+						class="mt-2 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700"
+					>
+						{importSuccessMessage}
+					</p>
+				{/if}
 			</div>
 		</div>
 	</section>
@@ -326,6 +490,17 @@
 		</div>
 
 		<div class="p-6">
+			{#if importWarnings.length > 0}
+				<div class="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800">
+					<p class="font-semibold">Import warnings</p>
+					<ul class="mt-1 list-disc space-y-1 pl-5">
+						{#each importWarnings as warning}
+							<li>{warning}</li>
+						{/each}
+					</ul>
+				</div>
+			{/if}
+
 			{#if ingredients.length === 0}
 				<!-- Empty state -->
 				<div

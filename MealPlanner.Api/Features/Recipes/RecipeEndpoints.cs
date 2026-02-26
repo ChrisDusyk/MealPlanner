@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using MealPlanner.Api.Features.Recipes.Commands;
 using MealPlanner.Api.Features.Recipes.Dtos;
+using MealPlanner.Api.Features.Recipes.Import;
 using MealPlanner.Api.Features.Recipes.Models;
 using MealPlanner.Api.Features.Recipes.Queries;
 using MealPlanner.Api.Shared;
@@ -20,6 +21,7 @@ public static class RecipeEndpoints
 
 		group.MapGet("/", GetAllRecipes);
 		group.MapGet("/{id}", GetRecipeById);
+		group.MapPost("/import-ingredients", ImportIngredients);
 		group.MapPost("/", CreateRecipe);
 		group.MapPut("/{id}", UpdateRecipe);
 
@@ -90,6 +92,21 @@ public static class RecipeEndpoints
 				var response = RecipeResponse.FromDomain(recipe);
 				return Results.Created($"/api/recipes/{response.Id}", response);
 			},
+			onFailure: error => error.Code == ErrorCodes.ValidationFailed
+				? Results.BadRequest(error.Message)
+				: Results.Problem(error.Message, statusCode: 500));
+	}
+
+	private static async Task<IResult> ImportIngredients(
+		ImportIngredientsRequest request,
+		IQueryHandler<ImportIngredientsQuery, ImportedIngredientSet> handler,
+		CancellationToken cancellationToken)
+	{
+		var result = await handler.HandleAsync(new ImportIngredientsQuery(request.SourceUrl), cancellationToken);
+		return result.Match(
+			onSuccess: importResult => Results.Ok(new ImportIngredientsResponse(
+				importResult.Ingredients.Select(IngredientDto.FromDomain).ToList(),
+				importResult.Warnings.ToList())),
 			onFailure: error => error.Code == ErrorCodes.ValidationFailed
 				? Results.BadRequest(error.Message)
 				: Results.Problem(error.Message, statusCode: 500));

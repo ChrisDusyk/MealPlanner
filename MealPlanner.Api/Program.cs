@@ -2,6 +2,7 @@ using MealPlanner.Api.Features.GroceryLists;
 using MealPlanner.Api.Features.GroceryLists.Realtime;
 using MealPlanner.Api.Features.MealPlans;
 using MealPlanner.Api.Features.MealPlans.Realtime;
+using MealPlanner.Api.Features.Recipes.Import;
 using MealPlanner.Api.Features.Recipes;
 using MealPlanner.Api.Features.Users;
 using MealPlanner.Api.Shared;
@@ -23,6 +24,28 @@ builder.Services.AddSignalR();
 builder.Services.AddSingleton<IUserIdProvider, GroceryListUserIdProvider>();
 builder.Services.AddScoped<IGroceryListRealtimeNotifier, GroceryListRealtimeNotifier>();
 builder.Services.AddScoped<IMealPlanRealtimeNotifier, MealPlanRealtimeNotifier>();
+builder.Services.Configure<AnthropicOptions>(builder.Configuration.GetSection(AnthropicOptions.SectionName));
+var anthropicOptionsSection = builder.Configuration.GetSection(AnthropicOptions.SectionName);
+var anthropicTimeoutSeconds = anthropicOptionsSection.GetValue<int?>(nameof(AnthropicOptions.HttpTimeoutSeconds))
+                              ?? 45;
+var pageFetchTimeoutSeconds = anthropicOptionsSection.GetValue<int?>(nameof(AnthropicOptions.FetchTimeoutSeconds))
+                              ?? 20;
+
+builder.Services.AddHttpClient(AnthropicOptions.HttpClientName, client =>
+{
+	client.BaseAddress = new Uri("https://api.anthropic.com/");
+	client.Timeout = TimeSpan.FromSeconds(Math.Max(5, anthropicTimeoutSeconds));
+});
+
+builder.Services.AddHttpClient(AnthropicOptions.PageFetchHttpClientName, client =>
+{
+	client.Timeout = TimeSpan.FromSeconds(Math.Max(5, pageFetchTimeoutSeconds));
+	client.DefaultRequestHeaders.UserAgent.ParseAdd("MealPlanner/1.0 (recipe-import)");
+});
+
+builder.Services.AddScoped<IRecipePageTextExtractor, RecipePageTextExtractor>();
+builder.Services.AddScoped<IClaudeIngredientExtractorClient, ClaudeIngredientExtractorClient>();
+builder.Services.AddScoped<IRecipeIngredientImportService, RecipeIngredientImportService>();
 
 // Authentication & Authorization
 builder.Services.AddAuthentication()
