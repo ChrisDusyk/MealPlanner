@@ -3,6 +3,7 @@ using MealPlanner.Api.Features.MealPlans.Commands;
 using MealPlanner.Api.Features.MealPlans.Dtos;
 using MealPlanner.Api.Features.MealPlans.Models;
 using MealPlanner.Api.Features.MealPlans.Queries;
+using MealPlanner.Api.Features.MealPlans.Realtime;
 using MealPlanner.Api.Shared;
 using MongoDB.Driver;
 
@@ -97,6 +98,7 @@ public static class MealPlanEndpoints
 		HttpContext httpContext,
 		UpdateDaySlotRequest request,
 		ICommandHandler<UpdateDaySlotCommand, MealPlan> handler,
+		IMealPlanRealtimeNotifier realtimeNotifier,
 		IMongoClient mongoClient,
 		CancellationToken cancellationToken,
 		string weekStart,
@@ -125,20 +127,34 @@ public static class MealPlanEndpoints
 			request.Items.Select(i => i.ToDomain()).ToList());
 
 		var result = await handler.HandleAsync(command, cancellationToken);
-		return result.Match(
-			onSuccess: plan => Results.Ok(MealPlanResponse.FromDomain(plan)),
-			onFailure: error => error.Code switch
+		if (!result.IsSuccess)
+		{
+			var error = result.Error!;
+			return error.Code switch
 			{
 				ErrorCodes.ValidationFailed => Results.BadRequest(error.Message),
 				ErrorCodes.NotFound => Results.NotFound(error.Message),
 				_ => Results.Problem(error.Message, statusCode: 500)
-			});
+			};
+		}
+
+		var plan = result.Value!;
+		await realtimeNotifier.PublishMealPlanUpdatedAsync(
+			ownerUserId: plan.UserId,
+			weekStart: plan.WeekStart,
+			updatedPlan: plan,
+			changedByUserId: userId,
+			eventType: MealPlanRealtimeEventType.DaySlotUpdated,
+			cancellationToken: cancellationToken);
+
+		return Results.Ok(MealPlanResponse.FromDomain(plan));
 	}
 
 	private static async Task<IResult> CopyCategory(
 		HttpContext httpContext,
 		CopyCategoryRequest request,
 		ICommandHandler<CopyCategoryCommand, MealPlan> handler,
+		IMealPlanRealtimeNotifier realtimeNotifier,
 		IMongoClient mongoClient,
 		CancellationToken cancellationToken,
 		string weekStart,
@@ -173,20 +189,34 @@ public static class MealPlanEndpoints
 			targetDays);
 
 		var result = await handler.HandleAsync(command, cancellationToken);
-		return result.Match(
-			onSuccess: plan => Results.Ok(MealPlanResponse.FromDomain(plan)),
-			onFailure: error => error.Code switch
+		if (!result.IsSuccess)
+		{
+			var error = result.Error!;
+			return error.Code switch
 			{
 				ErrorCodes.ValidationFailed => Results.BadRequest(error.Message),
 				ErrorCodes.NotFound => Results.NotFound(error.Message),
 				_ => Results.Problem(error.Message, statusCode: 500)
-			});
+			};
+		}
+
+		var plan = result.Value!;
+		await realtimeNotifier.PublishMealPlanUpdatedAsync(
+			ownerUserId: plan.UserId,
+			weekStart: plan.WeekStart,
+			updatedPlan: plan,
+			changedByUserId: userId,
+			eventType: MealPlanRealtimeEventType.CategoryCopied,
+			cancellationToken: cancellationToken);
+
+		return Results.Ok(MealPlanResponse.FromDomain(plan));
 	}
 
 	private static async Task<IResult> RemoveSlotItem(
 		int itemIndex,
 		HttpContext httpContext,
 		ICommandHandler<RemoveSlotItemCommand, MealPlan> handler,
+		IMealPlanRealtimeNotifier realtimeNotifier,
 		IMongoClient mongoClient,
 		CancellationToken cancellationToken,
 		string weekStart,
@@ -215,14 +245,27 @@ public static class MealPlanEndpoints
 			itemIndex);
 
 		var result = await handler.HandleAsync(command, cancellationToken);
-		return result.Match(
-			onSuccess: plan => Results.Ok(MealPlanResponse.FromDomain(plan)),
-			onFailure: error => error.Code switch
+		if (!result.IsSuccess)
+		{
+			var error = result.Error!;
+			return error.Code switch
 			{
 				ErrorCodes.ValidationFailed => Results.BadRequest(error.Message),
 				ErrorCodes.NotFound => Results.NotFound(error.Message),
 				_ => Results.Problem(error.Message, statusCode: 500)
-			});
+			};
+		}
+
+		var plan = result.Value!;
+		await realtimeNotifier.PublishMealPlanUpdatedAsync(
+			ownerUserId: plan.UserId,
+			weekStart: plan.WeekStart,
+			updatedPlan: plan,
+			changedByUserId: userId,
+			eventType: MealPlanRealtimeEventType.SlotItemRemoved,
+			cancellationToken: cancellationToken);
+
+		return Results.Ok(MealPlanResponse.FromDomain(plan));
 	}
 
 	// ── Sharing Handlers ───────────────────────────────────

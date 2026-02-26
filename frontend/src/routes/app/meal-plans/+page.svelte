@@ -1,8 +1,13 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { onMount } from 'svelte';
 	import type { MealSlotItem, MealPlanResponse } from '$lib/api/mealPlanApi';
 	import type { Recipe } from '$lib/api/recipeApi';
 	import type { MealPlanShareResponse, SharedMealPlanResponse } from '$lib/api/sharingApi';
+	import {
+		MealPlanRealtimeClient,
+		type MealPlanUpdatedEvent
+	} from '$lib/realtime/mealPlanRealtime';
 	import WeekNavigator from '$lib/components/meal-plans/WeekNavigator.svelte';
 	import MealPlanGrid from '$lib/components/meal-plans/MealPlanGrid.svelte';
 	import AddItemModal from '$lib/components/meal-plans/AddItemModal.svelte';
@@ -35,6 +40,7 @@
 		recipes = data.recipes;
 		sharedWithMe = data.sharedWithMe;
 		myShares = data.myShares;
+		currentUserId = data.appUser?.auth0UserId ?? null;
 	});
 
 	// Modal state
@@ -58,6 +64,54 @@
 	let toastMessage = $state('');
 	let toastType: 'success' | 'error' = $state('success');
 	let toastVisible = $state(false);
+	const realtimeClient = new MealPlanRealtimeClient();
+	// svelte-ignore state_referenced_locally
+	let currentUserId: string | null = $state(data.appUser?.auth0UserId ?? null);
+
+	function applyRealtimeUpdate(event: MealPlanUpdatedEvent) {
+		if (event.weekStart !== mealPlan.weekStart) {
+			return;
+		}
+
+		if (currentUserId && event.ownerUserId === currentUserId) {
+			mealPlan = event.mealPlan;
+		}
+
+		let sharedPlanUpdated = false;
+		const nextSharedWithMe = sharedWithMe.map((shared) => {
+			if (shared.ownerUserId === event.ownerUserId) {
+				sharedPlanUpdated = true;
+				return {
+					...shared,
+					mealPlan: event.mealPlan
+				};
+			}
+
+			return shared;
+		});
+
+		if (sharedPlanUpdated) {
+			sharedWithMe = nextSharedWithMe;
+		}
+	}
+
+	onMount(() => {
+		let disposed = false;
+
+		void realtimeClient
+			.start((event) => {
+				if (disposed) return;
+				applyRealtimeUpdate(event);
+			})
+			.catch((err) => {
+				console.error('Failed to start meal plan realtime connection', err);
+			});
+
+		return () => {
+			disposed = true;
+			void realtimeClient.stop();
+		};
+	});
 
 	function showToast(message: string, type: 'success' | 'error' = 'success') {
 		toastMessage = message;
@@ -344,7 +398,7 @@
 		<button
 			type="button"
 			onclick={() => (shareModalOpen = true)}
-			class="min-h-10 flex items-center gap-1.5 rounded-lg bg-charcoal/5 px-3 py-2 text-sm font-medium text-charcoal transition-colors hover:bg-charcoal/10"
+			class="flex min-h-10 items-center gap-1.5 rounded-lg bg-charcoal/5 px-3 py-2 text-sm font-medium text-charcoal transition-colors hover:bg-charcoal/10"
 		>
 			<svg
 				xmlns="http://www.w3.org/2000/svg"
@@ -414,7 +468,7 @@
 				aria-expanded={sharedSectionOpen}
 				aria-controls="shared-meal-plans"
 				aria-label="Toggle shared meal plans section"
-				class="mb-3 min-h-10 flex items-center gap-2 text-left"
+				class="mb-3 flex min-h-10 items-center gap-2 text-left"
 			>
 				<svg
 					xmlns="http://www.w3.org/2000/svg"

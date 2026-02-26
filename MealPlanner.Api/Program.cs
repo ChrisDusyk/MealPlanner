@@ -1,6 +1,7 @@
 using MealPlanner.Api.Features.GroceryLists;
 using MealPlanner.Api.Features.GroceryLists.Realtime;
 using MealPlanner.Api.Features.MealPlans;
+using MealPlanner.Api.Features.MealPlans.Realtime;
 using MealPlanner.Api.Features.Recipes;
 using MealPlanner.Api.Features.Users;
 using MealPlanner.Api.Shared;
@@ -21,6 +22,7 @@ builder.Services.AddCqrsHandlers(typeof(Program).Assembly);
 builder.Services.AddSignalR();
 builder.Services.AddSingleton<IUserIdProvider, GroceryListUserIdProvider>();
 builder.Services.AddScoped<IGroceryListRealtimeNotifier, GroceryListRealtimeNotifier>();
+builder.Services.AddScoped<IMealPlanRealtimeNotifier, MealPlanRealtimeNotifier>();
 
 // Authentication & Authorization
 builder.Services.AddAuthentication()
@@ -37,7 +39,8 @@ builder.Services.AddAuthentication()
 				var path = context.HttpContext.Request.Path;
 
 				if (!string.IsNullOrWhiteSpace(accessToken)
-				    && path.StartsWithSegments(GroceryListHub.HubRoute))
+				    && (path.StartsWithSegments(GroceryListHub.HubRoute)
+				        || path.StartsWithSegments(MealPlanHub.HubRoute)))
 				{
 					context.Token = accessToken;
 				}
@@ -72,6 +75,8 @@ app.MapMealPlanEndpoints();
 app.MapGroceryListEndpoints();
 app.MapUserEndpoints();
 app.MapHub<GroceryListHub>(GroceryListHub.HubRoute)
+	.RequireAuthorization();
+app.MapHub<MealPlanHub>(MealPlanHub.HubRoute)
 	.RequireAuthorization();
 
 app.Run();
