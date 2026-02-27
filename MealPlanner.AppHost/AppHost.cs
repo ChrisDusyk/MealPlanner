@@ -7,7 +7,9 @@ var mongoDb = builder.AddMongoDB("mongodb")
 var mealPlannerDb = mongoDb.AddDatabase("mealplannerDb");
 
 var api = builder.AddProject<Projects.MealPlanner_Api>("api")
-	.WithReference(mealPlannerDb).WaitFor(mealPlannerDb);
+	.WithReference(mealPlannerDb).WaitFor(mealPlannerDb)
+	.WithEnvironment("Anthropic__ApiKey",
+		builder.Configuration["Anthropic__ApiKey"] ?? builder.Configuration["Anthropic:ApiKey"]);
 
 builder.AddViteApp("frontend", "..\\frontend")
 	.WithReference(api).WaitFor(api)

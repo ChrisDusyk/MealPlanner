@@ -25,7 +25,7 @@ describe('navigation landmark structure', () => {
 	});
 
 	it('closes Navbar user menu when Escape is pressed', async () => {
-		render(Navbar, {
+		const { container } = render(Navbar, {
 			session: {
 				user: {
 					name: 'Test User',
@@ -36,13 +36,15 @@ describe('navigation landmark structure', () => {
 			}
 		});
 
-		const trigger = page.getByRole('button', { name: /test user/i });
-		await trigger.click();
-		await expect.element(trigger).toHaveAttribute('aria-expanded', 'true');
+		const trigger = container.querySelector('button[aria-controls="user-menu"]') as HTMLButtonElement;
+		expect(trigger).toBeTruthy();
+
+		trigger.click();
+		await expect.poll(() => trigger.getAttribute('aria-expanded')).toBe('true');
 		expect(document.getElementById('user-menu')).not.toBeNull();
 
 		document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
-		await expect.element(trigger).toHaveAttribute('aria-expanded', 'false');
+		await expect.poll(() => trigger.getAttribute('aria-expanded')).toBe('false');
 		expect(document.getElementById('user-menu')).toBeNull();
 	});
 });

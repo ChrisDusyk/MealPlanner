@@ -31,6 +31,14 @@ export interface UpdateRecipeRequest {
 	ingredients: Ingredient[];
 }
 
+export interface ImportIngredientsRequest {
+	sourceUrl: string;
+}
+
+export interface ImportIngredientsResponse {
+	ingredients: Ingredient[];
+	warnings: string[];
+}
 
 export async function fetchRecipes(
 	accessToken: string,
@@ -40,6 +48,28 @@ export async function fetchRecipes(
 		headers: {
 			Authorization: `Bearer ${accessToken}`
 		}
+	});
+
+	if (!response.ok) {
+		const { message, body } = await parseErrorBody(response);
+		throw new ApiError(response.status, message, body);
+	}
+
+	return response.json();
+}
+
+export async function importRecipeIngredients(
+	accessToken: string,
+	request: ImportIngredientsRequest,
+	fetchFn: typeof fetch = fetch
+): Promise<ImportIngredientsResponse> {
+	const response = await fetchFn(`${getApiBase()}/api/recipes/import-ingredients`, {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/json',
+			Authorization: `Bearer ${accessToken}`
+		},
+		body: JSON.stringify(request)
 	});
 
 	if (!response.ok) {

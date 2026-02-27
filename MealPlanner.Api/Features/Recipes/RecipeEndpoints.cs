@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using MealPlanner.Api.Features.Recipes.Commands;
 using MealPlanner.Api.Features.Recipes.Dtos;
+using MealPlanner.Api.Features.Recipes.Import;
 using MealPlanner.Api.Features.Recipes.Models;
 using MealPlanner.Api.Features.Recipes.Queries;
 using MealPlanner.Api.Shared;
@@ -12,6 +13,8 @@ namespace MealPlanner.Api.Features.Recipes;
 /// </summary>
 public static class RecipeEndpoints
 {
+	public const string ImportIngredientsRateLimitPolicy = "ImportIngredientsPerUser";
+
 	public static IEndpointRouteBuilder MapRecipeEndpoints(this IEndpointRouteBuilder app)
 	{
 		var group = app.MapGroup("/api/recipes")
@@ -20,6 +23,8 @@ public static class RecipeEndpoints
 
 		group.MapGet("/", GetAllRecipes);
 		group.MapGet("/{id}", GetRecipeById);
+		group.MapPost("/import-ingredients", ImportIngredients)
+			.RequireRateLimiting(ImportIngredientsRateLimitPolicy);
 		group.MapPost("/", CreateRecipe);
 		group.MapPut("/{id}", UpdateRecipe);
 
@@ -90,6 +95,26 @@ public static class RecipeEndpoints
 				var response = RecipeResponse.FromDomain(recipe);
 				return Results.Created($"/api/recipes/{response.Id}", response);
 			},
+			onFailure: error => error.Code == ErrorCodes.ValidationFailed
+				? Results.BadRequest(error.Message)
+				: Results.Problem(error.Message, statusCode: 500));
+	}
+
+	private static async Task<IResult> ImportIngredients(
+		ImportIngredientsRequest request,
+		HttpContext httpContext,
+		IQueryHandler<ImportIngredientsQuery, ImportedIngredientSet> handler,
+		CancellationToken cancellationToken)
+	{
+		var userId = GetUserId(httpContext);
+		if (userId is null)
+			return Results.Unauthorized();
+
+		var result = await handler.HandleAsync(new ImportIngredientsQuery(request.SourceUrl), cancellationToken);
+		return result.Match(
+			onSuccess: importResult => Results.Ok(new ImportIngredientsResponse(
+				importResult.Ingredients.Select(IngredientDto.FromDomain).ToList(),
+				importResult.Warnings.ToList())),
 			onFailure: error => error.Code == ErrorCodes.ValidationFailed
 				? Results.BadRequest(error.Message)
 				: Results.Problem(error.Message, statusCode: 500));
