@@ -18,7 +18,6 @@ export const POST: RequestHandler = async ({ request, locals, fetch }) => {
 			return json({ error: err.message }, { status: err.status });
 		}
 		const message = err instanceof Error ? err.message : 'Failed to import ingredients.';
-		const isBadRequest = message.includes('400');
-		return json({ error: message }, { status: isBadRequest ? 400 : 500 });
+		return json({ error: message }, { status: 500 });
 	}
 };

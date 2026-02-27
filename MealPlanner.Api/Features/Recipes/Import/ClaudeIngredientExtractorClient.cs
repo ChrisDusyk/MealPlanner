@@ -64,14 +64,14 @@ public sealed class ClaudeIngredientExtractorClient(
 		{
 			logger.LogWarning(ex, "Timed out while calling Anthropic for ingredient import.");
 			return Result<ImportedIngredientSet>.Failure(new AppError(
-				ErrorCodes.DatabaseError,
+				ErrorCodes.ExternalServiceError,
 				"Timed out while calling the ingredient import AI provider."));
 		}
 		catch (Exception ex)
 		{
 			logger.LogError(ex, "Anthropic ingredient import call failed.");
 			return Result<ImportedIngredientSet>.Failure(new AppError(
-				ErrorCodes.DatabaseError,
+				ErrorCodes.ExternalServiceError,
 				"Failed to process ingredient import request with AI provider.",
 				ex));
 		}

@@ -7,7 +7,10 @@ using MealPlanner.Api.Features.Recipes;
 using MealPlanner.Api.Features.Users;
 using MealPlanner.Api.Shared;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.SignalR;
+using System.Security.Claims;
+using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -78,6 +81,27 @@ builder.Services.AddAuthentication()
 		}
 	});
 builder.Services.AddAuthorization();
+builder.Services.AddRateLimiter(options =>
+{
+	options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+	options.AddPolicy(RecipeEndpoints.ImportIngredientsRateLimitPolicy, httpContext =>
+	{
+		var userId = httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+		             ?? httpContext.User.FindFirst("sub")?.Value
+		             ?? "anonymous";
+
+		return RateLimitPartition.GetFixedWindowLimiter(
+			partitionKey: userId,
+			factory: _ => new FixedWindowRateLimiterOptions
+			{
+				PermitLimit = 10,
+				Window = TimeSpan.FromMinutes(1),
+				QueueLimit = 0,
+				QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+				AutoReplenishment = true
+			});
+	});
+});
 
 var app = builder.Build();
 
@@ -91,6 +115,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseAuthentication();
+app.UseRateLimiter();
 app.UseAuthorization();
 
 app.MapRecipeEndpoints();

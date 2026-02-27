@@ -20,5 +20,6 @@ public static class ErrorCodes
 	public const string ValidationError = "ValidationError";
 	public const string Unauthorized = "Unauthorized";
 	public const string DatabaseError = "DatabaseError";
+	public const string ExternalServiceError = "ExternalServiceError";
 	public const string FileUploadError = "FileUploadError";
 }

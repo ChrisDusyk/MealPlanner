@@ -13,6 +13,8 @@ namespace MealPlanner.Api.Features.Recipes;
 /// </summary>
 public static class RecipeEndpoints
 {
+	public const string ImportIngredientsRateLimitPolicy = "ImportIngredientsPerUser";
+
 	public static IEndpointRouteBuilder MapRecipeEndpoints(this IEndpointRouteBuilder app)
 	{
 		var group = app.MapGroup("/api/recipes")
@@ -21,7 +23,8 @@ public static class RecipeEndpoints
 
 		group.MapGet("/", GetAllRecipes);
 		group.MapGet("/{id}", GetRecipeById);
-		group.MapPost("/import-ingredients", ImportIngredients);
+		group.MapPost("/import-ingredients", ImportIngredients)
+			.RequireRateLimiting(ImportIngredientsRateLimitPolicy);
 		group.MapPost("/", CreateRecipe);
 		group.MapPut("/{id}", UpdateRecipe);
 
@@ -99,9 +102,14 @@ public static class RecipeEndpoints
 
 	private static async Task<IResult> ImportIngredients(
 		ImportIngredientsRequest request,
+		HttpContext httpContext,
 		IQueryHandler<ImportIngredientsQuery, ImportedIngredientSet> handler,
 		CancellationToken cancellationToken)
 	{
+		var userId = GetUserId(httpContext);
+		if (userId is null)
+			return Results.Unauthorized();
+
 		var result = await handler.HandleAsync(new ImportIngredientsQuery(request.SourceUrl), cancellationToken);
 		return result.Match(
 			onSuccess: importResult => Results.Ok(new ImportIngredientsResponse(

@@ -104,14 +104,14 @@ public sealed class RecipePageTextExtractor(
 		{
 			logger.LogWarning(ex, "Timed out while fetching recipe source URL {SourceUrl}", sourceUrl);
 			return Result<string>.Failure(new Error(
-				ErrorCodes.DatabaseError,
+				ErrorCodes.ExternalServiceError,
 				"Timed out while fetching the recipe page."));
 		}
 		catch (Exception ex)
 		{
 			logger.LogError(ex, "Failed to fetch or parse recipe source URL {SourceUrl}", sourceUrl);
 			return Result<string>.Failure(new Error(
-				ErrorCodes.DatabaseError,
+				ErrorCodes.ExternalServiceError,
 				"Failed to fetch or parse the recipe page.",
 				ex));
 		}
