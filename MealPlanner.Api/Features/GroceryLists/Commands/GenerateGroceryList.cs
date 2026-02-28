@@ -84,18 +84,23 @@ public class GenerateGroceryListCommandHandler(IMongoClient mongoClient)
 						    !recipeMap.TryGetValue(item.RecipeId, out var recipe))
 							continue;
 
+						// Scale ingredient quantities by slot servings vs recipe yield
+						var recipeServings = recipe.Servings > 0 ? recipe.Servings : 1;
+						var scalingFactor = (decimal)item.Servings / recipeServings;
+
 						foreach (var ingredient in recipe.Ingredients)
 						{
 							var key = (ingredient.Name.ToLowerInvariant(), ingredient.Unit.ToLowerInvariant());
+							var scaledQuantity = ingredient.Quantity * scalingFactor;
 							if (aggregated.TryGetValue(key, out var existing))
 							{
-								existing.TotalQuantity += ingredient.Quantity;
+								existing.TotalQuantity += scaledQuantity;
 								existing.Sources.Add(recipe.Name);
 								aggregated[key] = existing;
 							}
 							else
 							{
-								aggregated[key] = (ingredient.Name, ingredient.Quantity, ingredient.Unit,
+								aggregated[key] = (ingredient.Name, scaledQuantity, ingredient.Unit,
 									[recipe.Name]);
 							}
 						}
