@@ -236,6 +236,45 @@
 		}
 	}
 
+	// ── Update Servings ──
+
+	async function handleUpdateServings(day: string, category: string, index: number, servings: number) {
+		const plan = getActivePlan();
+		const dayPlan = plan.days.find((d) => d.day === day);
+		if (!dayPlan) return;
+
+		const currentItems = [...(dayPlan.slots[category] ?? [])];
+		if (index < 0 || index >= currentItems.length) return;
+
+		const newItems = currentItems.map((item, i) =>
+			i === index ? { ...item, servings } : item
+		);
+
+		// Optimistic update
+		dayPlan.slots[category] = newItems;
+
+		try {
+			const params = buildParams({
+				weekStart: plan.weekStart,
+				day,
+				category
+			});
+			const res = await fetch(`/app/meal-plans?${params}`, {
+				method: 'PUT',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ items: newItems })
+			});
+
+			if (!res.ok) throw new Error('Failed to update servings');
+			const updated: MealPlanResponse = await res.json();
+			applyUpdatedPlan(updated);
+		} catch {
+			// Revert
+			dayPlan.slots[category] = currentItems;
+			showToast('Failed to update servings. Please try again.', 'error');
+		}
+	}
+
 	// ── Copy Category ──
 
 	function handleOpenCopy(day: string, category: string) {
@@ -316,6 +355,13 @@
 			copyModalDay = day;
 			copyModalCategory = category;
 			copyModalOpen = true;
+		};
+	}
+
+	function handleSharedUpdateServings(ownerUserId: string, shareId: string) {
+		return (day: string, category: string, index: number, servings: number) => {
+			editingSharedPlan = { ownerUserId, shareId };
+			handleUpdateServings(day, category, index, servings);
 		};
 	}
 
@@ -430,6 +476,7 @@
 		onAdd={handleOpenAdd}
 		onRemove={handleRemoveItem}
 		onCopy={handleOpenCopy}
+		onUpdateServings={handleUpdateServings}
 	/>
 
 	<!-- Add Item Modal -->
@@ -507,6 +554,9 @@
 								: undefined}
 							onCopy={shared.permission === 'ReadWrite'
 								? handleSharedOpenCopy(shared.ownerUserId, shared.shareId)
+								: undefined}
+							onUpdateServings={shared.permission === 'ReadWrite'
+								? handleSharedUpdateServings(shared.ownerUserId, shared.shareId)
 								: undefined}
 						/>
 					{/each}

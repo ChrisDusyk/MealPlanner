@@ -8,7 +8,8 @@
 		dateLabel,
 		onAdd,
 		onRemove,
-		onCopy
+		onCopy,
+		onUpdateServings
 	}: {
 		day: string;
 		category: string;
@@ -17,7 +18,10 @@
 		onAdd: (day: string, category: string) => void;
 		onRemove: (day: string, category: string, index: number) => void;
 		onCopy: (day: string, category: string) => void;
+		onUpdateServings: (day: string, category: string, index: number, servings: number) => void;
 	} = $props();
+
+	let editingIndex: number | null = $state(null);
 
 	let hasItems = $derived(items.length > 0);
 </script>
@@ -91,8 +95,44 @@
 							aria-hidden="true"
 						></span>
 						<span class="flex-1 truncate text-xs text-charcoal/80">{item.name}</span>
-						{#if item.servings > 1}
-							<span class="shrink-0 rounded bg-green-100 px-1 text-[10px] font-medium text-green-700">{item.servings}×</span>
+						{#if editingIndex === index}
+							<input
+								type="number"
+								min="1"
+								step="1"
+								value={item.servings}
+								onchange={(e) => {
+									const val = Math.max(1, parseInt((e.target as HTMLInputElement).value) || 1);
+									onUpdateServings(day, category, index, val);
+									editingIndex = null;
+								}}
+								onkeydown={(e) => {
+									if (e.key === 'Enter') {
+										const val = Math.max(1, parseInt((e.target as HTMLInputElement).value) || 1);
+										onUpdateServings(day, category, index, val);
+										editingIndex = null;
+									} else if (e.key === 'Escape') {
+										editingIndex = null;
+									}
+								}}
+								onblur={(e) => {
+									const val = Math.max(1, parseInt((e.target as HTMLInputElement).value) || 1);
+									onUpdateServings(day, category, index, val);
+									editingIndex = null;
+								}}
+								class="w-10 shrink-0 rounded border border-green-300 bg-white px-1 py-0.5 text-center text-[10px] text-charcoal focus:border-green-400 focus:ring-1 focus:ring-green-400/30 focus:outline-none"
+								aria-label="Servings for {item.name}"
+							/>
+						{:else}
+							<button
+								type="button"
+								onclick={() => (editingIndex = index)}
+								class="shrink-0 rounded bg-green-100 px-1 text-[10px] font-medium text-green-700 transition-colors hover:bg-green-200 cursor-pointer"
+								title="Click to change servings"
+								aria-label="{item.servings} servings — click to edit"
+							>
+								{item.servings}×
+							</button>
 						{/if}
 					{:else}
 						<span
