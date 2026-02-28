@@ -32,7 +32,7 @@ public class MealPlanQueryMappersTests
 					{
 						["Breakfast"] =
 						[
-							new MealSlotItemDocument { RecipeId = "r1", Name = "Oats" },
+							new MealSlotItemDocument { RecipeId = "r1", Name = "Oats", Servings = 3 },
 							new MealSlotItemDocument { RecipeId = null, Name = "Coffee" }
 						],
 						["Lunch"] = [],
@@ -51,6 +51,8 @@ public class MealPlanQueryMappersTests
 		Assert.Equal(new DateOnly(2026, 2, 23), domain.WeekStart);
 		Assert.Equal(DayOfWeek.Monday, domain.Days[0].Day);
 		Assert.True(domain.Days[0].Slots[MealCategory.Breakfast][0].RecipeId.HasValue);
+		Assert.Equal(3, domain.Days[0].Slots[MealCategory.Breakfast][0].Servings);
 		Assert.False(domain.Days[0].Slots[MealCategory.Breakfast][1].RecipeId.HasValue);
+		Assert.Equal(1, domain.Days[0].Slots[MealCategory.Breakfast][1].Servings);
 	}
 }

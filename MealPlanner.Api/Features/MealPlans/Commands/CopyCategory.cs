@@ -72,7 +72,8 @@ public class CopyCategoryCommandHandler(IMongoClient mongoClient)
 					.Select(item => new MealSlotItemDocument
 					{
 						RecipeId = item.RecipeId,
-						Name = item.Name
+						Name = item.Name,
+						Servings = item.Servings
 					})
 					.ToList();
 			}

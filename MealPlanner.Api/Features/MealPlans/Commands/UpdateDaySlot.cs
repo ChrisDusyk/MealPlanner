@@ -71,7 +71,8 @@ public class UpdateDaySlotCommandHandler(IMongoClient mongoClient)
 			dayPlan.Slots[categoryStr] = command.Items.Select(item => new MealSlotItemDocument
 			{
 				RecipeId = item.RecipeId.GetValueOrNull(),
-				Name = item.Name
+				Name = item.Name,
+				Servings = item.Servings
 			}).ToList();
 
 			document.UpdatedAt = DateTime.UtcNow;

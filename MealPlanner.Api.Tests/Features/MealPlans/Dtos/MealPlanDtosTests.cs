@@ -9,7 +9,7 @@ public class MealPlanDtosTests
 	[Fact]
 	public void MealSlotItemDto_ToDomain_And_FromDomain_Work()
 	{
-		var dto = new MealSlotItemDto("r1", "Oats");
+		var dto = new MealSlotItemDto("r1", "Oats", 3);
 		var domain = dto.ToDomain();
 		var roundTrip = MealSlotItemDto.FromDomain(domain);
 
@@ -17,6 +17,17 @@ public class MealPlanDtosTests
 		Assert.Equal("r1", domain.RecipeId.Value);
 		Assert.Equal("Oats", roundTrip.Name);
 		Assert.Equal("r1", roundTrip.RecipeId);
+		Assert.Equal(3, domain.Servings);
+		Assert.Equal(3, roundTrip.Servings);
+	}
+
+	[Fact]
+	public void MealSlotItemDto_DefaultsServingsToOne()
+	{
+		var dto = new MealSlotItemDto("r1", "Oats");
+		var domain = dto.ToDomain();
+
+		Assert.Equal(1, domain.Servings);
 	}
 
 	[Fact]

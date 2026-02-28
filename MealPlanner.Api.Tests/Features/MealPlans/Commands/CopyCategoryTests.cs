@@ -16,7 +16,7 @@ public class CopyCategoryTests
 		WeekStart = "2026-02-23",
 		Days =
 		[
-			new DayPlanDocument { Day = "Monday", Slots = new Dictionary<string, List<MealSlotItemDocument>> { ["Breakfast"] = [new MealSlotItemDocument { RecipeId = "r1", Name = "Oats" }], ["Lunch"] = [], ["Supper"] = [], ["Snacks"] = [] } },
+			new DayPlanDocument { Day = "Monday", Slots = new Dictionary<string, List<MealSlotItemDocument>> { ["Breakfast"] = [new MealSlotItemDocument { RecipeId = "r1", Name = "Oats", Servings = 2 }], ["Lunch"] = [], ["Supper"] = [], ["Snacks"] = [] } },
 			new DayPlanDocument { Day = "Tuesday", Slots = new Dictionary<string, List<MealSlotItemDocument>> { ["Breakfast"] = [], ["Lunch"] = [], ["Supper"] = [], ["Snacks"] = [] } }
 		],
 		CreatedAt = DateTime.UtcNow,
@@ -74,7 +74,9 @@ public class CopyCategoryTests
 
 		Assert.True(result.IsSuccess);
 		Assert.NotNull(replaced);
-		Assert.Single(replaced.Days.First(d => d.Day == "Tuesday").Slots["Breakfast"]);
+		var copiedItems = replaced.Days.First(d => d.Day == "Tuesday").Slots["Breakfast"];
+		Assert.Single(copiedItems);
+		Assert.Equal(2, copiedItems[0].Servings);
 	}
 
 	[Fact]

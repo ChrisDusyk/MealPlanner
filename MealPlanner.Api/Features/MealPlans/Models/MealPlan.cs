@@ -20,7 +20,8 @@ public enum MealCategory
 /// </summary>
 public record MealSlotItem(
 	Option<string> RecipeId,
-	string Name
+	string Name,
+	int Servings = 1
 );
 
 /// <summary>

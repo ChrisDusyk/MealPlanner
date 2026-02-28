@@ -8,14 +8,15 @@ namespace MealPlanner.Api.Features.MealPlans.Dtos;
 /// </summary>
 public record MealSlotItemDto(
 	string? RecipeId,
-	string Name
+	string Name,
+	int Servings = 1
 )
 {
 	public MealSlotItem ToDomain() =>
-		new(Option<string>.From(RecipeId), Name);
+		new(Option<string>.From(RecipeId), Name, Servings);
 
 	public static MealSlotItemDto FromDomain(MealSlotItem item) =>
-		new(item.RecipeId.GetValueOrNull(), item.Name);
+		new(item.RecipeId.GetValueOrNull(), item.Name, item.Servings);
 }
 
 /// <summary>

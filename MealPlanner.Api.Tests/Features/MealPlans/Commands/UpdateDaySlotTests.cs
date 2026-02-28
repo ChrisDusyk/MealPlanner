@@ -39,13 +39,14 @@ public class UpdateDaySlotTests
 
 		var handler = new UpdateDaySlotCommandHandler(client.Object);
 		var result = await handler.HandleAsync(
-			new UpdateDaySlotCommand("u1", new DateOnly(2026, 2, 23), DayOfWeek.Monday, MealCategory.Breakfast, [new MealSlotItem(Option<string>.Some("r1"), "Oats")]),
+			new UpdateDaySlotCommand("u1", new DateOnly(2026, 2, 23), DayOfWeek.Monday, MealCategory.Breakfast, [new MealSlotItem(Option<string>.Some("r1"), "Oats", 4)]),
 			TestContext.Current.CancellationToken);
 
 		Assert.True(result.IsSuccess);
 		Assert.NotNull(replaced);
 		Assert.Single(replaced.Days[0].Slots["Breakfast"]);
 		Assert.Equal("r1", replaced.Days[0].Slots["Breakfast"][0].RecipeId);
+		Assert.Equal(4, replaced.Days[0].Slots["Breakfast"][0].Servings);
 	}
 
 	[Fact]
