@@ -13,7 +13,7 @@ public class UpdateRecipeTests
 	public async Task HandleAsync_ReturnsValidationFailure_WhenNameIsMissing()
 	{
 		var handler = new UpdateRecipeCommandHandler(new Mock<IMongoClient>().Object);
-		var command = new UpdateRecipeCommand("r1", "u1", " ", "desc", Option<string>.None(), []);
+		var command = new UpdateRecipeCommand("r1", "u1", " ", "desc", 1, Option<string>.None(), []);
 
 		var result = await handler.HandleAsync(command, TestContext.Current.CancellationToken);
 
@@ -45,7 +45,7 @@ public class UpdateRecipeTests
 		client.Setup(c => c.GetDatabase("mealplannerDb", null)).Returns(database.Object);
 
 		var handler = new UpdateRecipeCommandHandler(client.Object);
-		var command = new UpdateRecipeCommand("missing", "u1", "Updated", "desc", Option<string>.None(), []);
+		var command = new UpdateRecipeCommand("missing", "u1", "Updated", "desc", 1, Option<string>.None(), []);
 		var result = await handler.HandleAsync(command, TestContext.Current.CancellationToken);
 
 		Assert.False(result.IsSuccess);
@@ -87,7 +87,7 @@ public class UpdateRecipeTests
 		client.Setup(c => c.GetDatabase("mealplannerDb", null)).Returns(database.Object);
 
 		var handler = new UpdateRecipeCommandHandler(client.Object);
-		var command = new UpdateRecipeCommand("r1", "u1", "Updated", "desc", Option<string>.None(), []);
+		var command = new UpdateRecipeCommand("r1", "u1", "Updated", "desc", 1, Option<string>.None(), []);
 		var result = await handler.HandleAsync(command, TestContext.Current.CancellationToken);
 
 		Assert.False(result.IsSuccess);
@@ -142,6 +142,7 @@ public class UpdateRecipeTests
 			"u1",
 			"New Name",
 			"New Desc",
+			6,
 			Option<string>.Some("https://example.com/new"),
 			[new Ingredient("Pepper", 1, "tbsp")]);
 
@@ -153,6 +154,7 @@ public class UpdateRecipeTests
 		Assert.Equal(existing.CreatedAt, replaced.CreatedAt);
 		Assert.Equal("New Name", replaced.Name);
 		Assert.Equal("New Desc", replaced.Description);
+		Assert.Equal(6, replaced.Servings);
 		Assert.Equal("https://example.com/new", replaced.SourceUrl);
 		Assert.Equal("r1", result.Value.Id);
 		Assert.True(result.Value.UpdatedAt >= existing.UpdatedAt);
@@ -166,7 +168,7 @@ public class UpdateRecipeTests
 			.Throws(new Exception("boom"));
 
 		var handler = new UpdateRecipeCommandHandler(client.Object);
-		var command = new UpdateRecipeCommand("r1", "u1", "Name", "desc", Option<string>.None(), []);
+		var command = new UpdateRecipeCommand("r1", "u1", "Name", "desc", 1, Option<string>.None(), []);
 		var result = await handler.HandleAsync(command, TestContext.Current.CancellationToken);
 
 		Assert.False(result.IsSuccess);

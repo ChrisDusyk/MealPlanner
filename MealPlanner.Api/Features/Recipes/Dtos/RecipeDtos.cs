@@ -25,7 +25,8 @@ public record CreateRecipeRequest(
 	string Name,
 	string Description,
 	string? SourceUrl,
-	List<IngredientDto> Ingredients
+	List<IngredientDto> Ingredients,
+	int Servings = 1
 );
 
 /// <summary>
@@ -35,7 +36,8 @@ public record UpdateRecipeRequest(
 	string Name,
 	string Description,
 	string? SourceUrl,
-	List<IngredientDto> Ingredients
+	List<IngredientDto> Ingredients,
+	int Servings = 1
 );
 
 /// <summary>
@@ -46,6 +48,7 @@ public record RecipeResponse(
 	string Name,
 	string Description,
 	string? SourceUrl,
+	int Servings,
 	List<IngredientDto> Ingredients,
 	DateTime CreatedAt,
 	DateTime UpdatedAt
@@ -57,6 +60,7 @@ public record RecipeResponse(
 			recipe.Name,
 			recipe.Description,
 			recipe.SourceUrl.GetValueOrNull(),
+			recipe.Servings,
 			recipe.Ingredients.Select(IngredientDto.FromDomain).ToList(),
 			recipe.CreatedAt,
 			recipe.UpdatedAt

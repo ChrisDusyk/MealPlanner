@@ -38,6 +38,7 @@ public class RecipeDtosTests
 			"u1",
 			"Bread",
 			"Baked",
+			4,
 			Option<string>.Some("https://example.com/bread"),
 			[new Ingredient("Flour", 3, "cups")],
 			new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
@@ -47,6 +48,7 @@ public class RecipeDtosTests
 
 		Assert.Equal("r1", response.Id);
 		Assert.Equal("https://example.com/bread", response.SourceUrl);
+		Assert.Equal(4, response.Servings);
 		Assert.Single(response.Ingredients);
 	}
 
@@ -58,6 +60,7 @@ public class RecipeDtosTests
 			"u1",
 			"Bread",
 			"Baked",
+			1,
 			Option<string>.None(),
 			[],
 			new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
@@ -66,5 +69,6 @@ public class RecipeDtosTests
 		var response = RecipeResponse.FromDomain(recipe);
 
 		Assert.Null(response.SourceUrl);
+		Assert.Equal(1, response.Servings);
 	}
 }

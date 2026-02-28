@@ -14,6 +14,7 @@ public class RecipeHandlerMappersTests
 			UserId = "u1",
 			Name = "Omelette",
 			Description = "Eggs",
+			Servings = 2,
 			SourceUrl = sourceUrl,
 			Ingredients = [new IngredientDocument { Name = "Egg", Quantity = 2, Unit = "pcs" }],
 			CreatedAt = new DateTime(2026, 1, 3, 0, 0, 0, DateTimeKind.Utc),
@@ -28,6 +29,7 @@ public class RecipeHandlerMappersTests
 
 		Assert.True(recipe.SourceUrl.HasValue);
 		Assert.Equal("https://example.com/o", recipe.SourceUrl.Value);
+		Assert.Equal(2, recipe.Servings);
 		Assert.Equal("u1", recipe.UserId);
 	}
 
@@ -48,6 +50,7 @@ public class RecipeHandlerMappersTests
 		Assert.Equal("r1", recipe.Id);
 		Assert.Equal("Omelette", recipe.Name);
 		Assert.Equal("Eggs", recipe.Description);
+		Assert.Equal(2, recipe.Servings);
 	}
 
 	[Fact]

@@ -12,6 +12,7 @@ public record UpdateRecipeCommand(
 	string UserId,
 	string Name,
 	string Description,
+	int Servings,
 	Option<string> SourceUrl,
 	List<Ingredient> Ingredients
 ) : ICommand<Recipe>;
@@ -54,6 +55,7 @@ public class UpdateRecipeCommandHandler(IMongoClient mongoClient)
 				UserId = existing.UserId,
 				Name = command.Name,
 				Description = command.Description,
+				Servings = command.Servings,
 				SourceUrl = command.SourceUrl.GetValueOrNull(),
 				Ingredients = command.Ingredients
 					.Select(i => new IngredientDocument
@@ -87,6 +89,7 @@ public class UpdateRecipeCommandHandler(IMongoClient mongoClient)
 			UserId: doc.UserId,
 			Name: doc.Name,
 			Description: doc.Description,
+			Servings: doc.Servings,
 			SourceUrl: Option<string>.From(doc.SourceUrl),
 			Ingredients: doc.Ingredients.Select(i => new Ingredient(i.Name, i.Quantity, i.Unit)).ToList(),
 			CreatedAt: doc.CreatedAt,

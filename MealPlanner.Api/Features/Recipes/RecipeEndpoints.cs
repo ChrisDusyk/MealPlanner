@@ -85,6 +85,7 @@ public static class RecipeEndpoints
 			userId,
 			request.Name,
 			request.Description,
+			request.Servings,
 			Option<string>.From(request.SourceUrl),
 			request.Ingredients.Select(i => i.ToDomain()).ToList());
 
@@ -136,6 +137,7 @@ public static class RecipeEndpoints
 			userId,
 			request.Name,
 			request.Description,
+			request.Servings,
 			Option<string>.From(request.SourceUrl),
 			request.Ingredients.Select(i => i.ToDomain()).ToList());
 
