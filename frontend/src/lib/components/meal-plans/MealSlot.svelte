@@ -91,6 +91,9 @@
 							aria-hidden="true"
 						></span>
 						<span class="flex-1 truncate text-xs text-charcoal/80">{item.name}</span>
+						{#if item.servings > 1}
+							<span class="shrink-0 rounded bg-green-100 px-1 text-[10px] font-medium text-green-700">{item.servings}×</span>
+						{/if}
 					{:else}
 						<span
 							class="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-charcoal/20"

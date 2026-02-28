@@ -75,6 +75,14 @@
 		</section>
 	{/if}
 
+	<!-- Servings -->
+	{#if recipe.servings > 1}
+		<div class="mb-6 flex items-center gap-2 rounded-lg border border-green-200/50 bg-white px-5 py-3 shadow-sm">
+			<span class="text-sm font-medium text-charcoal/70">Servings:</span>
+			<span class="text-sm font-semibold text-charcoal">{recipe.servings}</span>
+		</div>
+	{/if}
+
 	<!-- Source URL -->
 	{#if safeSourceUrl}
 		<section class="mb-6 overflow-hidden rounded-xl border border-green-200/50 bg-white shadow-sm">

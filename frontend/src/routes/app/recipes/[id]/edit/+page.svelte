@@ -13,6 +13,7 @@
 	const initialData = $derived({
 		name: recipe.name,
 		description: recipe.description,
+		servings: recipe.servings,
 		sourceUrl: recipe.sourceUrl ?? '',
 		ingredients: recipe.ingredients
 	});

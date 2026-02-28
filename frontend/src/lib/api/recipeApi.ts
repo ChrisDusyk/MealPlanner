@@ -11,6 +11,7 @@ export interface Recipe {
 	id: string;
 	name: string;
 	description: string;
+	servings: number;
 	sourceUrl?: string | null;
 	ingredients: Ingredient[];
 	createdAt: string;
@@ -20,6 +21,7 @@ export interface Recipe {
 export interface CreateRecipeRequest {
 	name: string;
 	description: string;
+	servings?: number;
 	sourceUrl?: string | null;
 	ingredients: Ingredient[];
 }
@@ -27,6 +29,7 @@ export interface CreateRecipeRequest {
 export interface UpdateRecipeRequest {
 	name: string;
 	description: string;
+	servings?: number;
 	sourceUrl?: string | null;
 	ingredients: Ingredient[];
 }

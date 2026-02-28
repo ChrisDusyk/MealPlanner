@@ -5,6 +5,7 @@ import { ApiError, getApiBase, parseErrorBody } from './apiHelpers';
 export interface MealSlotItem {
 	recipeId: string | null;
 	name: string;
+	servings: number;
 }
 
 export interface DayPlan {
