@@ -295,11 +295,18 @@
 
 			if (importedIngredients.length) {
 				const ingredientText = `${importedIngredients.length} ingredient${importedIngredients.length === 1 ? '' : 's'}`;
-				if (importedParts.length > 0) {
-					importSuccessMessage = `Imported ${ingredientText}, ${importedParts.join(', and ')}, and replaced current rows.`;
+				const importedDescriptions = [ingredientText, ...importedParts];
+				let importedDescriptionText: string;
+
+				if (importedDescriptions.length === 1) {
+					importedDescriptionText = importedDescriptions[0];
+				} else if (importedDescriptions.length === 2) {
+					importedDescriptionText = `${importedDescriptions[0]} and ${importedDescriptions[1]}`;
 				} else {
-					importSuccessMessage = `Imported ${ingredientText} and replaced current rows.`;
+					importedDescriptionText = `${importedDescriptions.slice(0, -1).join(', ')}, and ${importedDescriptions[importedDescriptions.length - 1]}`;
 				}
+
+				importSuccessMessage = `Imported ${importedDescriptionText} and replaced current rows.`;
 			} else {
 				importSuccessMessage = 'No ingredients were detected on that page.';
 			}
