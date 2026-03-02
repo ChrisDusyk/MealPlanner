@@ -74,7 +74,7 @@
 	];
 
 	function addIngredient() {
-		ingredients = [...ingredients, { _id: nextId++, name: '', quantity: 0, unit: '' }];
+		ingredients = [...ingredients, { _id: nextId++, name: '', quantity: 0, unit: '', isPantryStaple: false }];
 	}
 
 	function removeIngredient(id: number) {
@@ -149,7 +149,8 @@
 				.map((i) => ({
 					name: i.name.trim(),
 					quantity: i.quantity,
-					unit: i.unit
+					unit: i.unit,
+					isPantryStaple: i.isPantryStaple
 				}))
 		};
 
@@ -202,7 +203,8 @@
 			_id: index + 1,
 			name: ingredient.name,
 			quantity: ingredient.quantity,
-			unit: ingredient.unit
+			unit: ingredient.unit,
+			isPantryStaple: ingredient.isPantryStaple ?? false
 		}));
 		nextId = ingredients.length + 1;
 	}
@@ -242,7 +244,7 @@
 
 			const importedIngredients: Ingredient[] = rawIngredients
 				.filter(
-					(item): item is { name: string; quantity: number; unit: string } =>
+					(item): item is { name: string; quantity: number; unit: string; isPantryStaple?: boolean } =>
 						typeof item === 'object' &&
 						item !== null &&
 						typeof (item as { name?: unknown }).name === 'string' &&
@@ -252,7 +254,8 @@
 				.map((item) => ({
 					name: item.name.trim(),
 					quantity: Number.isFinite(item.quantity) ? item.quantity : 0,
-					unit: item.unit.trim()
+					unit: item.unit.trim(),
+					isPantryStaple: item.isPantryStaple === true
 				}))
 				.filter((item) => item.name.length > 0);
 
@@ -552,11 +555,12 @@
 			{:else}
 				<!-- Column headers (hidden on mobile) -->
 				<div
-					class="mb-3 hidden grid-cols-[1fr_5rem_7rem_2.5rem] gap-3 px-1 text-xs font-medium tracking-wider text-charcoal/60 uppercase sm:grid"
+					class="mb-3 hidden grid-cols-[1fr_5rem_7rem_5rem_2.5rem] gap-3 px-1 text-xs font-medium tracking-wider text-charcoal/60 uppercase sm:grid"
 				>
 					<span>Ingredient</span>
 					<span>Qty</span>
 					<span>Unit</span>
+					<span>Staple</span>
 					<span></span>
 				</div>
 
@@ -564,7 +568,7 @@
 				<div class="space-y-2">
 					{#each ingredients as ingredient (ingredient._id)}
 						<div
-							class="group flex flex-col gap-2 rounded-lg border border-green-100/60 bg-green-50/20 p-3 transition-all hover:border-green-200/80 hover:bg-green-50/50 sm:grid sm:grid-cols-[1fr_5rem_7rem_2.5rem] sm:items-start sm:gap-3"
+							class="group flex flex-col gap-2 rounded-lg border border-green-100/60 bg-green-50/20 p-3 transition-all hover:border-green-200/80 hover:bg-green-50/50 sm:grid sm:grid-cols-[1fr_5rem_7rem_5rem_2.5rem] sm:items-start sm:gap-3"
 							animate:flip={{ duration: 300, easing: quintOut }}
 							in:fly={{ y: -10, duration: 300, easing: quintOut }}
 							out:slide={{ duration: 250, easing: quintOut }}
@@ -598,7 +602,7 @@
 								{/if}
 							</div>
 
-							<!-- Qty, Unit & Remove: row on mobile, grid children on desktop -->
+							<!-- Qty, Unit, Staple & Remove: row on mobile, grid children on desktop -->
 							<div class="flex items-start gap-2 sm:contents">
 								<!-- Quantity -->
 								<div class="w-20 sm:w-auto">
@@ -643,6 +647,25 @@
 											<option value={u}>{u || '—'}</option>
 										{/each}
 									</select>
+								</div>
+
+								<!-- Pantry staple toggle -->
+								<div class="flex flex-col items-center sm:flex-initial">
+									<span class="mb-1 block text-xs font-medium text-charcoal/60 sm:hidden">Staple</span>
+									<label
+										class="relative mt-0.5 inline-flex cursor-pointer items-center"
+										aria-label="Mark as pantry staple"
+										title="Pantry staple — items you typically have on hand"
+									>
+										<input
+											type="checkbox"
+											bind:checked={ingredient.isPantryStaple}
+											class="peer sr-only"
+										/>
+										<div
+											class="h-5 w-9 rounded-full bg-charcoal/15 transition-colors after:absolute after:top-[2px] after:left-[2px] after:h-4 after:w-4 after:rounded-full after:bg-white after:shadow-sm after:transition-transform peer-checked:bg-amber-500 peer-checked:after:translate-x-full peer-focus-visible:ring-2 peer-focus-visible:ring-green-500/30"
+										></div>
+									</label>
 								</div>
 
 								<!-- Remove button -->
