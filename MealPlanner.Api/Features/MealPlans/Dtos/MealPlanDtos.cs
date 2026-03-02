@@ -1,5 +1,6 @@
 using MealPlanner.Api.Features.MealPlans.Models;
 using MealPlanner.Api.Shared;
+using System.ComponentModel.DataAnnotations;
 
 namespace MealPlanner.Api.Features.MealPlans.Dtos;
 
@@ -9,7 +10,7 @@ namespace MealPlanner.Api.Features.MealPlans.Dtos;
 public record MealSlotItemDto(
 	string? RecipeId,
 	string Name,
-	int Servings = 1
+	[property: Range(1, int.MaxValue)] int Servings = 1
 )
 {
 	public MealSlotItem ToDomain() =>

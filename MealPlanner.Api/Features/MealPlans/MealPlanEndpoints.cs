@@ -6,6 +6,7 @@ using MealPlanner.Api.Features.MealPlans.Queries;
 using MealPlanner.Api.Features.MealPlans.Realtime;
 using MealPlanner.Api.Shared;
 using MongoDB.Driver;
+using System.ComponentModel.DataAnnotations;
 
 namespace MealPlanner.Api.Features.MealPlans;
 
@@ -38,6 +39,44 @@ public static class MealPlanEndpoints
 	private static string? GetUserId(HttpContext httpContext) =>
 		httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value
 		?? httpContext.User.FindFirst("sub")?.Value;
+
+	private static Dictionary<string, string[]> ValidateUpdateDaySlotRequest(UpdateDaySlotRequest request)
+	{
+		var errors = new Dictionary<string, List<string>>();
+
+		var rootResults = new List<ValidationResult>();
+		Validator.TryValidateObject(request, new ValidationContext(request), rootResults, true);
+		foreach (var result in rootResults)
+		{
+			var member = result.MemberNames.FirstOrDefault() ?? "request";
+			if (!errors.TryGetValue(member, out var values))
+			{
+				values = [];
+				errors[member] = values;
+			}
+			values.Add(result.ErrorMessage ?? "Invalid value");
+		}
+
+		for (var index = 0; index < request.Items.Count; index++)
+		{
+			var item = request.Items[index];
+			var itemResults = new List<ValidationResult>();
+			Validator.TryValidateObject(item, new ValidationContext(item), itemResults, true);
+			foreach (var result in itemResults)
+			{
+				var member = result.MemberNames.FirstOrDefault() ?? "request";
+				var key = $"Items[{index}].{member}";
+				if (!errors.TryGetValue(key, out var values))
+				{
+					values = [];
+					errors[key] = values;
+				}
+				values.Add(result.ErrorMessage ?? "Invalid value");
+			}
+		}
+
+		return errors.ToDictionary(kvp => kvp.Key, kvp => kvp.Value.Distinct().ToArray());
+	}
 
 	/// <summary>
 	/// Resolves the effective plan owner for mutation endpoints.
@@ -106,6 +145,10 @@ public static class MealPlanEndpoints
 		string category,
 		string? onBehalfOf = null)
 	{
+		var validationErrors = ValidateUpdateDaySlotRequest(request);
+		if (validationErrors.Count > 0)
+			return Results.ValidationProblem(validationErrors);
+
 		var userId = GetUserId(httpContext);
 		if (userId is null)
 			return Results.Unauthorized();

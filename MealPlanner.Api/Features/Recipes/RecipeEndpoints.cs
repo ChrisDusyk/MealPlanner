@@ -5,6 +5,7 @@ using MealPlanner.Api.Features.Recipes.Import;
 using MealPlanner.Api.Features.Recipes.Models;
 using MealPlanner.Api.Features.Recipes.Queries;
 using MealPlanner.Api.Shared;
+using System.ComponentModel.DataAnnotations;
 
 namespace MealPlanner.Api.Features.Recipes;
 
@@ -34,6 +35,18 @@ public static class RecipeEndpoints
 	private static string? GetUserId(HttpContext httpContext) =>
 		httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value
 		?? httpContext.User.FindFirst("sub")?.Value;
+
+	private static Dictionary<string, string[]> ValidateRequest(object request)
+	{
+		var validationResults = new List<ValidationResult>();
+		Validator.TryValidateObject(request, new ValidationContext(request), validationResults, true);
+
+		return validationResults
+			.GroupBy(
+				result => result.MemberNames.FirstOrDefault() ?? "request",
+				result => result.ErrorMessage ?? "Invalid value")
+			.ToDictionary(group => group.Key, group => group.Distinct().ToArray());
+	}
 
 	private static async Task<IResult> GetAllRecipes(
 		HttpContext httpContext,
@@ -77,6 +90,10 @@ public static class RecipeEndpoints
 		ICommandHandler<CreateRecipeCommand, Recipe> handler,
 		CancellationToken cancellationToken)
 	{
+		var validationErrors = ValidateRequest(request);
+		if (validationErrors.Count > 0)
+			return Results.ValidationProblem(validationErrors);
+
 		var userId = GetUserId(httpContext);
 		if (userId is null)
 			return Results.Unauthorized();
@@ -128,6 +145,10 @@ public static class RecipeEndpoints
 		ICommandHandler<UpdateRecipeCommand, Recipe> handler,
 		CancellationToken cancellationToken)
 	{
+		var validationErrors = ValidateRequest(request);
+		if (validationErrors.Count > 0)
+			return Results.ValidationProblem(validationErrors);
+
 		var userId = GetUserId(httpContext);
 		if (userId is null)
 			return Results.Unauthorized();

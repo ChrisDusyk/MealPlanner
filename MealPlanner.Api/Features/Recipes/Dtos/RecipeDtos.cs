@@ -1,5 +1,6 @@
 using MealPlanner.Api.Features.Recipes.Models;
 using MealPlanner.Api.Shared;
+using System.ComponentModel.DataAnnotations;
 
 namespace MealPlanner.Api.Features.Recipes.Dtos;
 
@@ -26,7 +27,7 @@ public record CreateRecipeRequest(
 	string Description,
 	string? SourceUrl,
 	List<IngredientDto> Ingredients,
-	int Servings = 1
+	[property: Range(1, int.MaxValue)] int Servings = 1
 );
 
 /// <summary>
@@ -37,7 +38,7 @@ public record UpdateRecipeRequest(
 	string Description,
 	string? SourceUrl,
 	List<IngredientDto> Ingredients,
-	int Servings = 1
+	[property: Range(1, int.MaxValue)] int Servings = 1
 );
 
 /// <summary>
