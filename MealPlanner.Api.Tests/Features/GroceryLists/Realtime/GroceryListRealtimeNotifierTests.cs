@@ -75,6 +75,7 @@ public class GroceryListRealtimeNotifierTests
 					IsChecked: true,
 					SourceRecipeNames: [])
 			],
+			PantryStapleItems: [],
 			CreatedAt: DateTime.UtcNow,
 			UpdatedAt: DateTime.UtcNow);
 

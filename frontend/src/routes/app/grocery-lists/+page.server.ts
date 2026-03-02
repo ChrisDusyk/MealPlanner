@@ -4,7 +4,8 @@ import {
 	generateGroceryList,
 	toggleGroceryListItem,
 	addCustomItem,
-	deleteGroceryList
+	deleteGroceryList,
+	promotePantryStapleItem
 } from '$lib/api/groceryListApi';
 import { getGroceryListsSharedWithMe, type SharedGroceryListResponse } from '$lib/api/sharingApi';
 import type { GroceryListResponse } from '$lib/api/groceryListApi';
@@ -153,6 +154,33 @@ export const actions: Actions = {
 		} catch (err) {
 			const status = err instanceof ApiError ? err.status : 500;
 			const message = err instanceof Error ? err.message : 'Failed to delete grocery list';
+			return fail(status, { error: message });
+		}
+	},
+
+	promoteStaple: async ({ request, locals, fetch }) => {
+		const session = await locals.auth();
+		if (!session?.accessToken) return fail(401);
+
+		const formData = await request.formData();
+		const weekStart = formData.get('weekStart');
+		const itemIndexRaw = formData.get('itemIndex');
+
+		if (!isValidDateString(weekStart)) {
+			return fail(400, { error: 'weekStart is required and must be in yyyy-MM-dd format.' });
+		}
+
+		const itemIndex = parseInt(itemIndexRaw as string, 10);
+		if (itemIndexRaw === null || !Number.isFinite(itemIndex)) {
+			return fail(400, { error: 'itemIndex is required and must be a valid integer.' });
+		}
+
+		try {
+			const list = await promotePantryStapleItem(session.accessToken, weekStart, itemIndex, fetch);
+			return { groceryList: list };
+		} catch (err) {
+			const status = err instanceof ApiError ? err.status : 500;
+			const message = err instanceof Error ? err.message : 'Failed to promote pantry staple item';
 			return fail(status, { error: message });
 		}
 	}

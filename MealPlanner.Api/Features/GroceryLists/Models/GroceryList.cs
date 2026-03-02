@@ -20,6 +20,7 @@ public record GroceryList(
 	string UserId,
 	DateOnly WeekStart,
 	List<GroceryListItem> Items,
+	List<GroceryListItem> PantryStapleItems,
 	DateTime CreatedAt,
 	DateTime UpdatedAt
 );

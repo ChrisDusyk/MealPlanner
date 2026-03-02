@@ -5,6 +5,7 @@ export interface Ingredient {
 	name: string;
 	quantity: number;
 	unit: string;
+	isPantryStaple: boolean;
 }
 
 export interface Recipe {

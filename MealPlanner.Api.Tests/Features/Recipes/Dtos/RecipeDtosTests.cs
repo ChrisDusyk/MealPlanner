@@ -16,6 +16,18 @@ public class RecipeDtosTests
 		Assert.Equal("Flour", domain.Name);
 		Assert.Equal(2.5m, domain.Quantity);
 		Assert.Equal("cups", domain.Unit);
+		Assert.False(domain.IsPantryStaple);
+	}
+
+	[Fact]
+	public void IngredientDto_ToDomain_MapsPantryStapleTrue()
+	{
+		var dto = new IngredientDto("Salt", 1m, "tsp", true);
+
+		var domain = dto.ToDomain();
+
+		Assert.Equal("Salt", domain.Name);
+		Assert.True(domain.IsPantryStaple);
 	}
 
 	[Fact]
@@ -28,6 +40,18 @@ public class RecipeDtosTests
 		Assert.Equal("Salt", dto.Name);
 		Assert.Equal(1m, dto.Quantity);
 		Assert.Equal("tsp", dto.Unit);
+		Assert.False(dto.IsPantryStaple);
+	}
+
+	[Fact]
+	public void IngredientDto_FromDomain_MapsPantryStapleTrue()
+	{
+		var domain = new Ingredient("Salt", 1m, "tsp", true);
+
+		var dto = IngredientDto.FromDomain(domain);
+
+		Assert.Equal("Salt", dto.Name);
+		Assert.True(dto.IsPantryStaple);
 	}
 
 	[Fact]

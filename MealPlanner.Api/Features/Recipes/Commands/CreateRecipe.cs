@@ -49,7 +49,8 @@ public class CreateRecipeCommandHandler(IMongoClient mongoClient)
 					{
 						Name = i.Name,
 						Quantity = i.Quantity,
-						Unit = i.Unit
+						Unit = i.Unit,
+						IsPantryStaple = i.IsPantryStaple
 					})
 					.ToList(),
 				CreatedAt = now,
@@ -79,7 +80,7 @@ public class CreateRecipeCommandHandler(IMongoClient mongoClient)
 			Description: doc.Description,
 			Servings: doc.Servings,
 			SourceUrl: Option<string>.From(doc.SourceUrl),
-			Ingredients: doc.Ingredients.Select(i => new Ingredient(i.Name, i.Quantity, i.Unit)).ToList(),
+			Ingredients: doc.Ingredients.Select(i => new Ingredient(i.Name, i.Quantity, i.Unit, i.IsPantryStaple)).ToList(),
 			CreatedAt: doc.CreatedAt,
 			UpdatedAt: doc.UpdatedAt
 		);

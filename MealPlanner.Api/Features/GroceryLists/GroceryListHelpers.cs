@@ -22,6 +22,13 @@ internal static class GroceryListHelpers
 				IsChecked: i.IsChecked,
 				SourceRecipeNames: i.SourceRecipeNames
 			)).ToList(),
+			PantryStapleItems: doc.PantryStapleItems.Select(i => new GroceryListItem(
+				Name: i.Name,
+				Quantity: i.Quantity,
+				Unit: i.Unit,
+				IsChecked: i.IsChecked,
+				SourceRecipeNames: i.SourceRecipeNames
+			)).ToList(),
 			CreatedAt: doc.CreatedAt,
 			UpdatedAt: doc.UpdatedAt
 		);

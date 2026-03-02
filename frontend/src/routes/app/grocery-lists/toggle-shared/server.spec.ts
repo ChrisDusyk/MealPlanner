@@ -37,6 +37,7 @@ describe('PUT /app/grocery-lists/toggle-shared', () => {
 			id: 'list-1',
 			weekStart: '2026-02-23',
 			items: [],
+			pantryStapleItems: [],
 			createdAt: '2026-02-23T00:00:00Z',
 			updatedAt: '2026-02-23T00:00:00Z'
 		};

@@ -157,7 +157,7 @@ public class UpdateRecipeTests
 			"New Desc",
 			6,
 			Option<string>.Some("https://example.com/new"),
-			[new Ingredient("Pepper", 1, "tbsp")]);
+			[new Ingredient("Pepper", 1, "tbsp"), new Ingredient("Salt", 1, "tsp", true)]);
 
 		var result = await handler.HandleAsync(command, TestContext.Current.CancellationToken);
 
@@ -171,6 +171,8 @@ public class UpdateRecipeTests
 		Assert.Equal("https://example.com/new", replaced.SourceUrl);
 		Assert.Equal("r1", result.Value.Id);
 		Assert.True(result.Value.UpdatedAt >= existing.UpdatedAt);
+		Assert.Contains(replaced.Ingredients, i => i.Name == "Pepper" && !i.IsPantryStaple);
+		Assert.Contains(replaced.Ingredients, i => i.Name == "Salt" && i.IsPantryStaple);
 	}
 
 	[Fact]

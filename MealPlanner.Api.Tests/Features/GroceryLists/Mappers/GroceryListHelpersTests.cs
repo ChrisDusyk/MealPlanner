@@ -14,6 +14,7 @@ public class GroceryListHelpersTests
 			UserId = "u1",
 			WeekStart = "2026-02-23",
 			Items = [new GroceryListItemDocument { Name = "Rice", Quantity = 1.5m, Unit = "kg", IsChecked = true, SourceRecipeNames = ["Pilaf"] }],
+			PantryStapleItems = [new GroceryListItemDocument { Name = "Salt", Quantity = 1m, Unit = "tsp", IsChecked = false, SourceRecipeNames = ["Pasta"] }],
 			CreatedAt = new DateTime(2026, 2, 20, 0, 0, 0, DateTimeKind.Utc),
 			UpdatedAt = new DateTime(2026, 2, 21, 0, 0, 0, DateTimeKind.Utc)
 		};
@@ -25,6 +26,11 @@ public class GroceryListHelpersTests
 		Assert.Equal(new DateOnly(2026, 2, 23), domain.WeekStart);
 		Assert.Single(domain.Items);
 		Assert.True(domain.Items[0].IsChecked);
+		Assert.Single(domain.PantryStapleItems);
+		Assert.Equal("Salt", domain.PantryStapleItems[0].Name);
+		Assert.Equal(1m, domain.PantryStapleItems[0].Quantity);
+		Assert.Equal("tsp", domain.PantryStapleItems[0].Unit);
+		Assert.False(domain.PantryStapleItems[0].IsChecked);
 	}
 
 	[Theory]

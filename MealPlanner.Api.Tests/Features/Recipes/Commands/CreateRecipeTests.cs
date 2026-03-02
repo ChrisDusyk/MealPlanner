@@ -60,7 +60,7 @@ public class CreateRecipeTests
 			"Spicy",
 			4,
 			Option<string>.Some("https://example.com/chili"),
-			[new Ingredient("Beans", 2, "cups")]);
+			[new Ingredient("Beans", 2, "cups"), new Ingredient("Salt", 1, "tsp", true)]);
 
 		var before = DateTime.UtcNow;
 		var result = await handler.HandleAsync(command, TestContext.Current.CancellationToken);
@@ -76,6 +76,8 @@ public class CreateRecipeTests
 		Assert.InRange(inserted.UpdatedAt, before.AddSeconds(-1), after.AddSeconds(1));
 		Assert.True(result.Value.SourceUrl.HasValue);
 		Assert.Equal("https://example.com/chili", result.Value.SourceUrl.Value);
+		Assert.Contains(inserted.Ingredients, i => i.Name == "Beans" && !i.IsPantryStaple);
+		Assert.Contains(inserted.Ingredients, i => i.Name == "Salt" && i.IsPantryStaple);
 	}
 
 	[Fact]

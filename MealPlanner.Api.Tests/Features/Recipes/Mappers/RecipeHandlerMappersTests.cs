@@ -16,7 +16,11 @@ public class RecipeHandlerMappersTests
 			Description = "Eggs",
 			Servings = 2,
 			SourceUrl = sourceUrl,
-			Ingredients = [new IngredientDocument { Name = "Egg", Quantity = 2, Unit = "pcs" }],
+			Ingredients =
+			[
+				new IngredientDocument { Name = "Egg", Quantity = 2, Unit = "pcs", IsPantryStaple = false },
+				new IngredientDocument { Name = "Salt", Quantity = 1, Unit = "pinch", IsPantryStaple = true }
+			],
 			CreatedAt = new DateTime(2026, 1, 3, 0, 0, 0, DateTimeKind.Utc),
 			UpdatedAt = new DateTime(2026, 1, 4, 0, 0, 0, DateTimeKind.Utc)
 		};
@@ -31,6 +35,9 @@ public class RecipeHandlerMappersTests
 		Assert.Equal("https://example.com/o", recipe.SourceUrl.Value);
 		Assert.Equal(2, recipe.Servings);
 		Assert.Equal("u1", recipe.UserId);
+		Assert.Equal(2, recipe.Ingredients.Count);
+		Assert.False(recipe.Ingredients[0].IsPantryStaple);
+		Assert.True(recipe.Ingredients[1].IsPantryStaple);
 	}
 
 	[Fact]
@@ -39,7 +46,8 @@ public class RecipeHandlerMappersTests
 		var recipe = GetRecipeByIdQueryHandler.MapToRecipe(CreateDocument(null));
 
 		Assert.False(recipe.SourceUrl.HasValue);
-		Assert.Single(recipe.Ingredients);
+		Assert.Equal(2, recipe.Ingredients.Count);
+		Assert.True(recipe.Ingredients[1].IsPantryStaple);
 	}
 
 	[Fact]
@@ -51,6 +59,8 @@ public class RecipeHandlerMappersTests
 		Assert.Equal("Omelette", recipe.Name);
 		Assert.Equal("Eggs", recipe.Description);
 		Assert.Equal(2, recipe.Servings);
+		Assert.False(recipe.Ingredients[0].IsPantryStaple);
+		Assert.True(recipe.Ingredients[1].IsPantryStaple);
 	}
 
 	[Fact]
@@ -61,5 +71,7 @@ public class RecipeHandlerMappersTests
 		Assert.Equal("r1", recipe.Id);
 		Assert.Equal(new DateTime(2026, 1, 3, 0, 0, 0, DateTimeKind.Utc), recipe.CreatedAt);
 		Assert.Equal(new DateTime(2026, 1, 4, 0, 0, 0, DateTimeKind.Utc), recipe.UpdatedAt);
+		Assert.False(recipe.Ingredients[0].IsPantryStaple);
+		Assert.True(recipe.Ingredients[1].IsPantryStaple);
 	}
 }

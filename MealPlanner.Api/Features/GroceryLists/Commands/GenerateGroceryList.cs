@@ -74,6 +74,10 @@ public class GenerateGroceryListCommandHandler(IMongoClient mongoClient)
 				new Dictionary<(string, string), (string DisplayName, decimal TotalQuantity, string DisplayUnit,
 					HashSet<string> Sources)>();
 
+			var aggregatedStaples =
+				new Dictionary<(string, string), (string DisplayName, decimal TotalQuantity, string DisplayUnit,
+					HashSet<string> Sources)>();
+
 			foreach (var day in mealPlanDoc.Days)
 			{
 				foreach (var slot in day.Slots.Values)
@@ -90,17 +94,18 @@ public class GenerateGroceryListCommandHandler(IMongoClient mongoClient)
 
 						foreach (var ingredient in recipe.Ingredients)
 						{
+							var target = ingredient.IsPantryStaple ? aggregatedStaples : aggregated;
 							var key = (ingredient.Name.ToLowerInvariant(), ingredient.Unit.ToLowerInvariant());
 							var scaledQuantity = ingredient.Quantity * scalingFactor;
-							if (aggregated.TryGetValue(key, out var existing))
+							if (target.TryGetValue(key, out var existing))
 							{
 								existing.TotalQuantity += scaledQuantity;
 								existing.Sources.Add(recipe.Name);
-								aggregated[key] = existing;
+								target[key] = existing;
 							}
 							else
 							{
-								aggregated[key] = (ingredient.Name, scaledQuantity, ingredient.Unit,
+								target[key] = (ingredient.Name, scaledQuantity, ingredient.Unit,
 									[recipe.Name]);
 							}
 						}
@@ -110,6 +115,19 @@ public class GenerateGroceryListCommandHandler(IMongoClient mongoClient)
 
 			// 5. Build grocery list items
 			var groceryItems = aggregated
+				.OrderBy(kvp => kvp.Key.Item1)
+				.Select(kvp => new GroceryListItemDocument
+				{
+					Name = kvp.Value.DisplayName,
+					Quantity = kvp.Value.TotalQuantity,
+					Unit = kvp.Value.DisplayUnit,
+					IsChecked = false,
+					SourceRecipeNames = kvp.Value.Sources.OrderBy(s => s).ToList()
+				})
+				.ToList();
+
+			// Build pantry staple items
+			var pantryStapleItems = aggregatedStaples
 				.OrderBy(kvp => kvp.Key.Item1)
 				.Select(kvp => new GroceryListItemDocument
 				{
@@ -154,6 +172,7 @@ public class GenerateGroceryListCommandHandler(IMongoClient mongoClient)
 			if (existingDoc is not null)
 			{
 				existingDoc.Items = groceryItems;
+				existingDoc.PantryStapleItems = pantryStapleItems;
 				existingDoc.UpdatedAt = now;
 				await groceryCollection.ReplaceOneAsync(
 					filter, existingDoc, cancellationToken: cancellationToken);
@@ -166,6 +185,7 @@ public class GenerateGroceryListCommandHandler(IMongoClient mongoClient)
 					UserId = command.UserId,
 					WeekStart = weekStartStr,
 					Items = groceryItems,
+					PantryStapleItems = pantryStapleItems,
 					CreatedAt = now,
 					UpdatedAt = now
 				};

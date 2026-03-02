@@ -202,7 +202,16 @@ public sealed class ClaudeIngredientExtractorClient(
 			unit = unitElement.GetString()?.Trim() ?? string.Empty;
 		}
 
-		return new Ingredient(name, quantity, unit);
+		var isPantryStaple = false;
+		if (element.TryGetProperty("isPantryStaple", out var stapleElement))
+		{
+			if (stapleElement.ValueKind == JsonValueKind.True)
+				isPantryStaple = true;
+			else if (stapleElement.ValueKind == JsonValueKind.False)
+				isPantryStaple = false;
+		}
+
+		return new Ingredient(name, quantity, unit, isPantryStaple);
 	}
 
 	private static decimal ParseQuantity(JsonElement quantityElement, List<string> warnings, int index)
@@ -236,7 +245,7 @@ public sealed class ClaudeIngredientExtractorClient(
 		         Return ONLY valid JSON with this shape:
 		         {
 		           "ingredients": [
-		             { "name": "string", "quantity": 0, "unit": "string" }
+		             { "name": "string", "quantity": 0, "unit": "string", "isPantryStaple": false }
 		           ],
 		           "warnings": ["string"]
 		         }
@@ -245,6 +254,7 @@ public sealed class ClaudeIngredientExtractorClient(
 		         - name is required.
 		         - quantity must be a decimal number. If unknown, use 0.
 		         - unit must be present as a string; use empty string when unknown.
+		         - isPantryStaple: set to true for common pantry staples that most cooks already have (e.g. salt, pepper, oil, butter, sugar, flour, garlic, water, cooking spray, baking soda, baking powder, vanilla extract, vinegar, soy sauce). Set to false for everything else.
 		         - Only include ingredient list items, not instructions.
 		         - Include warnings for uncertain parsing or omitted entries.
 		         - Return at most {{maxIngredients}} ingredients.

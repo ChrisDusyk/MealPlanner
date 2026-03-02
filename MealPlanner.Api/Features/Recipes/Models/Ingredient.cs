@@ -6,5 +6,6 @@ namespace MealPlanner.Api.Features.Recipes.Models;
 public record Ingredient(
 	string Name,
 	decimal Quantity,
-	string Unit
+	string Unit,
+	bool IsPantryStaple = false
 );
