@@ -40,4 +40,6 @@ public class IngredientDocument
 	public decimal Quantity { get; set; }
 
 	public string Unit { get; set; } = string.Empty;
+
+	public bool IsPantryStaple { get; set; }
 }

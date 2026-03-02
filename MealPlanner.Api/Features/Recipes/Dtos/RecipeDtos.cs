@@ -10,13 +10,14 @@ namespace MealPlanner.Api.Features.Recipes.Dtos;
 public record IngredientDto(
 	string Name,
 	decimal Quantity,
-	string Unit
+	string Unit,
+	bool IsPantryStaple = false
 )
 {
-	public Ingredient ToDomain() => new(Name, Quantity, Unit);
+	public Ingredient ToDomain() => new(Name, Quantity, Unit, IsPantryStaple);
 
 	public static IngredientDto FromDomain(Ingredient ingredient) =>
-		new(ingredient.Name, ingredient.Quantity, ingredient.Unit);
+		new(ingredient.Name, ingredient.Quantity, ingredient.Unit, ingredient.IsPantryStaple);
 }
 
 /// <summary>
