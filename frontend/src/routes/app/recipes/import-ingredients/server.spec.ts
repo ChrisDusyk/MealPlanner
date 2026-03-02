@@ -48,7 +48,7 @@ describe('POST /app/recipes/import-ingredients', () => {
 
 	it('proxies import call and returns payload when successful', async () => {
 		const imported = {
-			ingredients: [{ name: 'Flour', quantity: 2, unit: 'cups' }],
+			ingredients: [{ name: 'Flour', quantity: 2, unit: 'cups', isPantryStaple: false }],
 			warnings: ['Quantity inferred']
 		};
 		vi.mocked(importRecipeIngredients).mockResolvedValue(imported);
