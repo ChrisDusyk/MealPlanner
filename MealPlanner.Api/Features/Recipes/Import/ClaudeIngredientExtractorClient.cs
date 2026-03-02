@@ -91,7 +91,7 @@ public sealed class ClaudeIngredientExtractorClient(
 		{
 			using var document = JsonDocument.Parse(jsonPayload);
 			var warnings = new List<string>();
-			var ingredients = ParseRoot(document.RootElement, warnings);
+			var (ingredients, recipeName, servings) = ParseRoot(document.RootElement, warnings);
 
 			if (ingredients.Count == 0)
 			{
@@ -113,7 +113,8 @@ public sealed class ClaudeIngredientExtractorClient(
 				.Distinct(StringComparer.OrdinalIgnoreCase)
 				.ToList();
 
-			return Result<ImportedIngredientSet>.Success(new ImportedIngredientSet(ingredients, deduplicatedWarnings));
+			return Result<ImportedIngredientSet>.Success(
+				new ImportedIngredientSet(ingredients, deduplicatedWarnings, recipeName, servings));
 		}
 		catch (JsonException ex)
 		{
@@ -124,13 +125,17 @@ public sealed class ClaudeIngredientExtractorClient(
 		}
 	}
 
-	private static List<Ingredient> ParseRoot(JsonElement root, List<string> warnings)
+	private static (List<Ingredient> Ingredients, Option<string> RecipeName, Option<int> Servings) ParseRoot(
+		JsonElement root, List<string> warnings)
 	{
 		if (root.ValueKind == JsonValueKind.Array)
-			return ParseIngredientArray(root, warnings);
+			return (ParseIngredientArray(root, warnings), Option<string>.None(), Option<int>.None());
 
 		if (root.ValueKind != JsonValueKind.Object)
-			return [];
+			return ([], Option<string>.None(), Option<int>.None());
+
+		var recipeName = ParseRecipeName(root);
+		var servings = ParseServings(root);
 
 		if (root.TryGetProperty("warnings", out var warningElement)
 		    && warningElement.ValueKind == JsonValueKind.Array)
@@ -145,11 +150,50 @@ public sealed class ClaudeIngredientExtractorClient(
 		if (root.TryGetProperty("ingredients", out var ingredientElement)
 		    && ingredientElement.ValueKind == JsonValueKind.Array)
 		{
-			return ParseIngredientArray(ingredientElement, warnings);
+			return (ParseIngredientArray(ingredientElement, warnings), recipeName, servings);
 		}
 
 		var singleIngredient = TryParseIngredient(root, warnings, 1);
-		return singleIngredient is null ? [] : [singleIngredient];
+		return (singleIngredient is null ? [] : [singleIngredient], recipeName, servings);
+	}
+
+	private static Option<string> ParseRecipeName(JsonElement root)
+	{
+		if (root.TryGetProperty("recipeName", out var nameElement)
+		    && nameElement.ValueKind == JsonValueKind.String)
+		{
+			var name = nameElement.GetString()?.Trim();
+			if (!string.IsNullOrWhiteSpace(name))
+				return Option<string>.Some(name);
+		}
+
+		return Option<string>.None();
+	}
+
+	private static Option<int> ParseServings(JsonElement root)
+	{
+		if (root.TryGetProperty("servings", out var servingsElement))
+		{
+			if (servingsElement.ValueKind == JsonValueKind.Number
+			    && servingsElement.TryGetInt32(out var servings)
+			    && servings > 0)
+			{
+				return Option<int>.Some(servings);
+			}
+
+			if (servingsElement.ValueKind == JsonValueKind.String)
+			{
+				var raw = servingsElement.GetString()?.Trim();
+				if (!string.IsNullOrWhiteSpace(raw)
+				    && int.TryParse(raw, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed)
+				    && parsed > 0)
+				{
+					return Option<int>.Some(parsed);
+				}
+			}
+		}
+
+		return Option<int>.None();
 	}
 
 	private static List<Ingredient> ParseIngredientArray(JsonElement arrayElement, List<string> warnings)
@@ -240,10 +284,12 @@ public sealed class ClaudeIngredientExtractorClient(
 	private static string BuildPrompt(string recipeText, int maxIngredients)
 	{
 		return $$"""
-		         You are extracting recipe ingredients from webpage text.
+		         You are extracting recipe information from webpage text.
 
 		         Return ONLY valid JSON with this shape:
 		         {
+		           "recipeName": "string",
+		           "servings": 0,
 		           "ingredients": [
 		             { "name": "string", "quantity": 0, "unit": "string", "isPantryStaple": false }
 		           ],
@@ -251,7 +297,9 @@ public sealed class ClaudeIngredientExtractorClient(
 		         }
 
 		         Rules:
-		         - name is required.
+		         - recipeName: the title of the recipe. Use an empty string if it cannot be determined.
+		         - servings: the number of servings the recipe makes, as an integer. Use 0 if it cannot be determined.
+		         - name is required for each ingredient.
 		         - quantity must be a decimal number. If unknown, use 0.
 		         - unit must be present as a string; use empty string when unknown.
 		         - isPantryStaple: set to true for common pantry staples that most cooks already have (e.g. salt, pepper, oil, butter, sugar, flour, garlic, water, cooking spray, baking soda, baking powder, vanilla extract, vinegar, soy sauce). Set to false for everything else.

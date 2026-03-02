@@ -49,7 +49,9 @@ describe('POST /app/recipes/import-ingredients', () => {
 	it('proxies import call and returns payload when successful', async () => {
 		const imported = {
 			ingredients: [{ name: 'Flour', quantity: 2, unit: 'cups', isPantryStaple: false }],
-			warnings: ['Quantity inferred']
+			warnings: ['Quantity inferred'],
+			recipeName: 'Banana Bread',
+			servings: 8
 		};
 		vi.mocked(importRecipeIngredients).mockResolvedValue(imported);
 
@@ -61,7 +63,10 @@ describe('POST /app/recipes/import-ingredients', () => {
 		const response = await POST(event);
 
 		expect(response.status).toBe(200);
-		expect(await response.json()).toEqual(imported);
+		const body = await response.json();
+		expect(body).toEqual(imported);
+		expect(body.recipeName).toBe('Banana Bread');
+		expect(body.servings).toBe(8);
 		expect(importRecipeIngredients).toHaveBeenCalledWith(
 			'token-123',
 			{ sourceUrl: 'https://example.com/recipe' },

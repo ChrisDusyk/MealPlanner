@@ -42,6 +42,8 @@ export interface ImportIngredientsRequest {
 export interface ImportIngredientsResponse {
 	ingredients: Ingredient[];
 	warnings: string[];
+	recipeName?: string | null;
+	servings?: number | null;
 }
 
 export async function fetchRecipes(

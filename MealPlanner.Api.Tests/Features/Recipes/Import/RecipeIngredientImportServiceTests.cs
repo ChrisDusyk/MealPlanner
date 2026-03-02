@@ -75,7 +75,9 @@ public class RecipeIngredientImportServiceTests
 	{
 		var expected = new ImportedIngredientSet(
 			[new Ingredient("Flour", 2m, "cups")],
-			["Quantity inferred"]);
+			["Quantity inferred"],
+			Option<string>.Some("Banana Bread"),
+			Option<int>.Some(8));
 
 		var textExtractor = new Mock<IRecipePageTextExtractor>();
 		textExtractor
@@ -96,5 +98,9 @@ public class RecipeIngredientImportServiceTests
 		Assert.Single(result.Value.Ingredients);
 		Assert.Single(result.Value.Warnings);
 		Assert.Equal("Flour", result.Value.Ingredients[0].Name);
+		Assert.True(result.Value.RecipeName.HasValue);
+		Assert.Equal("Banana Bread", result.Value.RecipeName.Value);
+		Assert.True(result.Value.Servings.HasValue);
+		Assert.Equal(8, result.Value.Servings.Value);
 	}
 }

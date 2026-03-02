@@ -132,7 +132,9 @@ public static class RecipeEndpoints
 		return result.Match(
 			onSuccess: importResult => Results.Ok(new ImportIngredientsResponse(
 				importResult.Ingredients.Select(IngredientDto.FromDomain).ToList(),
-				importResult.Warnings.ToList())),
+				importResult.Warnings.ToList(),
+				importResult.RecipeName.GetValueOrNull(),
+				importResult.Servings.Match(s => (int?)s, () => null))),
 			onFailure: error => error.Code == ErrorCodes.ValidationFailed
 				? Results.BadRequest(error.Message)
 				: Results.Problem(error.Message, statusCode: 500));
