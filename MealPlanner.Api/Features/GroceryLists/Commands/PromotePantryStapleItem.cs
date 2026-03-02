@@ -43,9 +43,12 @@ public class PromotePantryStapleItemCommandHandler(IMongoClient mongoClient)
 
 			if (command.ItemIndex < 0 || command.ItemIndex >= document.PantryStapleItems.Count)
 			{
+				var errorMessage = document.PantryStapleItems.Count == 0
+					? "No pantry staple items are available to promote."
+					: $"Item index {command.ItemIndex} is out of range (0–{document.PantryStapleItems.Count - 1}).";
+
 				return Result<GroceryList>.Failure(
-					new Error(ErrorCodes.ValidationFailed,
-						$"Item index {command.ItemIndex} is out of range (0–{document.PantryStapleItems.Count - 1})."));
+					new Error(ErrorCodes.ValidationFailed, errorMessage));
 			}
 
 			// Move the item from pantry staples to the main list
