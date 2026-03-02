@@ -24,6 +24,7 @@ public static class GroceryListEndpoints
 		group.MapGet("/", GetGroceryList);
 		group.MapPut("/items/{itemIndex:int}/toggle", ToggleGroceryListItem);
 		group.MapPost("/items", AddCustomItem);
+		group.MapPost("/pantry-staples/{itemIndex:int}/promote", PromotePantryStapleItem);
 		group.MapDelete("/", DeleteGroceryList);
 
 		// Sharing endpoints
@@ -187,6 +188,47 @@ public static class GroceryListEndpoints
 				ErrorCodes.NotFound => Results.NotFound(error.Message),
 				_ => Results.Problem(error.Message, statusCode: 500)
 			});
+	}
+
+	private static async Task<IResult> PromotePantryStapleItem(
+		int itemIndex,
+		HttpContext httpContext,
+		ICommandHandler<PromotePantryStapleItemCommand, GroceryList> handler,
+		IGroceryListRealtimeNotifier realtimeNotifier,
+		CancellationToken cancellationToken,
+		string weekStart)
+	{
+		var userId = GetUserId(httpContext);
+		if (userId is null)
+			return Results.Unauthorized();
+
+		if (!DateOnly.TryParseExact(weekStart, "yyyy-MM-dd", out var week))
+			return Results.BadRequest("weekStart must be a valid date in yyyy-MM-dd format.");
+
+		var result = await handler.HandleAsync(
+			new PromotePantryStapleItemCommand(userId, week, itemIndex), cancellationToken);
+
+		if (!result.IsSuccess)
+		{
+			var error = result.Error!;
+			return error.Code switch
+			{
+				ErrorCodes.ValidationFailed => Results.BadRequest(error.Message),
+				ErrorCodes.NotFound => Results.NotFound(error.Message),
+				_ => Results.Problem(error.Message, statusCode: 500)
+			};
+		}
+
+		var list = result.Value!;
+		await realtimeNotifier.PublishListUpdatedAsync(
+			ownerUserId: list.UserId,
+			weekStart: list.WeekStart,
+			updatedList: list,
+			changedByUserId: userId,
+			eventType: GroceryListRealtimeEventType.PantryStaplePromoted,
+			cancellationToken: cancellationToken);
+
+		return Results.Ok(GroceryListResponse.FromDomain(list));
 	}
 
 	// ── Sharing Handlers ───────────────────────────────────

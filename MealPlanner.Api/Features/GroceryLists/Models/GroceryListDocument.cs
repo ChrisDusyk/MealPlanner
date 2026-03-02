@@ -21,6 +21,8 @@ public class GroceryListDocument
 
 	public List<GroceryListItemDocument> Items { get; set; } = [];
 
+	public List<GroceryListItemDocument> PantryStapleItems { get; set; } = [];
+
 	public DateTime CreatedAt { get; set; }
 
 	public DateTime UpdatedAt { get; set; }

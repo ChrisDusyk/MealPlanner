@@ -9,7 +9,8 @@ namespace MealPlanner.Api.Features.GroceryLists.Realtime;
 public enum GroceryListRealtimeEventType
 {
 	ItemToggled,
-	CustomItemAdded
+	CustomItemAdded,
+	PantryStaplePromoted
 }
 
 public record GroceryListUpdatedEvent(

@@ -24,6 +24,7 @@ public record GroceryListResponse(
 	string Id,
 	string WeekStart,
 	List<GroceryListItemDto> Items,
+	List<GroceryListItemDto> PantryStapleItems,
 	DateTime CreatedAt,
 	DateTime UpdatedAt
 )
@@ -33,6 +34,7 @@ public record GroceryListResponse(
 			list.Id,
 			list.WeekStart.ToString("yyyy-MM-dd"),
 			list.Items.Select(GroceryListItemDto.FromDomain).ToList(),
+			list.PantryStapleItems.Select(GroceryListItemDto.FromDomain).ToList(),
 			list.CreatedAt,
 			list.UpdatedAt
 		);
