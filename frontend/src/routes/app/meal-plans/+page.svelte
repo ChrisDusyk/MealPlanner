@@ -57,8 +57,8 @@
 	// Track which shared plan is being edited (null = editing own plan)
 	let editingSharedPlan: { ownerUserId: string; shareId: string } | null = $state(null);
 
-	// Promise tracking for in-flight slot mutations (prevents copy race conditions)
-	let pendingSlotUpdate: Promise<void> | null = null;
+	// Promise chain for slot mutations (prevents out-of-order response overwrites)
+	let pendingSlotUpdate: Promise<void> = Promise.resolve();
 
 	// Shared-with-me section collapsed state
 	let sharedSectionOpen = $state(true);
@@ -173,6 +173,14 @@
 		}
 	}
 
+	function queueSlotMutation(mutation: () => Promise<void>): Promise<void> {
+		const next = pendingSlotUpdate.then(mutation, mutation);
+		pendingSlotUpdate = next.catch(() => {
+			// Keep queue alive after a failure (errors handled in each mutation)
+		});
+		return next;
+	}
+
 	async function handleAddItem(item: MealSlotItem) {
 		const plan = getActivePlan();
 		const dayPlan = plan.days.find((d) => d.day === addModalDay);
@@ -183,7 +191,7 @@
 		const newItems = [...currentItems, item];
 		dayPlan.slots[addModalCategory] = newItems;
 
-		const updatePromise = (async () => {
+		await queueSlotMutation(async () => {
 			try {
 				const params = buildParams({
 					weekStart: plan.weekStart,
@@ -204,11 +212,7 @@
 				dayPlan.slots[addModalCategory] = currentItems;
 				showToast('Failed to add item. Please try again.', 'error');
 			}
-		})();
-
-		pendingSlotUpdate = updatePromise;
-		await updatePromise;
-		if (pendingSlotUpdate === updatePromise) pendingSlotUpdate = null;
+		});
 	}
 
 	// ── Remove Item ──
@@ -265,7 +269,7 @@
 		// Optimistic update
 		dayPlan.slots[category] = newItems;
 
-		const updatePromise = (async () => {
+		await queueSlotMutation(async () => {
 			try {
 				const params = buildParams({
 					weekStart: plan.weekStart,
@@ -286,11 +290,7 @@
 				dayPlan.slots[category] = currentItems;
 				showToast('Failed to update servings. Please try again.', 'error');
 			}
-		})();
-
-		pendingSlotUpdate = updatePromise;
-		await updatePromise;
-		if (pendingSlotUpdate === updatePromise) pendingSlotUpdate = null;
+		});
 	}
 
 	// ── Copy Category ──
@@ -303,8 +303,8 @@
 	}
 
 	async function handleCopyConfirm(targetDays: string[]) {
-		// Wait for any in-flight slot update (e.g. servings change) to persist
-		if (pendingSlotUpdate) await pendingSlotUpdate;
+		// Wait for queued slot updates (e.g. servings change) to persist
+		await pendingSlotUpdate;
 
 		const plan = getActivePlan();
 		// Optimistic update: copy source items to targets

@@ -22,8 +22,17 @@
 	} = $props();
 
 	let editingIndex: number | null = $state(null);
+	let cancelBlurCommit = $state(false);
 
 	let hasItems = $derived(items.length > 0);
+
+	function parseServings(input: HTMLInputElement): number {
+		return Math.max(1, parseInt(input.value) || 1);
+	}
+
+	function commitServings(index: number, input: HTMLInputElement) {
+		onUpdateServings(day, category, index, parseServings(input));
+	}
 </script>
 
 <div
@@ -101,23 +110,23 @@
 								min="1"
 								step="1"
 								value={item.servings}
-								onchange={(e) => {
-									const val = Math.max(1, parseInt((e.target as HTMLInputElement).value) || 1);
-									onUpdateServings(day, category, index, val);
-									editingIndex = null;
-								}}
 								onkeydown={(e) => {
 									if (e.key === 'Enter') {
-										const val = Math.max(1, parseInt((e.target as HTMLInputElement).value) || 1);
-										onUpdateServings(day, category, index, val);
+										e.preventDefault();
+										commitServings(index, e.target as HTMLInputElement);
 										editingIndex = null;
 									} else if (e.key === 'Escape') {
+										cancelBlurCommit = true;
 										editingIndex = null;
+										(e.target as HTMLInputElement).blur();
 									}
 								}}
 								onblur={(e) => {
-									const val = Math.max(1, parseInt((e.target as HTMLInputElement).value) || 1);
-									onUpdateServings(day, category, index, val);
+									if (cancelBlurCommit) {
+										cancelBlurCommit = false;
+										return;
+									}
+									commitServings(index, e.target as HTMLInputElement);
 									editingIndex = null;
 								}}
 								class="w-10 shrink-0 rounded border border-green-300 bg-white px-1 py-0.5 text-center text-[10px] text-charcoal focus:border-green-400 focus:ring-1 focus:ring-green-400/30 focus:outline-none"
