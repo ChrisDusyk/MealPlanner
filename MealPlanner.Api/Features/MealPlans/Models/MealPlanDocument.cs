@@ -44,4 +44,7 @@ public class MealSlotItemDocument
 	public string? RecipeId { get; set; }
 
 	public string Name { get; set; } = string.Empty;
+
+	[BsonDefaultValue(1)]
+	public int Servings { get; set; } = 1;
 }

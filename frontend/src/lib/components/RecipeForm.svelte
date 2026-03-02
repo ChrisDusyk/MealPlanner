@@ -8,6 +8,7 @@
 	interface RecipeFormData {
 		name: string;
 		description: string;
+		servings: number;
 		sourceUrl: string;
 		ingredients: Ingredient[];
 	}
@@ -32,6 +33,7 @@
 	// Form state — initialized from snapshot
 	let name = $state(_init?.name ?? '');
 	let description = $state(_init?.description ?? '');
+	let servings = $state(_init?.servings ?? 1);
 	let sourceUrl = $state(_init?.sourceUrl ?? '');
 	let ingredients: (Ingredient & { _id: number })[] = $state(
 		(_init?.ingredients ?? []).map((ing, i) => ({ ...ing, _id: i + 1 }))
@@ -140,6 +142,7 @@
 		const request: CreateRecipeRequest = {
 			name: name.trim(),
 			description: description.trim(),
+			servings,
 			sourceUrl: sourceUrl.trim() || undefined,
 			ingredients: ingredients
 				.filter((i) => i.name.trim())
@@ -381,6 +384,22 @@
 					rows="3"
 					class="w-full resize-none rounded-lg border border-green-200/60 bg-white px-4 py-2.5 text-sm text-charcoal transition-colors placeholder:text-charcoal/30 focus:border-green-400 focus:ring-2 focus:ring-green-500/40 focus:outline-none"
 				></textarea>
+			</div>
+
+			<!-- Servings -->
+			<div>
+				<label for="recipe-servings" class="mb-1.5 block text-sm font-medium text-charcoal/80">
+					Servings
+				</label>
+				<input
+					id="recipe-servings"
+					type="number"
+					min="1"
+					step="1"
+					bind:value={servings}
+					class="w-24 rounded-lg border border-green-200/60 bg-white px-4 py-2.5 text-sm text-charcoal transition-colors placeholder:text-charcoal/30 focus:border-green-400 focus:ring-2 focus:ring-green-500/40 focus:outline-none"
+				/>
+				<p class="mt-1 text-xs text-charcoal/50">How many servings this recipe yields.</p>
 			</div>
 
 			<!-- Source URL -->

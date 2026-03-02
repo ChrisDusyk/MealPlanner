@@ -1,5 +1,6 @@
 using MealPlanner.Api.Features.MealPlans.Models;
 using MealPlanner.Api.Shared;
+using System.ComponentModel.DataAnnotations;
 
 namespace MealPlanner.Api.Features.MealPlans.Dtos;
 
@@ -8,14 +9,15 @@ namespace MealPlanner.Api.Features.MealPlans.Dtos;
 /// </summary>
 public record MealSlotItemDto(
 	string? RecipeId,
-	string Name
+	string Name,
+	[property: Range(1, int.MaxValue)] int Servings = 1
 )
 {
 	public MealSlotItem ToDomain() =>
-		new(Option<string>.From(RecipeId), Name);
+		new(Option<string>.From(RecipeId), Name, Servings);
 
 	public static MealSlotItemDto FromDomain(MealSlotItem item) =>
-		new(item.RecipeId.GetValueOrNull(), item.Name);
+		new(item.RecipeId.GetValueOrNull(), item.Name, item.Servings);
 }
 
 /// <summary>

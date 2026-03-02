@@ -18,6 +18,9 @@ public class RecipeDocument
 
 	public string Description { get; set; } = string.Empty;
 
+	[BsonDefaultValue(1)]
+	public int Servings { get; set; } = 1;
+
 	public string? SourceUrl { get; set; }
 
 	public List<IngredientDocument> Ingredients { get; set; } = [];

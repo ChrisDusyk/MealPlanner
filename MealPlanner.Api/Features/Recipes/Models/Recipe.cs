@@ -10,6 +10,7 @@ public record Recipe(
 	string UserId,
 	string Name,
 	string Description,
+	int Servings,
 	Option<string> SourceUrl,
 	List<Ingredient> Ingredients,
 	DateTime CreatedAt,

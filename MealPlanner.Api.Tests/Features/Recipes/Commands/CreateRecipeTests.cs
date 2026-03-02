@@ -12,7 +12,20 @@ public class CreateRecipeTests
 	public async Task HandleAsync_ReturnsValidationFailure_WhenNameIsMissing()
 	{
 		var handler = new CreateRecipeCommandHandler(new Mock<IMongoClient>().Object);
-		var command = new CreateRecipeCommand("u1", " ", "desc", Option<string>.None(), []);
+		var command = new CreateRecipeCommand("u1", " ", "desc", 1, Option<string>.None(), []);
+
+		var result = await handler.HandleAsync(command, TestContext.Current.CancellationToken);
+
+		Assert.False(result.IsSuccess);
+		Assert.NotNull(result.Error);
+		Assert.Equal(ErrorCodes.ValidationFailed, result.Error.Code);
+	}
+
+	[Fact]
+	public async Task HandleAsync_ReturnsValidationFailure_WhenServingsIsLessThanOne()
+	{
+		var handler = new CreateRecipeCommandHandler(new Mock<IMongoClient>().Object);
+		var command = new CreateRecipeCommand("u1", "Chili", "desc", 0, Option<string>.None(), []);
 
 		var result = await handler.HandleAsync(command, TestContext.Current.CancellationToken);
 
@@ -45,6 +58,7 @@ public class CreateRecipeTests
 			"u1",
 			"Chili",
 			"Spicy",
+			4,
 			Option<string>.Some("https://example.com/chili"),
 			[new Ingredient("Beans", 2, "cups")]);
 
@@ -57,6 +71,7 @@ public class CreateRecipeTests
 		Assert.NotNull(inserted);
 		Assert.Equal("u1", inserted.UserId);
 		Assert.Equal("Chili", inserted.Name);
+		Assert.Equal(4, inserted.Servings);
 		Assert.InRange(inserted.CreatedAt, before.AddSeconds(-1), after.AddSeconds(1));
 		Assert.InRange(inserted.UpdatedAt, before.AddSeconds(-1), after.AddSeconds(1));
 		Assert.True(result.Value.SourceUrl.HasValue);
@@ -80,7 +95,7 @@ public class CreateRecipeTests
 		client.Setup(c => c.GetDatabase("mealplannerDb", null)).Returns(database.Object);
 
 		var handler = new CreateRecipeCommandHandler(client.Object);
-		var command = new CreateRecipeCommand("u1", "Chili", "Spicy", Option<string>.None(), []);
+		var command = new CreateRecipeCommand("u1", "Chili", "Spicy", 1, Option<string>.None(), []);
 		var result = await handler.HandleAsync(command, TestContext.Current.CancellationToken);
 
 		Assert.False(result.IsSuccess);

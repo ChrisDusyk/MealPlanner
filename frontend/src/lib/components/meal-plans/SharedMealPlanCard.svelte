@@ -13,7 +13,8 @@
 		onDismiss,
 		onAdd,
 		onRemove,
-		onCopy
+		onCopy,
+		onUpdateServings
 	}: {
 		shareId: string;
 		ownerUserId: string;
@@ -25,10 +26,11 @@
 		onAdd?: (day: string, category: string) => void;
 		onRemove?: (day: string, category: string, index: number) => void;
 		onCopy?: (day: string, category: string) => void;
+		onUpdateServings?: (day: string, category: string, index: number, servings: number) => void;
 	} = $props();
 
 	let expanded = $state(false);
-	let canEdit = $derived(permission === 'ReadWrite' && !!onAdd && !!onRemove && !!onCopy);
+	let canEdit = $derived(permission === 'ReadWrite' && !!onAdd && !!onRemove && !!onCopy && !!onUpdateServings);
 
 	function getItems(dayName: string, category: string): MealSlotItem[] {
 		const dayPlan = mealPlan.days.find((d) => d.day === dayName);
@@ -109,6 +111,7 @@
 					onAdd={onAdd!}
 					onRemove={onRemove!}
 					onCopy={onCopy!}
+					onUpdateServings={onUpdateServings!}
 				/>
 			{:else}
 				<!-- Compact read-only grid for ReadOnly shares -->

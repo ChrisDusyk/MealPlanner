@@ -57,6 +57,9 @@
 	// Track which shared plan is being edited (null = editing own plan)
 	let editingSharedPlan: { ownerUserId: string; shareId: string } | null = $state(null);
 
+	// Promise chain for slot mutations (prevents out-of-order response overwrites)
+	let pendingSlotUpdate: Promise<void> = Promise.resolve();
+
 	// Shared-with-me section collapsed state
 	let sharedSectionOpen = $state(true);
 
@@ -170,6 +173,14 @@
 		}
 	}
 
+	function queueSlotMutation(mutation: () => Promise<void>): Promise<void> {
+		const next = pendingSlotUpdate.then(mutation, mutation);
+		pendingSlotUpdate = next.catch(() => {
+			// Keep queue alive after a failure (errors handled in each mutation)
+		});
+		return next;
+	}
+
 	async function handleAddItem(item: MealSlotItem) {
 		const plan = getActivePlan();
 		const dayPlan = plan.days.find((d) => d.day === addModalDay);
@@ -180,26 +191,28 @@
 		const newItems = [...currentItems, item];
 		dayPlan.slots[addModalCategory] = newItems;
 
-		try {
-			const params = buildParams({
-				weekStart: plan.weekStart,
-				day: addModalDay,
-				category: addModalCategory
-			});
-			const res = await fetch(`/app/meal-plans?${params}`, {
-				method: 'PUT',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ items: newItems })
-			});
+		await queueSlotMutation(async () => {
+			try {
+				const params = buildParams({
+					weekStart: plan.weekStart,
+					day: addModalDay,
+					category: addModalCategory
+				});
+				const res = await fetch(`/app/meal-plans?${params}`, {
+					method: 'PUT',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ items: newItems })
+				});
 
-			if (!res.ok) throw new Error('Failed to save');
-			const updated: MealPlanResponse = await res.json();
-			applyUpdatedPlan(updated);
-		} catch {
-			// Revert
-			dayPlan.slots[addModalCategory] = currentItems;
-			showToast('Failed to add item. Please try again.', 'error');
-		}
+				if (!res.ok) throw new Error('Failed to save');
+				const updated: MealPlanResponse = await res.json();
+				applyUpdatedPlan(updated);
+			} catch {
+				// Revert
+				dayPlan.slots[addModalCategory] = currentItems;
+				showToast('Failed to add item. Please try again.', 'error');
+			}
+		});
 	}
 
 	// ── Remove Item ──
@@ -236,6 +249,50 @@
 		}
 	}
 
+	// ── Update Servings ──
+
+	async function handleUpdateServings(day: string, category: string, index: number, servings: number) {
+		const plan = getActivePlan();
+		const dayPlan = plan.days.find((d) => d.day === day);
+		if (!dayPlan) return;
+
+		const currentItems = [...(dayPlan.slots[category] ?? [])];
+		if (index < 0 || index >= currentItems.length) return;
+
+		// Skip no-op updates (also prevents double-fires from onchange + onblur)
+		if (currentItems[index].servings === servings) return;
+
+		const newItems = currentItems.map((item, i) =>
+			i === index ? { ...item, servings } : item
+		);
+
+		// Optimistic update
+		dayPlan.slots[category] = newItems;
+
+		await queueSlotMutation(async () => {
+			try {
+				const params = buildParams({
+					weekStart: plan.weekStart,
+					day,
+					category
+				});
+				const res = await fetch(`/app/meal-plans?${params}`, {
+					method: 'PUT',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ items: newItems })
+				});
+
+				if (!res.ok) throw new Error('Failed to update servings');
+				const updated: MealPlanResponse = await res.json();
+				applyUpdatedPlan(updated);
+			} catch {
+				// Revert
+				dayPlan.slots[category] = currentItems;
+				showToast('Failed to update servings. Please try again.', 'error');
+			}
+		});
+	}
+
 	// ── Copy Category ──
 
 	function handleOpenCopy(day: string, category: string) {
@@ -246,6 +303,9 @@
 	}
 
 	async function handleCopyConfirm(targetDays: string[]) {
+		// Wait for queued slot updates (e.g. servings change) to persist
+		await pendingSlotUpdate;
+
 		const plan = getActivePlan();
 		// Optimistic update: copy source items to targets
 		const sourceDayPlan = plan.days.find((d) => d.day === copyModalDay);
@@ -316,6 +376,13 @@
 			copyModalDay = day;
 			copyModalCategory = category;
 			copyModalOpen = true;
+		};
+	}
+
+	function handleSharedUpdateServings(ownerUserId: string, shareId: string) {
+		return (day: string, category: string, index: number, servings: number) => {
+			editingSharedPlan = { ownerUserId, shareId };
+			handleUpdateServings(day, category, index, servings);
 		};
 	}
 
@@ -430,6 +497,7 @@
 		onAdd={handleOpenAdd}
 		onRemove={handleRemoveItem}
 		onCopy={handleOpenCopy}
+		onUpdateServings={handleUpdateServings}
 	/>
 
 	<!-- Add Item Modal -->
@@ -507,6 +575,9 @@
 								: undefined}
 							onCopy={shared.permission === 'ReadWrite'
 								? handleSharedOpenCopy(shared.ownerUserId, shared.shareId)
+								: undefined}
+							onUpdateServings={shared.permission === 'ReadWrite'
+								? handleSharedUpdateServings(shared.ownerUserId, shared.shareId)
 								: undefined}
 						/>
 					{/each}

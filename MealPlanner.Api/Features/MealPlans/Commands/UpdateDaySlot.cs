@@ -26,6 +26,10 @@ public class UpdateDaySlotCommandHandler(IMongoClient mongoClient)
 		UpdateDaySlotCommand command,
 		CancellationToken cancellationToken = default)
 	{
+		if (command.Items.Any(item => item.Servings < 1))
+			return Result<MealPlan>.Failure(
+				new Error(ErrorCodes.ValidationFailed, "All meal slot item servings must be at least 1."));
+
 		try
 		{
 			var weekStart = GetMealPlanQueryHandler.NormalizeToMonday(command.WeekStart);
@@ -71,7 +75,8 @@ public class UpdateDaySlotCommandHandler(IMongoClient mongoClient)
 			dayPlan.Slots[categoryStr] = command.Items.Select(item => new MealSlotItemDocument
 			{
 				RecipeId = item.RecipeId.GetValueOrNull(),
-				Name = item.Name
+				Name = item.Name,
+				Servings = item.Servings
 			}).ToList();
 
 			document.UpdatedAt = DateTime.UtcNow;

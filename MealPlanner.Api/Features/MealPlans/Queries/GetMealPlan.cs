@@ -91,7 +91,8 @@ public class GetMealPlanQueryHandler(IMongoClient mongoClient)
 					kvp => Enum.Parse<MealCategory>(kvp.Key),
 					kvp => kvp.Value.Select(item => new MealSlotItem(
 						RecipeId: Option<string>.From(item.RecipeId),
-						Name: item.Name
+						Name: item.Name,
+						Servings: item.Servings
 					)).ToList()
 				)
 			)).ToList(),

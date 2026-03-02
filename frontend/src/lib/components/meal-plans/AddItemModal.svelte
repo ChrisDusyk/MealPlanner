@@ -18,6 +18,7 @@
 	let mode: 'recipes' | 'quick' = $state('recipes');
 	let searchTerm = $state('');
 	let quickText = $state('');
+	let recipeServings: Record<string, number> = $state({});
 	let dialogEl: HTMLDivElement | null = $state(null);
 	let previousFocus: HTMLElement | null = null;
 
@@ -46,20 +47,22 @@
 	});
 
 	function selectRecipe(recipe: Recipe) {
-		onSelect({ recipeId: recipe.id, name: recipe.name });
+		const servings = recipeServings[recipe.id] ?? 1;
+		onSelect({ recipeId: recipe.id, name: recipe.name, servings });
 		reset();
 	}
 
 	function addQuickEntry() {
 		const text = quickText.trim();
 		if (!text) return;
-		onSelect({ recipeId: null, name: text });
+		onSelect({ recipeId: null, name: text, servings: 1 });
 		reset();
 	}
 
 	function reset() {
 		searchTerm = '';
 		quickText = '';
+		recipeServings = {};
 		mode = 'recipes';
 		onClose();
 	}
@@ -214,6 +217,16 @@
 												</p>
 											{/if}
 										</div>
+										<input
+											type="number"
+											min="1"
+											step="1"
+											value={recipeServings[recipe.id] ?? 1}
+											oninput={(e) => { recipeServings[recipe.id] = Math.max(1, parseInt((e.target as HTMLInputElement).value) || 1); }}
+											onclick={(e) => e.stopPropagation()}
+											class="w-12 shrink-0 rounded border border-green-200/60 px-1.5 py-1 text-center text-xs text-charcoal focus:border-green-400 focus:ring-1 focus:ring-green-400/30 focus:outline-none"
+											title="Servings"
+										/>
 										<svg
 											xmlns="http://www.w3.org/2000/svg"
 											class="h-4 w-4 shrink-0 text-green-400"

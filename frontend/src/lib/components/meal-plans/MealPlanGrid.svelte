@@ -8,13 +8,15 @@
 		weekStart,
 		onAdd,
 		onRemove,
-		onCopy
+		onCopy,
+		onUpdateServings
 	}: {
 		days: DayPlan[];
 		weekStart: string;
 		onAdd: (day: string, category: string) => void;
 		onRemove: (day: string, category: string, index: number) => void;
 		onCopy: (day: string, category: string) => void;
+		onUpdateServings: (day: string, category: string, index: number, servings: number) => void;
 	} = $props();
 
 	let monday = $derived(new Date(weekStart + 'T00:00:00'));
@@ -78,6 +80,7 @@
 							{onAdd}
 							{onRemove}
 							{onCopy}
+							{onUpdateServings}
 						/>
 					{/if}
 				{/each}
@@ -129,6 +132,7 @@
 							{onAdd}
 							{onRemove}
 							{onCopy}
+							{onUpdateServings}
 						/>
 					{/if}
 				{/each}
