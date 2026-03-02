@@ -21,7 +21,11 @@ public class GetAllRecipesTests
 				Name = "Pasta",
 				Description = "Simple",
 				SourceUrl = "https://example.com",
-				Ingredients = [new IngredientDocument { Name = "Noodles", Quantity = 1, Unit = "pack" }],
+				Ingredients =
+				[
+					new IngredientDocument { Name = "Noodles", Quantity = 1, Unit = "pack" },
+					new IngredientDocument { Name = "Soy Sauce", Quantity = 2, Unit = "tbsp", IsPantryStaple = true }
+				],
 				CreatedAt = new DateTime(2026, 1, 10, 0, 0, 0, DateTimeKind.Utc),
 				UpdatedAt = new DateTime(2026, 1, 11, 0, 0, 0, DateTimeKind.Utc)
 			}
@@ -58,7 +62,9 @@ public class GetAllRecipesTests
 		Assert.Equal("Pasta", recipe.Name);
 		Assert.True(recipe.SourceUrl.HasValue);
 		Assert.Equal("https://example.com", recipe.SourceUrl.Value);
-		Assert.Single(recipe.Ingredients);
+		Assert.Equal(2, recipe.Ingredients.Count);
+		Assert.False(recipe.Ingredients[0].IsPantryStaple);
+		Assert.True(recipe.Ingredients[1].IsPantryStaple);
 	}
 
 	[Fact]

@@ -155,6 +155,7 @@ public class GenerateGroceryListTests
 		Assert.Equal("u1", inserted.UserId);
 		Assert.Contains(inserted.Items, i => i.Name == "Tomato" && i.Quantity == 3 && i.Unit == "pcs");
 		Assert.Equal(1, inserted.Items.Count(i => i.Name.Equals("Bananas", StringComparison.OrdinalIgnoreCase)));
+		Assert.Empty(inserted.PantryStapleItems);
 	}
 
 	[Fact]
@@ -238,6 +239,7 @@ public class GenerateGroceryListTests
 		Assert.NotNull(replaced);
 		Assert.Equal("g1", replaced.Id);
 		Assert.NotEmpty(replaced.Items);
+		Assert.Empty(replaced.PantryStapleItems);
 	}
 
 	[Fact]
@@ -367,5 +369,124 @@ public class GenerateGroceryListTests
 		// 8 tomatoes * (2/4) = 4, 400g pasta * (2/4) = 200
 		Assert.Contains(inserted.Items, i => i.Name == "Tomato" && i.Quantity == 4m && i.Unit == "pcs");
 		Assert.Contains(inserted.Items, i => i.Name == "Pasta" && i.Quantity == 200m && i.Unit == "g");
+		Assert.Empty(inserted.PantryStapleItems);
+	}
+
+	[Fact]
+	public async Task HandleAsync_SeparatesPantryStaplesFromRegularItems()
+	{
+		var mealPlan = new MealPlanDocument
+		{
+			Id = "mp1",
+			UserId = "u1",
+			WeekStart = "2026-02-23",
+			Days =
+			[
+				new DayPlanDocument
+				{
+					Day = "Monday",
+					Slots = new Dictionary<string, List<MealSlotItemDocument>>
+					{
+						["Dinner"] = [new MealSlotItemDocument { RecipeId = "r1", Name = "Pasta" }]
+					}
+				}
+			],
+			CreatedAt = DateTime.UtcNow,
+			UpdatedAt = DateTime.UtcNow
+		};
+
+		var recipe = new RecipeDocument
+		{
+			Id = "r1",
+			UserId = "u1",
+			Name = "Pasta",
+			Description = "",
+			Ingredients =
+			[
+				new IngredientDocument { Name = "Tomato", Quantity = 2, Unit = "pcs", IsPantryStaple = false },
+				new IngredientDocument { Name = "Salt", Quantity = 1, Unit = "tsp", IsPantryStaple = true },
+				new IngredientDocument { Name = "Olive Oil", Quantity = 2, Unit = "tbsp", IsPantryStaple = true }
+			],
+			CreatedAt = DateTime.UtcNow,
+			UpdatedAt = DateTime.UtcNow
+		};
+
+		var mealCursor = MongoTestHelpers.CreateCursor(new List<MealPlanDocument> { mealPlan });
+		var recipeCursor = MongoTestHelpers.CreateCursor(new List<RecipeDocument> { recipe });
+		var emptyListCursor = MongoTestHelpers.CreateCursor(Array.Empty<GroceryListDocument>());
+		var emptyShareCursor = MongoTestHelpers.CreateCursor(Array.Empty<MealPlanShareDocument>());
+		var emptyGroceryShareCursor = MongoTestHelpers.CreateCursor(Array.Empty<GroceryListShareDocument>());
+
+		var mealPlans = new Mock<IMongoCollection<MealPlanDocument>>();
+		mealPlans.Setup(c => c.FindAsync(It.IsAny<FilterDefinition<MealPlanDocument>>(),
+				It.IsAny<FindOptions<MealPlanDocument, MealPlanDocument>>(), It.IsAny<CancellationToken>()))
+			.ReturnsAsync(mealCursor.Object);
+		mealPlans.Setup(c => c.FindSync(It.IsAny<FilterDefinition<MealPlanDocument>>(),
+				It.IsAny<FindOptions<MealPlanDocument, MealPlanDocument>>(), It.IsAny<CancellationToken>()))
+			.Returns(mealCursor.Object);
+
+		var recipes = new Mock<IMongoCollection<RecipeDocument>>();
+		recipes.Setup(c => c.FindAsync(It.IsAny<FilterDefinition<RecipeDocument>>(),
+				It.IsAny<FindOptions<RecipeDocument, RecipeDocument>>(), It.IsAny<CancellationToken>()))
+			.ReturnsAsync(recipeCursor.Object);
+		recipes.Setup(c => c.FindSync(It.IsAny<FilterDefinition<RecipeDocument>>(),
+				It.IsAny<FindOptions<RecipeDocument, RecipeDocument>>(), It.IsAny<CancellationToken>()))
+			.Returns(recipeCursor.Object);
+
+		var shares = new Mock<IMongoCollection<MealPlanShareDocument>>();
+		shares.Setup(c => c.FindAsync(It.IsAny<FilterDefinition<MealPlanShareDocument>>(),
+				It.IsAny<FindOptions<MealPlanShareDocument, MealPlanShareDocument>>(), It.IsAny<CancellationToken>()))
+			.ReturnsAsync(emptyShareCursor.Object);
+		shares.Setup(c => c.FindSync(It.IsAny<FilterDefinition<MealPlanShareDocument>>(),
+				It.IsAny<FindOptions<MealPlanShareDocument, MealPlanShareDocument>>(), It.IsAny<CancellationToken>()))
+			.Returns(emptyShareCursor.Object);
+
+		var groceryShares = new Mock<IMongoCollection<GroceryListShareDocument>>();
+		groceryShares
+			.Setup(c => c.FindAsync(It.IsAny<FilterDefinition<GroceryListShareDocument>>(),
+				It.IsAny<FindOptions<GroceryListShareDocument, GroceryListShareDocument>>(),
+				It.IsAny<CancellationToken>())).ReturnsAsync(emptyGroceryShareCursor.Object);
+		groceryShares
+			.Setup(c => c.FindSync(It.IsAny<FilterDefinition<GroceryListShareDocument>>(),
+				It.IsAny<FindOptions<GroceryListShareDocument, GroceryListShareDocument>>(),
+				It.IsAny<CancellationToken>())).Returns(emptyGroceryShareCursor.Object);
+
+		GroceryListDocument? inserted = null;
+		var groceries = new Mock<IMongoCollection<GroceryListDocument>>();
+		groceries.Setup(c => c.FindAsync(It.IsAny<FilterDefinition<GroceryListDocument>>(),
+				It.IsAny<FindOptions<GroceryListDocument, GroceryListDocument>>(), It.IsAny<CancellationToken>()))
+			.ReturnsAsync(emptyListCursor.Object);
+		groceries.Setup(c => c.FindSync(It.IsAny<FilterDefinition<GroceryListDocument>>(),
+				It.IsAny<FindOptions<GroceryListDocument, GroceryListDocument>>(), It.IsAny<CancellationToken>()))
+			.Returns(emptyListCursor.Object);
+		groceries.Setup(c => c.InsertOneAsync(It.IsAny<GroceryListDocument>(), It.IsAny<InsertOneOptions>(),
+				It.IsAny<CancellationToken>()))
+			.Callback<GroceryListDocument, InsertOneOptions, CancellationToken>((d, _, _) => inserted = d)
+			.Returns(Task.CompletedTask);
+
+		var db = new Mock<IMongoDatabase>();
+		db.Setup(d => d.GetCollection<MealPlanDocument>("mealplans", null)).Returns(mealPlans.Object);
+		db.Setup(d => d.GetCollection<RecipeDocument>("recipes", null)).Returns(recipes.Object);
+		db.Setup(d => d.GetCollection<GroceryListDocument>("grocerylists", null)).Returns(groceries.Object);
+		db.Setup(d => d.GetCollection<MealPlanShareDocument>("shares", null)).Returns(shares.Object);
+		db.Setup(d => d.GetCollection<GroceryListShareDocument>("grocerylist_shares", null))
+			.Returns(groceryShares.Object);
+
+		var client = new Mock<IMongoClient>();
+		client.Setup(c => c.GetDatabase("mealplannerDb", null)).Returns(db.Object);
+
+		var handler = new GenerateGroceryListCommandHandler(client.Object);
+		var result = await handler.HandleAsync(new GenerateGroceryListCommand("u1", new DateOnly(2026, 2, 23)),
+			TestContext.Current.CancellationToken);
+
+		Assert.True(result.IsSuccess);
+		Assert.NotNull(inserted);
+		// Regular item goes to Items
+		Assert.Single(inserted.Items);
+		Assert.Contains(inserted.Items, i => i.Name == "Tomato" && i.Quantity == 2 && i.Unit == "pcs");
+		// Pantry staples go to PantryStapleItems
+		Assert.Equal(2, inserted.PantryStapleItems.Count);
+		Assert.Contains(inserted.PantryStapleItems, i => i.Name == "Salt" && i.Quantity == 1 && i.Unit == "tsp");
+		Assert.Contains(inserted.PantryStapleItems, i => i.Name == "Olive Oil" && i.Quantity == 2 && i.Unit == "tbsp");
 	}
 }

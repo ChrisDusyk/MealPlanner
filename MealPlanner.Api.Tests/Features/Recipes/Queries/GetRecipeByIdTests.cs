@@ -19,7 +19,11 @@ public class GetRecipeByIdTests
 			Name = "Soup",
 			Description = "Warm",
 			SourceUrl = null,
-			Ingredients = [new IngredientDocument { Name = "Water", Quantity = 2, Unit = "cups" }],
+			Ingredients =
+			[
+				new IngredientDocument { Name = "Water", Quantity = 2, Unit = "cups" },
+				new IngredientDocument { Name = "Salt", Quantity = 1, Unit = "pinch", IsPantryStaple = true }
+			],
 			CreatedAt = new DateTime(2026, 2, 1, 0, 0, 0, DateTimeKind.Utc),
 			UpdatedAt = new DateTime(2026, 2, 2, 0, 0, 0, DateTimeKind.Utc)
 		};
@@ -50,6 +54,9 @@ public class GetRecipeByIdTests
 		Assert.NotNull(result.Value);
 		Assert.Equal("r1", result.Value.Id);
 		Assert.False(result.Value.SourceUrl.HasValue);
+		Assert.Equal(2, result.Value.Ingredients.Count);
+		Assert.False(result.Value.Ingredients[0].IsPantryStaple);
+		Assert.True(result.Value.Ingredients[1].IsPantryStaple);
 	}
 
 	[Fact]
