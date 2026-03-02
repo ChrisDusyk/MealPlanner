@@ -57,6 +57,9 @@
 	// Track which shared plan is being edited (null = editing own plan)
 	let editingSharedPlan: { ownerUserId: string; shareId: string } | null = $state(null);
 
+	// Promise tracking for in-flight slot mutations (prevents copy race conditions)
+	let pendingSlotUpdate: Promise<void> | null = null;
+
 	// Shared-with-me section collapsed state
 	let sharedSectionOpen = $state(true);
 
@@ -180,26 +183,32 @@
 		const newItems = [...currentItems, item];
 		dayPlan.slots[addModalCategory] = newItems;
 
-		try {
-			const params = buildParams({
-				weekStart: plan.weekStart,
-				day: addModalDay,
-				category: addModalCategory
-			});
-			const res = await fetch(`/app/meal-plans?${params}`, {
-				method: 'PUT',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ items: newItems })
-			});
+		const updatePromise = (async () => {
+			try {
+				const params = buildParams({
+					weekStart: plan.weekStart,
+					day: addModalDay,
+					category: addModalCategory
+				});
+				const res = await fetch(`/app/meal-plans?${params}`, {
+					method: 'PUT',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ items: newItems })
+				});
 
-			if (!res.ok) throw new Error('Failed to save');
-			const updated: MealPlanResponse = await res.json();
-			applyUpdatedPlan(updated);
-		} catch {
-			// Revert
-			dayPlan.slots[addModalCategory] = currentItems;
-			showToast('Failed to add item. Please try again.', 'error');
-		}
+				if (!res.ok) throw new Error('Failed to save');
+				const updated: MealPlanResponse = await res.json();
+				applyUpdatedPlan(updated);
+			} catch {
+				// Revert
+				dayPlan.slots[addModalCategory] = currentItems;
+				showToast('Failed to add item. Please try again.', 'error');
+			}
+		})();
+
+		pendingSlotUpdate = updatePromise;
+		await updatePromise;
+		if (pendingSlotUpdate === updatePromise) pendingSlotUpdate = null;
 	}
 
 	// ── Remove Item ──
@@ -246,6 +255,9 @@
 		const currentItems = [...(dayPlan.slots[category] ?? [])];
 		if (index < 0 || index >= currentItems.length) return;
 
+		// Skip no-op updates (also prevents double-fires from onchange + onblur)
+		if (currentItems[index].servings === servings) return;
+
 		const newItems = currentItems.map((item, i) =>
 			i === index ? { ...item, servings } : item
 		);
@@ -253,26 +265,32 @@
 		// Optimistic update
 		dayPlan.slots[category] = newItems;
 
-		try {
-			const params = buildParams({
-				weekStart: plan.weekStart,
-				day,
-				category
-			});
-			const res = await fetch(`/app/meal-plans?${params}`, {
-				method: 'PUT',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ items: newItems })
-			});
+		const updatePromise = (async () => {
+			try {
+				const params = buildParams({
+					weekStart: plan.weekStart,
+					day,
+					category
+				});
+				const res = await fetch(`/app/meal-plans?${params}`, {
+					method: 'PUT',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ items: newItems })
+				});
 
-			if (!res.ok) throw new Error('Failed to update servings');
-			const updated: MealPlanResponse = await res.json();
-			applyUpdatedPlan(updated);
-		} catch {
-			// Revert
-			dayPlan.slots[category] = currentItems;
-			showToast('Failed to update servings. Please try again.', 'error');
-		}
+				if (!res.ok) throw new Error('Failed to update servings');
+				const updated: MealPlanResponse = await res.json();
+				applyUpdatedPlan(updated);
+			} catch {
+				// Revert
+				dayPlan.slots[category] = currentItems;
+				showToast('Failed to update servings. Please try again.', 'error');
+			}
+		})();
+
+		pendingSlotUpdate = updatePromise;
+		await updatePromise;
+		if (pendingSlotUpdate === updatePromise) pendingSlotUpdate = null;
 	}
 
 	// ── Copy Category ──
@@ -285,6 +303,9 @@
 	}
 
 	async function handleCopyConfirm(targetDays: string[]) {
+		// Wait for any in-flight slot update (e.g. servings change) to persist
+		if (pendingSlotUpdate) await pendingSlotUpdate;
+
 		const plan = getActivePlan();
 		// Optimistic update: copy source items to targets
 		const sourceDayPlan = plan.days.find((d) => d.day === copyModalDay);

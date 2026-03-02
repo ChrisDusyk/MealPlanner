@@ -80,6 +80,7 @@
 							{onAdd}
 							{onRemove}
 							{onCopy}
+							{onUpdateServings}
 						/>
 					{/if}
 				{/each}
