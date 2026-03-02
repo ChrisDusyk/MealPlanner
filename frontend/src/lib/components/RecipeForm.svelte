@@ -227,8 +227,13 @@
 				body: JSON.stringify({ sourceUrl: sourceUrl.trim() })
 			});
 
-			const payload: { ingredients?: unknown; warnings?: unknown; error?: unknown } | null =
-				await response.json().catch(() => null);
+			const payload: {
+				ingredients?: unknown;
+				warnings?: unknown;
+				recipeName?: unknown;
+				servings?: unknown;
+				error?: unknown;
+			} | null = await response.json().catch(() => null);
 
 			if (!response.ok) {
 				importErrorMessage =
@@ -265,9 +270,39 @@
 			importWarnings = rawWarnings.filter((warning): warning is string => typeof warning === 'string');
 
 			replaceIngredientRows(importedIngredients);
-			importSuccessMessage = importedIngredients.length
-				? `Imported ${importedIngredients.length} ingredient${importedIngredients.length === 1 ? '' : 's'} and replaced current rows.`
-				: 'No ingredients were detected on that page.';
+
+			// Auto-fill recipe name and servings when form fields are empty/default
+			const importedParts: string[] = [];
+
+			if (
+				typeof payload?.recipeName === 'string' &&
+				payload.recipeName.trim().length > 0 &&
+				name.trim().length === 0
+			) {
+				name = payload.recipeName.trim();
+				importedParts.push('recipe name');
+			}
+
+			if (
+				typeof payload?.servings === 'number' &&
+				Number.isFinite(payload.servings) &&
+				payload.servings > 0 &&
+				servings === 1
+			) {
+				servings = payload.servings;
+				importedParts.push('servings');
+			}
+
+			if (importedIngredients.length) {
+				const ingredientText = `${importedIngredients.length} ingredient${importedIngredients.length === 1 ? '' : 's'}`;
+				if (importedParts.length > 0) {
+					importSuccessMessage = `Imported ${ingredientText}, ${importedParts.join(', and ')}, and replaced current rows.`;
+				} else {
+					importSuccessMessage = `Imported ${ingredientText} and replaced current rows.`;
+				}
+			} else {
+				importSuccessMessage = 'No ingredients were detected on that page.';
+			}
 		} catch {
 			importErrorMessage = 'An unexpected error occurred while importing ingredients.';
 		} finally {
