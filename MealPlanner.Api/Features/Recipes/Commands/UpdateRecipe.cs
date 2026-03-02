@@ -31,6 +31,10 @@ public class UpdateRecipeCommandHandler(IMongoClient mongoClient)
 			return Result<Recipe>.Failure(
 				new Error(ErrorCodes.ValidationFailed, "Recipe name is required."));
 
+		if (command.Servings < 1)
+			return Result<Recipe>.Failure(
+				new Error(ErrorCodes.ValidationFailed, "Recipe servings must be at least 1."));
+
 		try
 		{
 			var collection = mongoClient

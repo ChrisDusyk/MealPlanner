@@ -74,6 +74,23 @@ public class UpdateDaySlotTests
 	}
 
 	[Fact]
+	public async Task HandleAsync_ReturnsValidationFailure_WhenAnyItemServingsIsLessThanOne()
+	{
+		var handler = new UpdateDaySlotCommandHandler(new Mock<IMongoClient>().Object);
+		var result = await handler.HandleAsync(
+			new UpdateDaySlotCommand(
+				"u1",
+				new DateOnly(2026, 2, 23),
+				DayOfWeek.Monday,
+				MealCategory.Breakfast,
+				[new MealSlotItem(Option<string>.Some("r1"), "Oats", 0)]),
+			TestContext.Current.CancellationToken);
+
+		Assert.False(result.IsSuccess);
+		Assert.Equal(ErrorCodes.ValidationFailed, result.Error?.Code);
+	}
+
+	[Fact]
 	public async Task HandleAsync_ReturnsDatabaseError_WhenMongoThrows()
 	{
 		var client = new Mock<IMongoClient>();

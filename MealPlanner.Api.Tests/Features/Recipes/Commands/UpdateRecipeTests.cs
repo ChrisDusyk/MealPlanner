@@ -23,6 +23,19 @@ public class UpdateRecipeTests
 	}
 
 	[Fact]
+	public async Task HandleAsync_ReturnsValidationFailure_WhenServingsIsLessThanOne()
+	{
+		var handler = new UpdateRecipeCommandHandler(new Mock<IMongoClient>().Object);
+		var command = new UpdateRecipeCommand("r1", "u1", "Updated", "desc", 0, Option<string>.None(), []);
+
+		var result = await handler.HandleAsync(command, TestContext.Current.CancellationToken);
+
+		Assert.False(result.IsSuccess);
+		Assert.NotNull(result.Error);
+		Assert.Equal(ErrorCodes.ValidationFailed, result.Error.Code);
+	}
+
+	[Fact]
 	public async Task HandleAsync_ReturnsNotFound_WhenRecipeMissing()
 	{
 		var cursor = MongoTestHelpers.CreateCursor((IReadOnlyCollection<RecipeDocument>)Array.Empty<RecipeDocument>());
