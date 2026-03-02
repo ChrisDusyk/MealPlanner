@@ -592,8 +592,10 @@
 									// Optimistic: move item from pantryStapleItems to items
 									if (groceryList) {
 										const [moved] = groceryList.pantryStapleItems.splice(stapleIndex, 1);
-										groceryList.items = [...groceryList.items, { ...moved, isChecked: false }];
-										groceryList = groceryList;
+										if (moved) {
+											groceryList.items = [...groceryList.items, { ...moved, isChecked: false }];
+											groceryList = groceryList;
+										}
 									}
 									return async ({ result, update }) => {
 										if (result.type === 'success' && result.data?.groceryList) {
@@ -612,12 +614,13 @@
 								<input type="hidden" name="itemIndex" value={stapleIndex} />
 								<button
 									type="submit"
+									aria-label={`Add ${staple.name} to grocery list`}
 									class="flex items-center gap-1 rounded-lg bg-amber-100 px-2.5 py-1.5 text-xs font-medium text-amber-800 transition-colors hover:bg-amber-200"
 								>
 									<svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
 										<path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
 									</svg>
-									Add
+									Add to list
 								</button>
 							</form>
 						</li>
