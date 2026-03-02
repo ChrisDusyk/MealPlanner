@@ -29,7 +29,9 @@ public class ImportIngredientsQueryTests
 	{
 		var expected = new ImportedIngredientSet(
 			[new Ingredient("Flour", 2, "cups")],
-			["Quantity estimated"]);
+			["Quantity estimated"],
+			Option<string>.Some("Test Recipe"),
+			Option<int>.Some(4));
 
 		var service = new Mock<IRecipeIngredientImportService>();
 		service
@@ -46,6 +48,10 @@ public class ImportIngredientsQueryTests
 		Assert.NotNull(result.Value);
 		Assert.Single(result.Value.Ingredients);
 		Assert.Single(result.Value.Warnings);
+		Assert.True(result.Value.RecipeName.HasValue);
+		Assert.Equal("Test Recipe", result.Value.RecipeName.Value);
+		Assert.True(result.Value.Servings.HasValue);
+		Assert.Equal(4, result.Value.Servings.Value);
 		service.Verify(
 			s => s.ImportFromUrlAsync("https://example.com/recipe", It.IsAny<CancellationToken>()),
 			Times.Once);
