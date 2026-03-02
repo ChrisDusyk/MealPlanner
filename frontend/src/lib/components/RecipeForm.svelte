@@ -289,7 +289,7 @@
 				payload.servings > 0 &&
 				servings === 1
 			) {
-				servings = payload.servings;
+				servings = Math.round(payload.servings);
 				importedParts.push('servings');
 			}
 
