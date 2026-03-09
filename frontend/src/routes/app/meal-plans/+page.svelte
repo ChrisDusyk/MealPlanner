@@ -131,6 +131,7 @@
 	// ── Navigation ──
 
 	function handleNavigate(weekStart: string) {
+		// @ts-expect-error resolve() with query string is valid at runtime
 		goto(resolve(`/app/meal-plans?weekStart=${weekStart}`));
 	}
 
@@ -155,6 +156,7 @@
 					? body.groceryList.weekStart
 					: mealPlan.weekStart;
 			const redirectParams = new SvelteURLSearchParams({ weekStart });
+			// @ts-expect-error resolve() with query string is valid at runtime
 			await goto(resolve(`/app/grocery-lists?${redirectParams}`));
 		} catch (err) {
 			showToast(err instanceof Error ? err.message : 'Failed to generate grocery list.', 'error');

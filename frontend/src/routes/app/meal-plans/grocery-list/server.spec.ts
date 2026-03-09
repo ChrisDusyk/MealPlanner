@@ -1,21 +1,22 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { RequestEvent } from '@sveltejs/kit';
 import { ApiError } from '$lib/api/recipeApi';
 import { POST } from './+server';
 import { generateGroceryList } from '$lib/api/groceryListApi';
+
+type GroceryListGenerateEvent = Parameters<typeof POST>[0];
 
 vi.mock('$lib/api/groceryListApi', () => ({
 	generateGroceryList: vi.fn()
 }));
 
-function createEvent(url: string, accessToken: string | null): RequestEvent {
+function createEvent(url: string, accessToken: string | null): GroceryListGenerateEvent {
 	return {
 		locals: {
 			auth: vi.fn().mockResolvedValue(accessToken ? { accessToken } : null)
 		},
 		fetch: vi.fn(),
 		url: new URL(url)
-	} as unknown as RequestEvent;
+	} as unknown as GroceryListGenerateEvent;
 }
 
 describe('POST /app/meal-plans/grocery-list', () => {
@@ -55,7 +56,10 @@ describe('POST /app/meal-plans/grocery-list', () => {
 	});
 
 	it('returns 400 for invalid weekStart', async () => {
-		const event = createEvent('http://localhost/app/meal-plans/grocery-list?weekStart=bad', 'test-token');
+		const event = createEvent(
+			'http://localhost/app/meal-plans/grocery-list?weekStart=bad',
+			'test-token'
+		);
 		const response = await POST(event);
 		expect(response.status).toBe(400);
 		expect(await response.json()).toEqual({
