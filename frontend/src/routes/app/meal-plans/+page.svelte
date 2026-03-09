@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import { onMount } from 'svelte';
+	import { SvelteURLSearchParams } from 'svelte/reactivity';
 	import type { MealSlotItem, MealPlanResponse } from '$lib/api/mealPlanApi';
 	import type { Recipe } from '$lib/api/recipeApi';
 	import type { MealPlanShareResponse, SharedMealPlanResponse } from '$lib/api/sharingApi';
@@ -67,6 +69,7 @@
 	let toastMessage = $state('');
 	let toastType: 'success' | 'error' = $state('success');
 	let toastVisible = $state(false);
+	let generateGroceryListLoading = $state(false);
 	const realtimeClient = new MealPlanRealtimeClient();
 	// svelte-ignore state_referenced_locally
 	let currentUserId: string | null = $state(data.appUser?.auth0UserId ?? null);
@@ -128,7 +131,36 @@
 	// ── Navigation ──
 
 	function handleNavigate(weekStart: string) {
-		goto(`/app/meal-plans?weekStart=${weekStart}`);
+		goto(resolve(`/app/meal-plans?weekStart=${weekStart}`));
+	}
+
+	async function handleGenerateGroceryList() {
+		if (generateGroceryListLoading) return;
+		generateGroceryListLoading = true;
+
+		try {
+			const params = new SvelteURLSearchParams({ weekStart: mealPlan.weekStart });
+			const res = await fetch(`/app/meal-plans/grocery-list?${params}`, {
+				method: 'POST'
+			});
+
+			if (!res.ok) {
+				const body = await res.json().catch(() => ({}));
+				throw new Error(body.error ?? 'Failed to generate grocery list.');
+			}
+
+			const body = await res.json();
+			const weekStart =
+				typeof body?.groceryList?.weekStart === 'string'
+					? body.groceryList.weekStart
+					: mealPlan.weekStart;
+			const redirectParams = new SvelteURLSearchParams({ weekStart });
+			await goto(resolve(`/app/grocery-lists?${redirectParams}`));
+		} catch (err) {
+			showToast(err instanceof Error ? err.message : 'Failed to generate grocery list.', 'error');
+		} finally {
+			generateGroceryListLoading = false;
+		}
 	}
 
 	// ── Add Item ──
@@ -155,7 +187,7 @@
 
 	/** Build query params, appending onBehalfOf when editing a shared plan */
 	function buildParams(base: Record<string, string>): URLSearchParams {
-		const params = new URLSearchParams(base);
+		const params = new SvelteURLSearchParams(base);
 		if (editingSharedPlan) {
 			params.set('onBehalfOf', editingSharedPlan.ownerUserId);
 		}
@@ -251,7 +283,12 @@
 
 	// ── Update Servings ──
 
-	async function handleUpdateServings(day: string, category: string, index: number, servings: number) {
+	async function handleUpdateServings(
+		day: string,
+		category: string,
+		index: number,
+		servings: number
+	) {
 		const plan = getActivePlan();
 		const dayPlan = plan.days.find((d) => d.day === day);
 		if (!dayPlan) return;
@@ -262,9 +299,7 @@
 		// Skip no-op updates (also prevents double-fires from onchange + onblur)
 		if (currentItems[index].servings === servings) return;
 
-		const newItems = currentItems.map((item, i) =>
-			i === index ? { ...item, servings } : item
-		);
+		const newItems = currentItems.map((item, i) => (i === index ? { ...item, servings } : item));
 
 		// Optimistic update
 		dayPlan.slots[category] = newItems;
@@ -462,27 +497,53 @@
 				Plan your weekly meals — drag recipes into slots and copy across days.
 			</p>
 		</div>
-		<button
-			type="button"
-			onclick={() => (shareModalOpen = true)}
-			class="flex min-h-10 items-center gap-1.5 rounded-lg bg-charcoal/5 px-3 py-2 text-sm font-medium text-charcoal transition-colors hover:bg-charcoal/10"
-		>
-			<svg
-				xmlns="http://www.w3.org/2000/svg"
-				class="h-4 w-4"
-				fill="none"
-				viewBox="0 0 24 24"
-				stroke="currentColor"
-				stroke-width="2"
+		<div class="flex flex-wrap items-center gap-2">
+			<button
+				type="button"
+				onclick={handleGenerateGroceryList}
+				disabled={generateGroceryListLoading}
+				aria-label="Generate grocery list for this meal plan week"
+				class="flex min-h-10 items-center gap-1.5 rounded-lg bg-green-600 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-60"
 			>
-				<path
-					stroke-linecap="round"
-					stroke-linejoin="round"
-					d="M7.217 10.907a2.25 2.25 0 100 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186l9.566-5.314m-9.566 7.5l9.566 5.314m0 0a2.25 2.25 0 103.935 2.186 2.25 2.25 0 00-3.935-2.186zm0-12.814a2.25 2.25 0 103.933-2.185 2.25 2.25 0 00-3.933 2.185z"
-				/>
-			</svg>
-			Share
-		</button>
+				<svg
+					xmlns="http://www.w3.org/2000/svg"
+					class="h-4 w-4"
+					fill="none"
+					viewBox="0 0 24 24"
+					stroke="currentColor"
+					stroke-width="2"
+				>
+					<path
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 0 0-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 0 0-16.536-1.84M7.5 14.25 5.106 5.272M6 20.25a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Zm12.75 0a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Z"
+					/>
+				</svg>
+				{generateGroceryListLoading ? 'Generating…' : 'Generate Grocery List'}
+			</button>
+
+			<button
+				type="button"
+				onclick={() => (shareModalOpen = true)}
+				class="flex min-h-10 items-center gap-1.5 rounded-lg bg-charcoal/5 px-3 py-2 text-sm font-medium text-charcoal transition-colors hover:bg-charcoal/10"
+			>
+				<svg
+					xmlns="http://www.w3.org/2000/svg"
+					class="h-4 w-4"
+					fill="none"
+					viewBox="0 0 24 24"
+					stroke="currentColor"
+					stroke-width="2"
+				>
+					<path
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						d="M7.217 10.907a2.25 2.25 0 100 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186l9.566-5.314m-9.566 7.5l9.566 5.314m0 0a2.25 2.25 0 103.935 2.186 2.25 2.25 0 00-3.935-2.186zm0-12.814a2.25 2.25 0 103.933-2.185 2.25 2.25 0 00-3.933 2.185z"
+					/>
+				</svg>
+				Share
+			</button>
+		</div>
 	</div>
 
 	<!-- Week navigator -->
