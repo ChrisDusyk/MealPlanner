@@ -37,6 +37,9 @@ describe('meal plans route structure', () => {
 		await expect
 			.element(page.getByRole('heading', { level: 1, name: 'Meal Plans' }))
 			.toBeInTheDocument();
+		await expect
+			.element(page.getByRole('button', { name: 'Generate Grocery List' }))
+			.toBeInTheDocument();
 		await expect.element(page.getByRole('button', { name: 'Share' })).toBeInTheDocument();
 		await expect.element(page.getByRole('button', { name: 'Previous week' })).toBeInTheDocument();
 		await expect.element(page.getByRole('button', { name: 'Next week' })).toBeInTheDocument();
