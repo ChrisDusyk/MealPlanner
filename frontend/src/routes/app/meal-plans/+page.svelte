@@ -504,7 +504,6 @@
 				type="button"
 				onclick={handleGenerateGroceryList}
 				disabled={generateGroceryListLoading}
-				aria-label="Generate grocery list for this meal plan week"
 				class="flex min-h-10 items-center gap-1.5 rounded-lg bg-green-600 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-60"
 			>
 				<svg
