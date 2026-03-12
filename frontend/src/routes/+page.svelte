@@ -1,5 +1,8 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import type { PageData } from './$types';
+
+	let { data }: { data: PageData } = $props();
 
 	let mounted = $state(false);
 
@@ -26,6 +29,19 @@
 		return () => observer.disconnect();
 	});
 </script>
+
+{#if data.sessionExpired}
+	<div class="bg-amber-50 px-6 py-3 text-amber-900" role="status" aria-live="polite">
+		<div class="mx-auto flex max-w-7xl items-start gap-3">
+			<span class="mt-0.5 inline-flex h-5 w-5 items-center justify-center rounded-full bg-amber-200 text-xs font-bold">
+				!
+			</span>
+			<p class="text-sm leading-6">
+				Your session expired while you were away. Please sign in again to continue where you left off.
+			</p>
+		</div>
+	</div>
+{/if}
 
 <!-- ═══════════════════════════════════════════════════════════ HERO -->
 <section
@@ -89,7 +105,7 @@
 						<span class="font-display text-xs text-green-400">Feb 17 – 23</span>
 					</div>
 					<div class="grid grid-cols-7 gap-2">
-						{#each ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] as day}
+						{#each ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] as day (day)}
 							<div class="text-center">
 								<span class="block font-display text-[10px] font-medium text-green-400/70"
 									>{day}</span
@@ -363,13 +379,13 @@
 		</div>
 
 		<div class="grid gap-8 md:grid-cols-3">
-			{#each [{ quote: 'I used to spend 30 minutes every Sunday just figuring out what to cook. Now it takes me five minutes and I actually look forward to it.', name: 'Sarah M.', role: 'Busy parent of two', stars: 5 }, { quote: 'The grocery list feature alone is worth it. No more wandering aimlessly through the store or forgetting half the ingredients.', name: 'James K.', role: 'Meal-prep enthusiast', stars: 5 }, { quote: "So simple, so elegant. I've tried a dozen meal planning apps and this is the first one that actually stuck.", name: 'Priya L.', role: 'Home cook', stars: 5 }] as testimonial}
+			{#each [{ quote: 'I used to spend 30 minutes every Sunday just figuring out what to cook. Now it takes me five minutes and I actually look forward to it.', name: 'Sarah M.', role: 'Busy parent of two', stars: 5 }, { quote: 'The grocery list feature alone is worth it. No more wandering aimlessly through the store or forgetting half the ingredients.', name: 'James K.', role: 'Meal-prep enthusiast', stars: 5 }, { quote: "So simple, so elegant. I've tried a dozen meal planning apps and this is the first one that actually stuck.", name: 'Priya L.', role: 'Home cook', stars: 5 }] as testimonial (testimonial.name)}
 				<div
 					class="reveal-on-scroll rounded-2xl border border-green-200/60 bg-white p-8 opacity-0 shadow-sm"
 				>
 					<!-- Stars -->
 					<div class="mb-4 flex gap-1">
-						{#each Array(testimonial.stars) as _}
+						{#each Array(testimonial.stars) as _, index (index)}
 							<svg
 								xmlns="http://www.w3.org/2000/svg"
 								class="h-4 w-4 text-yellow-400"

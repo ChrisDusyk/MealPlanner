@@ -8,6 +8,15 @@ interface SyncUserPayload {
 
 const USER_SYNC_MAX_ATTEMPTS = 3;
 const USER_SYNC_BASE_RETRY_DELAY_MS = 250;
+const ACCESS_TOKEN_REFRESH_BUFFER_MS = 5 * 60 * 1000;
+const DEFAULT_ACCESS_TOKEN_LIFETIME_SECONDS = 60 * 60;
+
+interface RefreshTokenResponse {
+	access_token: string;
+	expires_in: number;
+	refresh_token?: string;
+	id_token?: string;
+}
 
 function normalizeBaseUrl(source: string, value?: string, fallbackPort?: string): string {
 	if (!value) return '';
@@ -122,6 +131,106 @@ async function syncUserWithRetry(accessToken: string, payload: SyncUserPayload):
 	console.error('User sync failed after all retry attempts.', { error: lastError });
 }
 
+function resolveAccessTokenExpiry(account: Record<string, unknown>): number {
+	if (typeof account.expires_at === 'number' && Number.isFinite(account.expires_at)) {
+		return account.expires_at * 1000;
+	}
+
+	if (typeof account.expires_in === 'number' && Number.isFinite(account.expires_in)) {
+		return Date.now() + account.expires_in * 1000;
+	}
+
+	return Date.now();
+}
+
+function hasValidAccessToken(token: Record<string, unknown>): boolean {
+	if (typeof token.accessToken !== 'string' || token.accessToken.length === 0) {
+		return false;
+	}
+
+	if (typeof token.accessTokenExpires !== 'number' || !Number.isFinite(token.accessTokenExpires)) {
+		return false;
+	}
+
+	return Date.now() < token.accessTokenExpires - ACCESS_TOKEN_REFRESH_BUFFER_MS;
+}
+
+async function refreshAccessToken(token: Record<string, unknown>): Promise<Record<string, unknown>> {
+	const refreshToken = typeof token.refreshToken === 'string' ? token.refreshToken : '';
+	if (!refreshToken) {
+		console.warn('No refresh token available. User re-authentication is required.');
+		return {
+			...token,
+			error: 'RefreshAccessTokenError',
+			accessToken: ''
+		};
+	}
+
+	const issuer = process.env.AUTH_AUTH0_ISSUER?.replace(/\/$/, '');
+	if (!issuer || !process.env.AUTH_AUTH0_ID || !process.env.AUTH_AUTH0_SECRET) {
+		console.error('Missing Auth0 refresh configuration. User re-authentication is required.');
+		return {
+			...token,
+			error: 'RefreshAccessTokenError',
+			accessToken: ''
+		};
+	}
+
+	try {
+		const body = new URLSearchParams({
+			grant_type: 'refresh_token',
+			client_id: process.env.AUTH_AUTH0_ID,
+			client_secret: process.env.AUTH_AUTH0_SECRET,
+			refresh_token: refreshToken
+		});
+
+		const response = await fetch(`${issuer}/oauth/token`, {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/x-www-form-urlencoded'
+			},
+			body
+		});
+
+		if (!response.ok) {
+			const details = await response.text();
+			throw new Error(`Token refresh failed with status ${response.status}: ${details}`);
+		}
+
+		const refreshed = (await response.json()) as RefreshTokenResponse;
+
+		const accessToken =
+			typeof refreshed.access_token === 'string' && refreshed.access_token.length > 0
+				? refreshed.access_token
+				: null;
+		const expiresInRaw = (refreshed as { expires_in?: unknown }).expires_in;
+		const expiresInSeconds =
+			typeof expiresInRaw === 'number' && Number.isFinite(expiresInRaw) && expiresInRaw > 0
+				? expiresInRaw
+				: null;
+
+		if (!accessToken || !expiresInSeconds) {
+			throw new Error('Token refresh response missing valid access_token or expires_in');
+		}
+
+		return {
+			...token,
+			accessToken,
+			accessTokenExpires: Date.now() + expiresInSeconds * 1000,
+			refreshToken: refreshed.refresh_token ?? refreshToken,
+			idToken: refreshed.id_token ?? token.idToken,
+			error: undefined
+		};
+	} catch (error) {
+		console.error('Failed to refresh access token.', { error });
+		return {
+			...token,
+			error: 'RefreshAccessTokenError',
+			accessToken: ''
+		};
+	}
+}
+
 export const { handle, signIn, signOut } = SvelteKitAuth({
 	trustHost: true,
 	providers: [
@@ -131,21 +240,28 @@ export const { handle, signIn, signOut } = SvelteKitAuth({
 			issuer: process.env.AUTH_AUTH0_ISSUER,
 			authorization: {
 				params: {
-					audience: process.env.AUTH_API_AUDIENCE
+					audience: process.env.AUTH_API_AUDIENCE,
+					scope: 'openid profile email offline_access'
 				}
 			}
 		})
 	],
 	callbacks: {
 		async jwt({ token, account, profile }) {
+			const tokenRecord = token as Record<string, unknown>;
+
 			// Persist the access token from the Auth0 provider to the JWT
 			if (account) {
-				token.accessToken = account.access_token;
-				token.idToken = account.id_token;
+				tokenRecord.accessToken = account.access_token;
+				tokenRecord.accessTokenExpires = resolveAccessTokenExpiry(account as Record<string, unknown>);
+				tokenRecord.refreshToken =
+					typeof account.refresh_token === 'string' ? account.refresh_token : tokenRecord.refreshToken;
+				tokenRecord.idToken = account.id_token;
+				tokenRecord.error = undefined;
 
 				const accessToken = typeof account.access_token === 'string' ? account.access_token : '';
 				const syncPayload = buildSyncUserPayload(
-					token as Record<string, unknown>,
+					tokenRecord,
 					profile as Record<string, unknown> | undefined
 				);
 
@@ -154,12 +270,21 @@ export const { handle, signIn, signOut } = SvelteKitAuth({
 				} else {
 					console.warn('Skipping user sync due to missing access token or profile payload.');
 				}
+
+				return token;
 			}
-			return token;
+
+			if (hasValidAccessToken(tokenRecord)) {
+				return token;
+			}
+
+			const refreshedToken = await refreshAccessToken(tokenRecord);
+			return refreshedToken;
 		},
 		async session({ session, token }) {
 			// Make the access token available in the session for API calls
 			session.accessToken = typeof token.accessToken === 'string' ? token.accessToken : '';
+			session.error = token.error === 'RefreshAccessTokenError' ? 'RefreshAccessTokenError' : undefined;
 			return session;
 		}
 	}
