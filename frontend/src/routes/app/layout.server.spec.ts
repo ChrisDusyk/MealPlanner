@@ -18,7 +18,7 @@ describe('app layout auth guard', () => {
 
 		await expect(load(event)).rejects.toMatchObject({
 			status: 303,
-			location: '/'
+			location: '/?session=expired'
 		});
 	});
 
