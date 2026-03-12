@@ -4,9 +4,12 @@ import { defineConfig } from 'vitest/config';
 import { playwright } from '@vitest/browser-playwright';
 import { sveltekit } from '@sveltejs/kit/vite';
 
+const runBrowserTests = process.env.VITEST_BROWSER === '1';
+
 export default defineConfig({
 	plugins: [tailwindcss(), sveltekit(), devtoolsJson()],
 	server: {
+		host: '127.0.0.1',
 		proxy: {
 			'/api': {
 				target: process.env.services__api__https__0 || process.env.services__api__http__0,
@@ -19,7 +22,15 @@ export default defineConfig({
 			}
 		}
 	},
+	preview: {
+		host: '127.0.0.1'
+	},
 	test: {
+		api: {
+			host: '127.0.0.1',
+			port: 13337,
+			strictPort: true
+		},
 		expect: { requireAssertions: true },
 		projects: [
 			{
@@ -27,11 +38,11 @@ export default defineConfig({
 				test: {
 					name: 'client',
 					browser: {
-						enabled: true,
+						enabled: runBrowserTests,
 						provider: playwright(),
 						instances: [{ browser: 'chromium', headless: true }]
 					},
-					include: ['src/**/*.svelte.{test,spec}.{js,ts}'],
+					include: runBrowserTests ? ['src/**/*.svelte.{test,spec}.{js,ts}'] : [],
 					exclude: ['src/lib/server/**']
 				}
 			},
