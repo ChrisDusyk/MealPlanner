@@ -140,7 +140,7 @@ function resolveAccessTokenExpiry(account: Record<string, unknown>): number {
 		return Date.now() + account.expires_in * 1000;
 	}
 
-	return Date.now() + DEFAULT_ACCESS_TOKEN_LIFETIME_SECONDS * 1000;
+	return Date.now();
 }
 
 function hasValidAccessToken(token: Record<string, unknown>): boolean {
@@ -198,10 +198,25 @@ async function refreshAccessToken(token: Record<string, unknown>): Promise<Recor
 		}
 
 		const refreshed = (await response.json()) as RefreshTokenResponse;
+
+		const accessToken =
+			typeof refreshed.access_token === 'string' && refreshed.access_token.length > 0
+				? refreshed.access_token
+				: null;
+		const expiresInRaw = (refreshed as { expires_in?: unknown }).expires_in;
+		const expiresInSeconds =
+			typeof expiresInRaw === 'number' && Number.isFinite(expiresInRaw) && expiresInRaw > 0
+				? expiresInRaw
+				: null;
+
+		if (!accessToken || !expiresInSeconds) {
+			throw new Error('Token refresh response missing valid access_token or expires_in');
+		}
+
 		return {
 			...token,
-			accessToken: refreshed.access_token,
-			accessTokenExpires: Date.now() + refreshed.expires_in * 1000,
+			accessToken,
+			accessTokenExpires: Date.now() + expiresInSeconds * 1000,
 			refreshToken: refreshed.refresh_token ?? refreshToken,
 			idToken: refreshed.id_token ?? token.idToken,
 			error: undefined
