@@ -1,5 +1,7 @@
 using MealPlanner.Api.Features.Users.Dtos;
+using MealPlanner.Api.Features.Users.Commands;
 using MealPlanner.Api.Features.Users.Models;
+using MealPlanner.Api.Features.Users.Queries;
 using MealPlanner.Api.Shared;
 
 namespace MealPlanner.Api.Tests.Features.Users.Dtos;
@@ -56,5 +58,39 @@ public class UserDtosTests
 		Assert.Equal("u1", response.Id);
 		Assert.Equal("Pat", response.Name);
 		Assert.Equal("pat@example.com", response.Email);
+	}
+
+	[Fact]
+	public void FriendSummaryResponse_FromDomain_MapsExpectedFields()
+	{
+		var summary = new FriendSummary("auth0|friend", "Friend User", "friend@example.com");
+
+		var response = FriendSummaryResponse.FromDomain(summary);
+
+		Assert.Equal("auth0|friend", response.UserId);
+		Assert.Equal("Friend User", response.Name);
+		Assert.Equal("friend@example.com", response.Email);
+	}
+
+	[Fact]
+	public void FriendRequestSummaryResponse_FromDomain_MapsExpectedFields()
+	{
+		var createdAt = new DateTime(2026, 3, 1, 0, 0, 0, DateTimeKind.Utc);
+		var summary = new FriendRequestSummary("req-1", "auth0|friend", "Friend User", "friend@example.com", createdAt);
+
+		var response = FriendRequestSummaryResponse.FromDomain(summary);
+
+		Assert.Equal("req-1", response.RequestId);
+		Assert.Equal("auth0|friend", response.UserId);
+		Assert.Equal(createdAt, response.CreatedAt);
+	}
+
+	[Fact]
+	public void SendFriendRequestResponse_FromDomain_MapsStatus()
+	{
+		var response = SendFriendRequestResponse.FromDomain(
+			new SendFriendRequestResult(SendFriendRequestStatus.Accepted, "auth0|friend"));
+
+		Assert.Equal("Accepted", response.Status);
 	}
 }

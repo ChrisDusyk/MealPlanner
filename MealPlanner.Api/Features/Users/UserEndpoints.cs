@@ -3,6 +3,7 @@ using MealPlanner.Api.Features.Users.Commands;
 using MealPlanner.Api.Features.Users.Dtos;
 using MealPlanner.Api.Features.Users.Models;
 using MealPlanner.Api.Features.Users.Queries;
+using MealPlanner.Api.Features.Users.Realtime;
 using MealPlanner.Api.Shared;
 
 namespace MealPlanner.Api.Features.Users;
@@ -22,6 +23,13 @@ public static class UserEndpoints
 		group.MapGet("/me", GetCurrentUser);
 		group.MapPut("/me", UpdateCurrentUser);
 		group.MapGet("/search", SearchUserByEmail);
+		group.MapGet("/friends", GetFriends);
+		group.MapGet("/friends/requests/incoming", GetIncomingFriendRequests);
+		group.MapGet("/friends/requests/outgoing", GetOutgoingFriendRequests);
+		group.MapPost("/friends/requests", SendFriendRequest);
+		group.MapPost("/friends/requests/{requestId}/accept", AcceptFriendRequest);
+		group.MapPost("/friends/requests/{requestId}/reject", RejectFriendRequest);
+		group.MapDelete("/friends/{friendUserId}", RemoveFriend);
 
 		return app;
 	}
@@ -144,5 +152,199 @@ public static class UserEndpoints
 				ErrorCodes.ValidationFailed => Results.BadRequest(error.Message),
 				_ => Results.Problem(error.Message, statusCode: 500)
 			});
+	}
+
+	private static async Task<IResult> GetFriends(
+		HttpContext httpContext,
+		IQueryHandler<GetFriendsForUserQuery, IReadOnlyList<FriendSummary>> handler,
+		CancellationToken cancellationToken)
+	{
+		var auth0UserId = GetAuth0UserId(httpContext);
+		if (auth0UserId is null)
+			return Results.Unauthorized();
+
+		var result = await handler.HandleAsync(new GetFriendsForUserQuery(auth0UserId), cancellationToken);
+		return result.Match(
+			onSuccess: friends => Results.Ok(friends.Select(FriendSummaryResponse.FromDomain)),
+			onFailure: error => error.Code == ErrorCodes.ValidationFailed
+				? Results.BadRequest(error.Message)
+				: Results.Problem(error.Message, statusCode: 500));
+	}
+
+	private static async Task<IResult> GetIncomingFriendRequests(
+		HttpContext httpContext,
+		IQueryHandler<GetIncomingFriendRequestsQuery, IReadOnlyList<FriendRequestSummary>> handler,
+		CancellationToken cancellationToken)
+	{
+		var auth0UserId = GetAuth0UserId(httpContext);
+		if (auth0UserId is null)
+			return Results.Unauthorized();
+
+		var result = await handler.HandleAsync(new GetIncomingFriendRequestsQuery(auth0UserId), cancellationToken);
+		return result.Match(
+			onSuccess: requests => Results.Ok(requests.Select(FriendRequestSummaryResponse.FromDomain)),
+			onFailure: error => error.Code == ErrorCodes.ValidationFailed
+				? Results.BadRequest(error.Message)
+				: Results.Problem(error.Message, statusCode: 500));
+	}
+
+	private static async Task<IResult> GetOutgoingFriendRequests(
+		HttpContext httpContext,
+		IQueryHandler<GetOutgoingFriendRequestsQuery, IReadOnlyList<FriendRequestSummary>> handler,
+		CancellationToken cancellationToken)
+	{
+		var auth0UserId = GetAuth0UserId(httpContext);
+		if (auth0UserId is null)
+			return Results.Unauthorized();
+
+		var result = await handler.HandleAsync(new GetOutgoingFriendRequestsQuery(auth0UserId), cancellationToken);
+		return result.Match(
+			onSuccess: requests => Results.Ok(requests.Select(FriendRequestSummaryResponse.FromDomain)),
+			onFailure: error => error.Code == ErrorCodes.ValidationFailed
+				? Results.BadRequest(error.Message)
+				: Results.Problem(error.Message, statusCode: 500));
+	}
+
+	private static async Task<IResult> SendFriendRequest(
+		SendFriendRequestRequest request,
+		HttpContext httpContext,
+		ICommandHandler<SendFriendRequestByEmailCommand, SendFriendRequestResult> handler,
+		IFriendsRealtimeNotifier realtimeNotifier,
+		CancellationToken cancellationToken)
+	{
+		var auth0UserId = GetAuth0UserId(httpContext);
+		if (auth0UserId is null)
+			return Results.Unauthorized();
+
+		var result = await handler.HandleAsync(
+			new SendFriendRequestByEmailCommand(auth0UserId, request.Email?.Trim() ?? string.Empty),
+			cancellationToken);
+
+		if (!result.IsSuccess)
+		{
+			var error = result.Error!;
+			return error.Code switch
+			{
+				ErrorCodes.NotFound => Results.NotFound(error.Message),
+				ErrorCodes.ValidationFailed => Results.BadRequest(error.Message),
+				_ => Results.Problem(error.Message, statusCode: 500)
+			};
+		}
+
+		var sendResult = result.Value!;
+		await realtimeNotifier.PublishFriendsUpdatedAsync(
+			[auth0UserId, sendResult.RecipientUserId],
+			auth0UserId,
+			sendResult.Status == SendFriendRequestStatus.Accepted
+				? FriendsRealtimeEventType.RequestAccepted
+				: FriendsRealtimeEventType.RequestSent,
+			cancellationToken);
+
+		return Results.Ok(SendFriendRequestResponse.FromDomain(sendResult));
+	}
+
+	private static async Task<IResult> AcceptFriendRequest(
+		string requestId,
+		HttpContext httpContext,
+		ICommandHandler<AcceptFriendRequestCommand, FriendRequestActionResult> handler,
+		IFriendsRealtimeNotifier realtimeNotifier,
+		CancellationToken cancellationToken)
+	{
+		var auth0UserId = GetAuth0UserId(httpContext);
+		if (auth0UserId is null)
+			return Results.Unauthorized();
+
+		var result = await handler.HandleAsync(
+			new AcceptFriendRequestCommand(auth0UserId, requestId),
+			cancellationToken);
+
+		if (!result.IsSuccess)
+		{
+			var error = result.Error!;
+			return error.Code switch
+			{
+				ErrorCodes.NotFound => Results.NotFound(error.Message),
+				ErrorCodes.ValidationFailed => Results.BadRequest(error.Message),
+				_ => Results.Problem(error.Message, statusCode: 500)
+			};
+		}
+
+		await realtimeNotifier.PublishFriendsUpdatedAsync(
+			[auth0UserId, result.Value!.RequesterUserId],
+			auth0UserId,
+			FriendsRealtimeEventType.RequestAccepted,
+			cancellationToken);
+
+		return Results.Ok(new FriendRequestActionResponse(true));
+	}
+
+	private static async Task<IResult> RejectFriendRequest(
+		string requestId,
+		HttpContext httpContext,
+		ICommandHandler<RejectFriendRequestCommand, FriendRequestActionResult> handler,
+		IFriendsRealtimeNotifier realtimeNotifier,
+		CancellationToken cancellationToken)
+	{
+		var auth0UserId = GetAuth0UserId(httpContext);
+		if (auth0UserId is null)
+			return Results.Unauthorized();
+
+		var result = await handler.HandleAsync(
+			new RejectFriendRequestCommand(auth0UserId, requestId),
+			cancellationToken);
+
+		if (!result.IsSuccess)
+		{
+			var error = result.Error!;
+			return error.Code switch
+			{
+				ErrorCodes.NotFound => Results.NotFound(error.Message),
+				ErrorCodes.ValidationFailed => Results.BadRequest(error.Message),
+				_ => Results.Problem(error.Message, statusCode: 500)
+			};
+		}
+
+		await realtimeNotifier.PublishFriendsUpdatedAsync(
+			[auth0UserId, result.Value!.RequesterUserId],
+			auth0UserId,
+			FriendsRealtimeEventType.RequestRejected,
+			cancellationToken);
+
+		return Results.Ok(new FriendRequestActionResponse(true));
+	}
+
+	private static async Task<IResult> RemoveFriend(
+		string friendUserId,
+		HttpContext httpContext,
+		ICommandHandler<RemoveFriendCommand, Unit> handler,
+		IFriendsRealtimeNotifier realtimeNotifier,
+		CancellationToken cancellationToken)
+	{
+		var auth0UserId = GetAuth0UserId(httpContext);
+		if (auth0UserId is null)
+			return Results.Unauthorized();
+
+		var result = await handler.HandleAsync(
+			new RemoveFriendCommand(auth0UserId, friendUserId),
+			cancellationToken);
+
+		if (!result.IsSuccess)
+		{
+			var error = result.Error!;
+			return error.Code switch
+			{
+				ErrorCodes.NotFound => Results.NotFound(error.Message),
+				ErrorCodes.ValidationFailed => Results.BadRequest(error.Message),
+				_ => Results.Problem(error.Message, statusCode: 500)
+			};
+		}
+
+		await realtimeNotifier.PublishFriendsUpdatedAsync(
+			[auth0UserId, friendUserId],
+			auth0UserId,
+			FriendsRealtimeEventType.FriendshipRemoved,
+			cancellationToken);
+
+		return Results.Ok(new FriendRequestActionResponse(true));
 	}
 }

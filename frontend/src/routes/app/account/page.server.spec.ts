@@ -1,13 +1,26 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiError } from '$lib/api/recipeApi';
-import { actions } from './+page.server';
+import { actions, load } from './+page.server';
+import {
+	getFriends,
+	getIncomingFriendRequests,
+	getOutgoingFriendRequests
+}
+from '$lib/api/friendsApi';
 import { updateCurrentUser } from '$lib/api/userApi';
 
 vi.mock('$lib/api/userApi', () => ({
 	updateCurrentUser: vi.fn()
 }));
 
+vi.mock('$lib/api/friendsApi', () => ({
+	getFriends: vi.fn(),
+	getIncomingFriendRequests: vi.fn(),
+	getOutgoingFriendRequests: vi.fn()
+}));
+
 type AccountActionEvent = Parameters<NonNullable<typeof actions.default>>[0];
+type AccountLoadEvent = Parameters<typeof load>[0];
 
 function createEvent({
 	accessToken,
@@ -30,6 +43,54 @@ function createEvent({
 		})
 	} as unknown as AccountActionEvent;
 }
+
+function createLoadEvent(accessToken: string | null): AccountLoadEvent {
+	return {
+		locals: {
+			auth: vi.fn().mockResolvedValue(accessToken ? { accessToken } : null)
+		},
+		fetch: vi.fn()
+	} as unknown as AccountLoadEvent;
+}
+
+describe('load /app/account', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+	});
+
+	it('returns empty friend datasets when no access token is available', async () => {
+		const event = createLoadEvent(null);
+		const data = await load(event);
+
+		expect(data).toEqual({
+			friends: [],
+			incomingFriendRequests: [],
+			outgoingFriendRequests: []
+		});
+	});
+
+	it('loads friend datasets when access token is available', async () => {
+		vi.mocked(getFriends).mockResolvedValue([{ userId: 'auth0|friend', name: 'Friend', email: 'f@example.com' }]);
+		vi.mocked(getIncomingFriendRequests).mockResolvedValue([]);
+		vi.mocked(getOutgoingFriendRequests).mockResolvedValue([]);
+
+		const event = createLoadEvent('test-token');
+		const data = await load(event);
+
+		expect(data).toEqual({
+			friends: [{ userId: 'auth0|friend', name: 'Friend', email: 'f@example.com' }],
+			incomingFriendRequests: [],
+			outgoingFriendRequests: []
+		});
+	});
+
+	it('throws 500 when friend datasets fail to load', async () => {
+		vi.mocked(getFriends).mockRejectedValue(new Error('upstream failed'));
+
+		const event = createLoadEvent('test-token');
+		await expect(load(event)).rejects.toMatchObject({ status: 500 });
+	});
+});
 
 describe('POST /app/account action', () => {
 	beforeEach(() => {

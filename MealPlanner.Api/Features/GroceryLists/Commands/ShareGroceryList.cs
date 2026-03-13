@@ -42,8 +42,6 @@ public class ShareGroceryListCommandHandler(IMongoClient mongoClient)
 			var groceryListsCollection = db.GetCollection<GroceryListDocument>("grocerylists");
 			var sharesCollection = db.GetCollection<GroceryListShareDocument>("grocerylist_shares");
 
-			await EnsureIndexesAsync(sharesCollection, cancellationToken);
-
 			// Look up the owner to prevent self-share
 			var ownerFilter = Builders<UserDocument>.Filter.Eq(u => u.Auth0UserId, command.OwnerUserId);
 			var owner = await usersCollection.Find(ownerFilter).FirstOrDefaultAsync(cancellationToken);
@@ -121,35 +119,4 @@ public class ShareGroceryListCommandHandler(IMongoClient mongoClient)
 		}
 	}
 
-	private static async Task EnsureIndexesAsync(
-		IMongoCollection<GroceryListShareDocument> collection,
-		CancellationToken cancellationToken)
-	{
-		try
-		{
-			var indexModel = new CreateIndexModel<GroceryListShareDocument>(
-				Builders<GroceryListShareDocument>.IndexKeys
-					.Ascending(s => s.OwnerUserId)
-					.Ascending(s => s.SharedWithUserId)
-					.Ascending(s => s.WeekStart),
-				new CreateIndexOptions { Unique = true, Name = "ux_grocerylist_shares_owner_recipient_week" });
-
-			await collection.Indexes.CreateOneAsync(indexModel, cancellationToken: cancellationToken);
-		}
-		catch (MongoCommandException ex) when (IsIndexConflict(ex))
-		{
-			// Index already exists with compatible options
-		}
-	}
-
-	private static bool IsIndexConflict(MongoCommandException ex)
-	{
-		if (ex.CodeName is "IndexOptionsConflict" or "IndexKeySpecsConflict")
-			return true;
-
-		return ex.Result is not null
-		       && ex.Result.TryGetValue("codeName", out var value)
-		       && value.IsString
-		       && value.AsString is "IndexOptionsConflict" or "IndexKeySpecsConflict";
-	}
 }

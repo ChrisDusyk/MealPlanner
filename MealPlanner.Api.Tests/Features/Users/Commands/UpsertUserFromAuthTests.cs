@@ -173,7 +173,7 @@ public class UpsertUserFromAuthTests
 	}
 
 	[Fact]
-	public async Task HandleAsync_ContinuesWhenIndexHasOptionsConflict()
+	public async Task HandleAsync_Succeeds_WhenIndexManagerWouldConflict_BecauseIndexesAreStartupManaged()
 	{
 		var doc = new UserDocument
 		{
@@ -214,8 +214,11 @@ public class UpsertUserFromAuthTests
 			new UpsertUserFromAuthCommand("auth0|123", "Pat", Option<string>.Some("pat@example.com")),
 			TestContext.Current.CancellationToken);
 
-		Assert.False(result.IsSuccess);
-		Assert.Equal(ErrorCodes.DatabaseError, result.Error?.Code);
+		Assert.True(result.IsSuccess);
+		indexManager.Verify(i => i.CreateOneAsync(
+			It.IsAny<CreateIndexModel<UserDocument>>(),
+			It.IsAny<CreateOneIndexOptions>(),
+			It.IsAny<CancellationToken>()), Times.Never);
 	}
 
 	[Fact]

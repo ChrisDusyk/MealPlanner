@@ -37,8 +37,6 @@ public class UpsertUserFromAuthCommandHandler(IMongoClient mongoClient)
 				.GetDatabase("mealplannerDb")
 				.GetCollection<UserDocument>("users");
 
-			await EnsureIndexesAsync(collection, cancellationToken);
-
 			var now = DateTime.UtcNow;
 			var email = command.Email.GetValueOrNull();
 
@@ -73,26 +71,6 @@ public class UpsertUserFromAuthCommandHandler(IMongoClient mongoClient)
 		{
 			return Result<User>.Failure(
 				new Error(ErrorCodes.DatabaseError, "Failed to upsert user.", ex));
-		}
-	}
-
-	private static async Task EnsureIndexesAsync(
-		IMongoCollection<UserDocument> collection,
-		CancellationToken cancellationToken)
-	{
-		try
-		{
-			var indexModel = new CreateIndexModel<UserDocument>(
-				Builders<UserDocument>.IndexKeys.Ascending(u => u.Auth0UserId),
-				new CreateIndexOptions { Unique = true, Name = "ux_users_auth0UserId" });
-
-			await collection.Indexes.CreateOneAsync(indexModel, cancellationToken: cancellationToken);
-		}
-		catch (MongoCommandException ex) when (ex.CodeName is "IndexOptionsConflict" or "IndexKeySpecsConflict")
-		{
-		}
-		catch (MongoWriteException ex) when (ex.WriteError?.Category == ServerErrorCategory.DuplicateKey)
-		{
 		}
 	}
 
