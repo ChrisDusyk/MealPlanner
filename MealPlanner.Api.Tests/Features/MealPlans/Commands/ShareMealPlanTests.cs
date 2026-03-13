@@ -221,7 +221,7 @@ public class ShareMealPlanTests
 	}
 
 	[Fact]
-	public async Task HandleAsync_ContinuesWhenShareIndexHasConflict()
+	public async Task HandleAsync_Succeeds_WhenShareIndexManagerWouldConflict_BecauseIndexesAreStartupManaged()
 	{
 		var owner = new UserDocument { Auth0UserId = "owner1", Name = "Owner", Email = "owner@example.com" };
 		var recipient = new UserDocument { Auth0UserId = "recipient1", Name = "Recipient", Email = "recipient@example.com" };
@@ -253,8 +253,11 @@ public class ShareMealPlanTests
 		var handler = new ShareMealPlanCommandHandler(client.Object);
 		var result = await handler.HandleAsync(new ShareMealPlanCommand("owner1", "recipient@example.com", "2026-02-23", SharePermission.ReadOnly), TestContext.Current.CancellationToken);
 
-		Assert.False(result.IsSuccess);
-		Assert.Equal(ErrorCodes.DatabaseError, result.Error?.Code);
+		Assert.True(result.IsSuccess);
+		indexManager.Verify(i => i.CreateOneAsync(
+			It.IsAny<CreateIndexModel<MealPlanShareDocument>>(),
+			It.IsAny<CreateOneIndexOptions>(),
+			It.IsAny<CancellationToken>()), Times.Never);
 	}
 
 	[Fact]
