@@ -107,6 +107,8 @@ var app = builder.Build();
 
 app.MapDefaultEndpoints();
 
+await app.Services.EnsureUserIndexesAsync();
+
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {

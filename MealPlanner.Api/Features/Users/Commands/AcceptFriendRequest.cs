@@ -33,8 +33,6 @@ public class AcceptFriendRequestCommandHandler(IMongoClient mongoClient)
 			var requests = database.GetCollection<FriendRequestDocument>("friend_requests");
 			var friendships = database.GetCollection<FriendshipDocument>("friendships");
 
-			await SendFriendRequestByEmailCommandHandler.EnsureIndexesAsync(friendships, requests, cancellationToken);
-
 			var request = await requests
 				.Find(r => r.Id == command.RequestId && r.RecipientUserId == command.RecipientUserId)
 				.FirstOrDefaultAsync(cancellationToken);

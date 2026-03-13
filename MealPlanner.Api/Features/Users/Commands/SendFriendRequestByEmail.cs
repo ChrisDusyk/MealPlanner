@@ -47,8 +47,6 @@ public class SendFriendRequestByEmailCommandHandler(IMongoClient mongoClient)
 			var friendships = database.GetCollection<FriendshipDocument>("friendships");
 			var requests = database.GetCollection<FriendRequestDocument>("friend_requests");
 
-			await EnsureIndexesAsync(friendships, requests, cancellationToken);
-
 			var requester = await users
 				.Find(u => u.Auth0UserId == command.RequesterUserId)
 				.FirstOrDefaultAsync(cancellationToken);
@@ -142,37 +140,6 @@ public class SendFriendRequestByEmailCommandHandler(IMongoClient mongoClient)
 		{
 			return Result<SendFriendRequestResult>.Failure(
 				new Error(ErrorCodes.DatabaseError, "Failed to send friend request.", ex));
-		}
-	}
-
-	internal static async Task EnsureIndexesAsync(
-		IMongoCollection<FriendshipDocument> friendships,
-		IMongoCollection<FriendRequestDocument> requests,
-		CancellationToken cancellationToken)
-	{
-		try
-		{
-			await friendships.Indexes.CreateOneAsync(
-				new CreateIndexModel<FriendshipDocument>(
-					Builders<FriendshipDocument>.IndexKeys
-						.Ascending(f => f.UserAId)
-						.Ascending(f => f.UserBId),
-					new CreateIndexOptions { Unique = true, Name = "ux_friendships_pair" }),
-				cancellationToken: cancellationToken);
-
-			await requests.Indexes.CreateOneAsync(
-				new CreateIndexModel<FriendRequestDocument>(
-					Builders<FriendRequestDocument>.IndexKeys
-						.Ascending(r => r.RequesterUserId)
-						.Ascending(r => r.RecipientUserId),
-					new CreateIndexOptions { Unique = true, Name = "ux_friend_requests_direction" }),
-				cancellationToken: cancellationToken);
-		}
-		catch (MongoCommandException ex) when (ex.CodeName is "IndexOptionsConflict" or "IndexKeySpecsConflict")
-		{
-		}
-		catch (MongoWriteException ex) when (ex.WriteError?.Category == ServerErrorCategory.DuplicateKey)
-		{
 		}
 	}
 
