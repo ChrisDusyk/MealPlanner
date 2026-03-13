@@ -1,7 +1,9 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { onMount } from 'svelte';
 	import { getContext } from 'svelte';
 	import type { FriendRequestSummary, FriendSummary } from '$lib/api/friendsApi';
+	import { FriendsRealtimeClient } from '$lib/realtime/friendsRealtime';
 	import type { ActionData, PageData } from './$types';
 	import { APP_USER_CONTEXT_KEY, type AppUserContextValue } from '$lib/context/appUserContext';
 
@@ -17,6 +19,7 @@
 	let processingRequestId = $state('');
 	let removingFriendUserId = $state('');
 	let requestEmail = $state('');
+	const realtimeClient = new FriendsRealtimeClient();
 	// svelte-ignore state_referenced_locally
 	let friends = $state<FriendSummary[]>(data.friends ?? []);
 	// svelte-ignore state_referenced_locally
@@ -150,6 +153,26 @@
 			removingFriendUserId = '';
 		}
 	}
+
+	onMount(() => {
+		let disposed = false;
+
+		void realtimeClient
+			.start(() => {
+				if (disposed) return;
+				void refreshFriends().catch(() => {
+					// Keep local UI stable if a transient refresh fails.
+				});
+			})
+			.catch((error) => {
+				console.error('Failed to start friends realtime connection', error);
+			});
+
+		return () => {
+			disposed = true;
+			void realtimeClient.stop();
+		};
+	});
 </script>
 
 <svelte:head>

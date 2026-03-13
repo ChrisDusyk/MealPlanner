@@ -5,6 +5,7 @@ using MealPlanner.Api.Features.MealPlans.Realtime;
 using MealPlanner.Api.Features.Recipes.Import;
 using MealPlanner.Api.Features.Recipes;
 using MealPlanner.Api.Features.Users;
+using MealPlanner.Api.Features.Users.Realtime;
 using MealPlanner.Api.Shared;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.RateLimiting;
@@ -27,6 +28,7 @@ builder.Services.AddSignalR();
 builder.Services.AddSingleton<IUserIdProvider, GroceryListUserIdProvider>();
 builder.Services.AddScoped<IGroceryListRealtimeNotifier, GroceryListRealtimeNotifier>();
 builder.Services.AddScoped<IMealPlanRealtimeNotifier, MealPlanRealtimeNotifier>();
+builder.Services.AddScoped<IFriendsRealtimeNotifier, FriendsRealtimeNotifier>();
 builder.Services.Configure<AnthropicOptions>(builder.Configuration.GetSection(AnthropicOptions.SectionName));
 var anthropicOptionsSection = builder.Configuration.GetSection(AnthropicOptions.SectionName);
 var anthropicTimeoutSeconds = anthropicOptionsSection.GetValue<int?>(nameof(AnthropicOptions.HttpTimeoutSeconds))
@@ -66,7 +68,8 @@ builder.Services.AddAuthentication()
 
 				if (!string.IsNullOrWhiteSpace(accessToken)
 				    && (path.StartsWithSegments(GroceryListHub.HubRoute)
-				        || path.StartsWithSegments(MealPlanHub.HubRoute)))
+				        || path.StartsWithSegments(MealPlanHub.HubRoute)
+				        || path.StartsWithSegments(FriendsHub.HubRoute)))
 				{
 					context.Token = accessToken;
 				}
@@ -128,6 +131,8 @@ app.MapUserEndpoints();
 app.MapHub<GroceryListHub>(GroceryListHub.HubRoute)
 	.RequireAuthorization();
 app.MapHub<MealPlanHub>(MealPlanHub.HubRoute)
+	.RequireAuthorization();
+app.MapHub<FriendsHub>(FriendsHub.HubRoute)
 	.RequireAuthorization();
 
 app.Run();
