@@ -108,6 +108,7 @@ var app = builder.Build();
 app.MapDefaultEndpoints();
 
 await app.Services.EnsureUserIndexesAsync();
+await app.Services.EnsureSharingIndexesAsync();
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
