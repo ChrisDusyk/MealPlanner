@@ -247,7 +247,7 @@
 			</p>
 		{/if}
 
-		<div class="grid gap-4 lg:grid-cols-3">
+		<div class="flex flex-col gap-4">
 			<div class="rounded-xl border border-green-100 p-4">
 				<h3 class="font-display text-sm font-semibold text-charcoal">Friends</h3>
 				{#if friends.length === 0}
