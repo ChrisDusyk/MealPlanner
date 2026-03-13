@@ -12,7 +12,9 @@ public enum SendFriendRequestStatus
 	Accepted
 }
 
-public record SendFriendRequestResult(SendFriendRequestStatus Status);
+public record SendFriendRequestResult(
+	SendFriendRequestStatus Status,
+	string RecipientUserId);
 
 /// <summary>
 /// Command to send a friend request to another user by email.
@@ -118,7 +120,9 @@ public class SendFriendRequestByEmailCommandHandler(IMongoClient mongoClient)
 					cancellationToken);
 
 				return Result<SendFriendRequestResult>.Success(
-					new SendFriendRequestResult(SendFriendRequestStatus.Accepted));
+					new SendFriendRequestResult(
+						SendFriendRequestStatus.Accepted,
+						recipient.Auth0UserId));
 			}
 
 			await requests.InsertOneAsync(new FriendRequestDocument
@@ -129,7 +133,9 @@ public class SendFriendRequestByEmailCommandHandler(IMongoClient mongoClient)
 			}, cancellationToken: cancellationToken);
 
 			return Result<SendFriendRequestResult>.Success(
-				new SendFriendRequestResult(SendFriendRequestStatus.Pending));
+				new SendFriendRequestResult(
+					SendFriendRequestStatus.Pending,
+					recipient.Auth0UserId));
 		}
 		catch (MongoWriteException ex) when (ex.WriteError?.Category == ServerErrorCategory.DuplicateKey)
 		{

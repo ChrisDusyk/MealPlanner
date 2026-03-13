@@ -103,6 +103,7 @@ public class AcceptFriendRequestTests
 		var result = await handler.HandleAsync(new AcceptFriendRequestCommand("auth0|me", "r1"), TestContext.Current.CancellationToken);
 
 		Assert.True(result.IsSuccess);
+		Assert.Equal("auth0|you", result.Value?.RequesterUserId);
 		friendships.Verify(c => c.InsertOneAsync(It.IsAny<FriendshipDocument>(), It.IsAny<InsertOneOptions>(), It.IsAny<CancellationToken>()), Times.Once);
 		requests.Verify(c => c.DeleteOneAsync(It.IsAny<FilterDefinition<FriendRequestDocument>>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
 	}

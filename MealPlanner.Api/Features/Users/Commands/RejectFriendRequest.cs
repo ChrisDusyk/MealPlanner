@@ -10,21 +10,21 @@ namespace MealPlanner.Api.Features.Users.Commands;
 public record RejectFriendRequestCommand(
 	string RecipientUserId,
 	string RequestId
-) : ICommand<Unit>;
+) : ICommand<FriendRequestActionResult>;
 
 public class RejectFriendRequestCommandHandler(IMongoClient mongoClient)
-	: ICommandHandler<RejectFriendRequestCommand, Unit>
+	: ICommandHandler<RejectFriendRequestCommand, FriendRequestActionResult>
 {
-	public async Task<Result<Unit>> HandleAsync(
+	public async Task<Result<FriendRequestActionResult>> HandleAsync(
 		RejectFriendRequestCommand command,
 		CancellationToken cancellationToken = default)
 	{
 		if (string.IsNullOrWhiteSpace(command.RecipientUserId))
-			return Result<Unit>.Failure(
+			return Result<FriendRequestActionResult>.Failure(
 				new Error(ErrorCodes.ValidationFailed, "Recipient user ID is required."));
 
 		if (string.IsNullOrWhiteSpace(command.RequestId))
-			return Result<Unit>.Failure(
+			return Result<FriendRequestActionResult>.Failure(
 				new Error(ErrorCodes.ValidationFailed, "Friend request ID is required."));
 
 		try
@@ -33,21 +33,31 @@ public class RejectFriendRequestCommandHandler(IMongoClient mongoClient)
 				.GetDatabase("mealplannerDb")
 				.GetCollection<FriendRequestDocument>("friend_requests");
 
+			var request = await requests
+				.Find(r => r.Id == command.RequestId && r.RecipientUserId == command.RecipientUserId)
+				.FirstOrDefaultAsync(cancellationToken);
+
+			if (request is null)
+			{
+				return Result<FriendRequestActionResult>.Failure(
+					new Error(ErrorCodes.NotFound, "Friend request was not found."));
+			}
+
 			var deleted = await requests.DeleteOneAsync(
 				r => r.Id == command.RequestId && r.RecipientUserId == command.RecipientUserId,
 				cancellationToken);
 
 			if (deleted.DeletedCount == 0)
 			{
-				return Result<Unit>.Failure(
+				return Result<FriendRequestActionResult>.Failure(
 					new Error(ErrorCodes.NotFound, "Friend request was not found."));
 			}
 
-			return Result<Unit>.Success(Unit.Value);
+			return Result<FriendRequestActionResult>.Success(new FriendRequestActionResult(request.RequesterUserId));
 		}
 		catch (Exception ex)
 		{
-			return Result<Unit>.Failure(
+			return Result<FriendRequestActionResult>.Failure(
 				new Error(ErrorCodes.DatabaseError, "Failed to reject friend request.", ex));
 		}
 	}

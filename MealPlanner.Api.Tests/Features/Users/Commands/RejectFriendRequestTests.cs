@@ -1,6 +1,7 @@
 using MealPlanner.Api.Features.Users.Commands;
 using MealPlanner.Api.Features.Users.Models;
 using MealPlanner.Api.Shared;
+using MealPlanner.Api.Tests.TestUtilities;
 using Moq;
 using MongoDB.Driver;
 
@@ -22,6 +23,15 @@ public class RejectFriendRequestTests
 	public async Task HandleAsync_ReturnsNotFound_WhenRequestNotFound()
 	{
 		var requests = new Mock<IMongoCollection<FriendRequestDocument>>();
+		var emptyCursor = MongoTestHelpers.CreateCursor((IReadOnlyCollection<FriendRequestDocument>)Array.Empty<FriendRequestDocument>());
+		requests.Setup(c => c.FindAsync(
+			It.IsAny<FilterDefinition<FriendRequestDocument>>(),
+			It.IsAny<FindOptions<FriendRequestDocument, FriendRequestDocument>>(),
+			It.IsAny<CancellationToken>())).ReturnsAsync(emptyCursor.Object);
+		requests.Setup(c => c.FindSync(
+			It.IsAny<FilterDefinition<FriendRequestDocument>>(),
+			It.IsAny<FindOptions<FriendRequestDocument, FriendRequestDocument>>(),
+			It.IsAny<CancellationToken>())).Returns(emptyCursor.Object);
 		requests.Setup(c => c.DeleteOneAsync(It.IsAny<FilterDefinition<FriendRequestDocument>>(), It.IsAny<CancellationToken>()))
 			.ReturnsAsync(new DeleteResult.Acknowledged(0));
 
@@ -40,7 +50,24 @@ public class RejectFriendRequestTests
 	[Fact]
 	public async Task HandleAsync_ReturnsSuccess_WhenDeleted()
 	{
+		var request = new FriendRequestDocument
+		{
+			Id = "r1",
+			RequesterUserId = "auth0|you",
+			RecipientUserId = "auth0|me",
+			CreatedAt = DateTime.UtcNow
+		};
+
 		var requests = new Mock<IMongoCollection<FriendRequestDocument>>();
+		var cursor = MongoTestHelpers.CreateCursor((IReadOnlyCollection<FriendRequestDocument>)new[] { request });
+		requests.Setup(c => c.FindAsync(
+			It.IsAny<FilterDefinition<FriendRequestDocument>>(),
+			It.IsAny<FindOptions<FriendRequestDocument, FriendRequestDocument>>(),
+			It.IsAny<CancellationToken>())).ReturnsAsync(cursor.Object);
+		requests.Setup(c => c.FindSync(
+			It.IsAny<FilterDefinition<FriendRequestDocument>>(),
+			It.IsAny<FindOptions<FriendRequestDocument, FriendRequestDocument>>(),
+			It.IsAny<CancellationToken>())).Returns(cursor.Object);
 		requests.Setup(c => c.DeleteOneAsync(It.IsAny<FilterDefinition<FriendRequestDocument>>(), It.IsAny<CancellationToken>()))
 			.ReturnsAsync(new DeleteResult.Acknowledged(1));
 
@@ -53,5 +80,6 @@ public class RejectFriendRequestTests
 		var result = await handler.HandleAsync(new RejectFriendRequestCommand("auth0|me", "r1"), TestContext.Current.CancellationToken);
 
 		Assert.True(result.IsSuccess);
+		Assert.Equal("auth0|you", result.Value?.RequesterUserId);
 	}
 }

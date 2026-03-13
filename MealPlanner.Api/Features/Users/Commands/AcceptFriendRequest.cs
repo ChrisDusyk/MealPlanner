@@ -10,22 +10,26 @@ namespace MealPlanner.Api.Features.Users.Commands;
 public record AcceptFriendRequestCommand(
 	string RecipientUserId,
 	string RequestId
-) : ICommand<Unit>;
+) : ICommand<FriendRequestActionResult>;
+
+public record FriendRequestActionResult(string RequesterUserId);
 
 public class AcceptFriendRequestCommandHandler(IMongoClient mongoClient)
-	: ICommandHandler<AcceptFriendRequestCommand, Unit>
+	: ICommandHandler<AcceptFriendRequestCommand, FriendRequestActionResult>
 {
-	public async Task<Result<Unit>> HandleAsync(
+	public async Task<Result<FriendRequestActionResult>> HandleAsync(
 		AcceptFriendRequestCommand command,
 		CancellationToken cancellationToken = default)
 	{
 		if (string.IsNullOrWhiteSpace(command.RecipientUserId))
-			return Result<Unit>.Failure(
+			return Result<FriendRequestActionResult>.Failure(
 				new Error(ErrorCodes.ValidationFailed, "Recipient user ID is required."));
 
 		if (string.IsNullOrWhiteSpace(command.RequestId))
-			return Result<Unit>.Failure(
+			return Result<FriendRequestActionResult>.Failure(
 				new Error(ErrorCodes.ValidationFailed, "Friend request ID is required."));
+
+		FriendRequestDocument? request = null;
 
 		try
 		{
@@ -33,12 +37,12 @@ public class AcceptFriendRequestCommandHandler(IMongoClient mongoClient)
 			var requests = database.GetCollection<FriendRequestDocument>("friend_requests");
 			var friendships = database.GetCollection<FriendshipDocument>("friendships");
 
-			var request = await requests
+			request = await requests
 				.Find(r => r.Id == command.RequestId && r.RecipientUserId == command.RecipientUserId)
 				.FirstOrDefaultAsync(cancellationToken);
 			if (request is null)
 			{
-				return Result<Unit>.Failure(
+				return Result<FriendRequestActionResult>.Failure(
 					new Error(ErrorCodes.NotFound, "Friend request was not found."));
 			}
 
@@ -68,15 +72,16 @@ public class AcceptFriendRequestCommandHandler(IMongoClient mongoClient)
 				r => r.RequesterUserId == request.RecipientUserId && r.RecipientUserId == request.RequesterUserId,
 				cancellationToken);
 
-			return Result<Unit>.Success(Unit.Value);
+			return Result<FriendRequestActionResult>.Success(new FriendRequestActionResult(request.RequesterUserId));
 		}
 		catch (MongoWriteException ex) when (ex.WriteError?.Category == ServerErrorCategory.DuplicateKey)
 		{
-			return Result<Unit>.Success(Unit.Value);
+			return Result<FriendRequestActionResult>.Success(
+				new FriendRequestActionResult(request?.RequesterUserId ?? string.Empty));
 		}
 		catch (Exception ex)
 		{
-			return Result<Unit>.Failure(
+			return Result<FriendRequestActionResult>.Failure(
 				new Error(ErrorCodes.DatabaseError, "Failed to accept friend request.", ex));
 		}
 	}

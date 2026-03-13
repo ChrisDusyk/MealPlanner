@@ -5,9 +5,6 @@ using MealPlanner.Api.Features.Users.Models;
 using MealPlanner.Api.Features.Users.Queries;
 using MealPlanner.Api.Features.Users.Realtime;
 using MealPlanner.Api.Shared;
-using MongoDB.Bson;
-using MongoDB.Driver;
-using System.Text.RegularExpressions;
 
 namespace MealPlanner.Api.Features.Users;
 
@@ -53,46 +50,6 @@ public static class UserEndpoints
 		}
 
 		return null;
-	}
-
-	private static async Task<string?> FindUserIdByEmailAsync(
-		IMongoClient mongoClient,
-		string email,
-		CancellationToken cancellationToken)
-	{
-		if (string.IsNullOrWhiteSpace(email))
-			return null;
-
-		var users = mongoClient
-			.GetDatabase("mealplannerDb")
-			.GetCollection<UserDocument>("users");
-
-		var emailPattern = new BsonRegularExpression($"^{Regex.Escape(email.Trim())}$", "i");
-		var user = await users
-			.Find(Builders<UserDocument>.Filter.Regex(u => u.Email, emailPattern))
-			.FirstOrDefaultAsync(cancellationToken);
-
-		return user?.Auth0UserId;
-	}
-
-	private static async Task<string?> FindRequesterForIncomingRequestAsync(
-		IMongoClient mongoClient,
-		string recipientUserId,
-		string requestId,
-		CancellationToken cancellationToken)
-	{
-		if (string.IsNullOrWhiteSpace(recipientUserId) || string.IsNullOrWhiteSpace(requestId))
-			return null;
-
-		var requests = mongoClient
-			.GetDatabase("mealplannerDb")
-			.GetCollection<FriendRequestDocument>("friend_requests");
-
-		var request = await requests
-			.Find(r => r.Id == requestId && r.RecipientUserId == recipientUserId)
-			.FirstOrDefaultAsync(cancellationToken);
-
-		return request?.RequesterUserId;
 	}
 
 	private static async Task<IResult> SyncUser(
@@ -253,17 +210,11 @@ public static class UserEndpoints
 		HttpContext httpContext,
 		ICommandHandler<SendFriendRequestByEmailCommand, SendFriendRequestResult> handler,
 		IFriendsRealtimeNotifier realtimeNotifier,
-		IMongoClient mongoClient,
 		CancellationToken cancellationToken)
 	{
 		var auth0UserId = GetAuth0UserId(httpContext);
 		if (auth0UserId is null)
 			return Results.Unauthorized();
-
-		var recipientUserId = await FindUserIdByEmailAsync(
-			mongoClient,
-			request.Email?.Trim() ?? string.Empty,
-			cancellationToken);
 
 		var result = await handler.HandleAsync(
 			new SendFriendRequestByEmailCommand(auth0UserId, request.Email?.Trim() ?? string.Empty),
@@ -282,7 +233,7 @@ public static class UserEndpoints
 
 		var sendResult = result.Value!;
 		await realtimeNotifier.PublishFriendsUpdatedAsync(
-			[auth0UserId, recipientUserId ?? string.Empty],
+			[auth0UserId, sendResult.RecipientUserId],
 			auth0UserId,
 			sendResult.Status == SendFriendRequestStatus.Accepted
 				? FriendsRealtimeEventType.RequestAccepted
@@ -295,20 +246,13 @@ public static class UserEndpoints
 	private static async Task<IResult> AcceptFriendRequest(
 		string requestId,
 		HttpContext httpContext,
-		ICommandHandler<AcceptFriendRequestCommand, Unit> handler,
+		ICommandHandler<AcceptFriendRequestCommand, FriendRequestActionResult> handler,
 		IFriendsRealtimeNotifier realtimeNotifier,
-		IMongoClient mongoClient,
 		CancellationToken cancellationToken)
 	{
 		var auth0UserId = GetAuth0UserId(httpContext);
 		if (auth0UserId is null)
 			return Results.Unauthorized();
-
-		var requesterUserId = await FindRequesterForIncomingRequestAsync(
-			mongoClient,
-			auth0UserId,
-			requestId,
-			cancellationToken);
 
 		var result = await handler.HandleAsync(
 			new AcceptFriendRequestCommand(auth0UserId, requestId),
@@ -326,7 +270,7 @@ public static class UserEndpoints
 		}
 
 		await realtimeNotifier.PublishFriendsUpdatedAsync(
-			[auth0UserId, requesterUserId ?? string.Empty],
+			[auth0UserId, result.Value!.RequesterUserId],
 			auth0UserId,
 			FriendsRealtimeEventType.RequestAccepted,
 			cancellationToken);
@@ -337,20 +281,13 @@ public static class UserEndpoints
 	private static async Task<IResult> RejectFriendRequest(
 		string requestId,
 		HttpContext httpContext,
-		ICommandHandler<RejectFriendRequestCommand, Unit> handler,
+		ICommandHandler<RejectFriendRequestCommand, FriendRequestActionResult> handler,
 		IFriendsRealtimeNotifier realtimeNotifier,
-		IMongoClient mongoClient,
 		CancellationToken cancellationToken)
 	{
 		var auth0UserId = GetAuth0UserId(httpContext);
 		if (auth0UserId is null)
 			return Results.Unauthorized();
-
-		var requesterUserId = await FindRequesterForIncomingRequestAsync(
-			mongoClient,
-			auth0UserId,
-			requestId,
-			cancellationToken);
 
 		var result = await handler.HandleAsync(
 			new RejectFriendRequestCommand(auth0UserId, requestId),
@@ -368,7 +305,7 @@ public static class UserEndpoints
 		}
 
 		await realtimeNotifier.PublishFriendsUpdatedAsync(
-			[auth0UserId, requesterUserId ?? string.Empty],
+			[auth0UserId, result.Value!.RequesterUserId],
 			auth0UserId,
 			FriendsRealtimeEventType.RequestRejected,
 			cancellationToken);

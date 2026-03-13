@@ -25,13 +25,21 @@ function createEvent({
 	url,
 	accessToken,
 	method,
-	body
+	body,
+	rawBody,
+	contentType
 }: {
 	url: string;
 	accessToken: string | null;
 	method?: string;
 	body?: unknown;
+	rawBody?: string;
+	contentType?: string;
 }): Parameters<typeof GET>[0] {
+	const resolvedBody = rawBody ?? (body ? JSON.stringify(body) : undefined);
+	const resolvedContentType =
+		contentType ?? (body || rawBody !== undefined ? 'application/json' : undefined);
+
 	return {
 		locals: {
 			auth: vi.fn().mockResolvedValue(accessToken ? { accessToken } : null)
@@ -40,8 +48,8 @@ function createEvent({
 		url: new URL(url),
 		request: new Request(url, {
 			method: method ?? 'GET',
-			body: body ? JSON.stringify(body) : undefined,
-			headers: body ? { 'content-type': 'application/json' } : undefined
+			body: resolvedBody,
+			headers: resolvedContentType ? { 'content-type': resolvedContentType } : undefined
 		})
 	} as unknown as Parameters<typeof GET>[0];
 }
@@ -94,7 +102,7 @@ describe('POST /app/account/friends', () => {
 	});
 
 	it('passes through API error status', async () => {
-		vi.mocked(sendFriendRequestByEmail).mockRejectedValue(new ApiError(404, 'No user exists with that email address.'));
+		vi.mocked(sendFriendRequestByEmail).mockRejectedValue(new ApiError(400, 'No user exists with that email address.'));
 		const event = createEvent({
 			url: 'http://localhost/app/account/friends',
 			accessToken: 'token',
@@ -103,8 +111,22 @@ describe('POST /app/account/friends', () => {
 		});
 
 		const response = await POST(event);
-		expect(response.status).toBe(404);
+		expect(response.status).toBe(400);
 		expect(await response.json()).toEqual({ error: 'No user exists with that email address.' });
+	});
+
+	it('returns 400 for invalid JSON payload', async () => {
+		const event = createEvent({
+			url: 'http://localhost/app/account/friends',
+			accessToken: 'token',
+			method: 'POST',
+			rawBody: '{"action":"send",',
+			contentType: 'application/json'
+		});
+
+		const response = await POST(event);
+		expect(response.status).toBe(400);
+		expect(await response.json()).toEqual({ error: 'Invalid JSON payload.' });
 	});
 
 	it('accepts incoming request', async () => {

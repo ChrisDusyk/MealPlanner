@@ -83,6 +83,13 @@ describe('load /app/account', () => {
 			outgoingFriendRequests: []
 		});
 	});
+
+	it('throws 500 when friend datasets fail to load', async () => {
+		vi.mocked(getFriends).mockRejectedValue(new Error('upstream failed'));
+
+		const event = createLoadEvent('test-token');
+		await expect(load(event)).rejects.toMatchObject({ status: 500 });
+	});
 });
 
 describe('POST /app/account action', () => {

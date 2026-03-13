@@ -242,7 +242,9 @@
 		</div>
 
 		<form class="mb-4 flex flex-col gap-3 sm:flex-row" onsubmit={sendFriendRequest}>
+			<label for="friend-request-email" class="sr-only">Friend email</label>
 			<input
+				id="friend-request-email"
 				type="email"
 				required
 				bind:value={requestEmail}

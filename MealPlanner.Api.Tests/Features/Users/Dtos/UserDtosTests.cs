@@ -88,7 +88,8 @@ public class UserDtosTests
 	[Fact]
 	public void SendFriendRequestResponse_FromDomain_MapsStatus()
 	{
-		var response = SendFriendRequestResponse.FromDomain(new SendFriendRequestResult(SendFriendRequestStatus.Accepted));
+		var response = SendFriendRequestResponse.FromDomain(
+			new SendFriendRequestResult(SendFriendRequestStatus.Accepted, "auth0|friend"));
 
 		Assert.Equal("Accepted", response.Status);
 	}

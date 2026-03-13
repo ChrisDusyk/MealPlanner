@@ -40,11 +40,21 @@ export const POST: RequestHandler = async ({ request, locals, fetch }) => {
 		error(401, 'Unauthorized');
 	}
 
-	const body = (await request.json()) as {
+	let body: {
 		action?: 'send' | 'accept' | 'reject';
 		email?: string;
 		requestId?: string;
 	};
+
+	try {
+		body = (await request.json()) as {
+			action?: 'send' | 'accept' | 'reject';
+			email?: string;
+			requestId?: string;
+		};
+	} catch {
+		return json({ error: 'Invalid JSON payload.' }, { status: 400 });
+	}
 
 	if (!body.action) {
 		return json({ error: 'action is required' }, { status: 400 });

@@ -1,4 +1,4 @@
-import { fail } from '@sveltejs/kit';
+import { error, fail } from '@sveltejs/kit';
 import { ApiError } from '$lib/api/recipeApi';
 import {
 	getFriends,
@@ -30,12 +30,9 @@ export const load: PageServerLoad = async ({ locals, fetch }) => {
 			incomingFriendRequests,
 			outgoingFriendRequests
 		};
-	} catch {
-		return {
-			friends: [],
-			incomingFriendRequests: [],
-			outgoingFriendRequests: []
-		};
+	} catch (err) {
+		console.error('Failed to load account friend data:', err);
+		error(500, 'Failed to load account friend data. Please try again.');
 	}
 };
 
