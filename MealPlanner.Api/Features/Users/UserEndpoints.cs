@@ -354,6 +354,7 @@ public static class UserEndpoints
 		UpdateFriendAutoSharePreferencesRequest request,
 		HttpContext httpContext,
 		ICommandHandler<UpdateFriendAutoSharePreferencesCommand, UpdateFriendAutoSharePreferencesResult> handler,
+		IFriendsRealtimeNotifier realtimeNotifier,
 		CancellationToken cancellationToken)
 	{
 		var auth0UserId = GetAuth0UserId(httpContext);
@@ -368,13 +369,23 @@ public static class UserEndpoints
 				request.AutoShareGroceryLists),
 			cancellationToken);
 
-		return result.Match(
-			onSuccess: updated => Results.Ok(FriendAutoSharePreferencesResponse.FromDomain(updated)),
-			onFailure: error => error.Code switch
+		if (!result.IsSuccess)
+		{
+			var error = result.Error!;
+			return error.Code switch
 			{
 				ErrorCodes.NotFound => Results.NotFound(error.Message),
 				ErrorCodes.ValidationFailed => Results.BadRequest(error.Message),
 				_ => Results.Problem(error.Message, statusCode: 500)
-			});
+			};
+		}
+
+		await realtimeNotifier.PublishFriendsUpdatedAsync(
+			[auth0UserId, friendUserId],
+			auth0UserId,
+			FriendsRealtimeEventType.PreferencesUpdated,
+			cancellationToken);
+
+		return Results.Ok(FriendAutoSharePreferencesResponse.FromDomain(result.Value!));
 	}
 }
