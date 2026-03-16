@@ -70,7 +70,15 @@ describe('load /app/account', () => {
 	});
 
 	it('loads friend datasets when access token is available', async () => {
-		vi.mocked(getFriends).mockResolvedValue([{ userId: 'auth0|friend', name: 'Friend', email: 'f@example.com' }]);
+		vi.mocked(getFriends).mockResolvedValue([
+			{
+				userId: 'auth0|friend',
+				name: 'Friend',
+				email: 'f@example.com',
+				autoShareMealPlans: false,
+				autoShareGroceryLists: false
+			}
+		]);
 		vi.mocked(getIncomingFriendRequests).mockResolvedValue([]);
 		vi.mocked(getOutgoingFriendRequests).mockResolvedValue([]);
 
@@ -78,7 +86,15 @@ describe('load /app/account', () => {
 		const data = await load(event);
 
 		expect(data).toEqual({
-			friends: [{ userId: 'auth0|friend', name: 'Friend', email: 'f@example.com' }],
+			friends: [
+				{
+					userId: 'auth0|friend',
+					name: 'Friend',
+					email: 'f@example.com',
+					autoShareMealPlans: false,
+					autoShareGroceryLists: false
+				}
+			],
 			incomingFriendRequests: [],
 			outgoingFriendRequests: []
 		});

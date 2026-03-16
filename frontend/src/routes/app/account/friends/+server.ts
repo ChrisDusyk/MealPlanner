@@ -6,7 +6,8 @@ import {
 	getOutgoingFriendRequests,
 	rejectFriendRequest,
 	removeFriend,
-	sendFriendRequestByEmail
+	sendFriendRequestByEmail,
+	updateFriendAutoSharePreferences
 } from '$lib/api/friendsApi';
 import { ApiError } from '$lib/api/recipeApi';
 import type { RequestHandler } from './$types';
@@ -117,6 +118,61 @@ export const DELETE: RequestHandler = async ({ locals, fetch, url }) => {
 			return json({ error: err.message }, { status: err.status });
 		}
 		const message = err instanceof Error ? err.message : 'Failed to remove friend.';
+		return json({ error: message }, { status: 500 });
+	}
+};
+
+export const PATCH: RequestHandler = async ({ request, locals, fetch }) => {
+	const session = await locals.auth();
+	if (!session?.accessToken) {
+		error(401, 'Unauthorized');
+	}
+
+	let body: {
+		friendUserId?: string;
+		autoShareMealPlans?: boolean;
+		autoShareGroceryLists?: boolean;
+	};
+
+	try {
+		body = (await request.json()) as {
+			friendUserId?: string;
+			autoShareMealPlans?: boolean;
+			autoShareGroceryLists?: boolean;
+		};
+	} catch {
+		return json({ error: 'Invalid JSON payload.' }, { status: 400 });
+	}
+
+	const friendUserId = body.friendUserId?.trim() ?? '';
+	if (!friendUserId) {
+		return json({ error: 'friendUserId is required' }, { status: 400 });
+	}
+
+	if (typeof body.autoShareMealPlans !== 'boolean' || typeof body.autoShareGroceryLists !== 'boolean') {
+		return json(
+			{ error: 'autoShareMealPlans and autoShareGroceryLists are required booleans' },
+			{ status: 400 }
+		);
+	}
+
+	try {
+		const result = await updateFriendAutoSharePreferences(
+			session.accessToken,
+			friendUserId,
+			{
+				autoShareMealPlans: body.autoShareMealPlans,
+				autoShareGroceryLists: body.autoShareGroceryLists
+			},
+			fetch
+		);
+
+		return json(result);
+	} catch (err) {
+		if (err instanceof ApiError) {
+			return json({ error: err.message }, { status: err.status });
+		}
+		const message = err instanceof Error ? err.message : 'Failed to update friend preferences.';
 		return json({ error: message }, { status: 500 });
 	}
 };

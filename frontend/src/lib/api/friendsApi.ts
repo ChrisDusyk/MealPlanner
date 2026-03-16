@@ -4,6 +4,8 @@ export interface FriendSummary {
 	userId: string;
 	name: string;
 	email: string | null;
+	autoShareMealPlans: boolean;
+	autoShareGroceryLists: boolean;
 }
 
 export interface FriendRequestSummary {
@@ -20,6 +22,11 @@ export interface SendFriendRequestResponse {
 
 export interface FriendActionResponse {
 	success: boolean;
+}
+
+export interface FriendAutoSharePreferencesResponse {
+	autoShareMealPlans: boolean;
+	autoShareGroceryLists: boolean;
 }
 
 export async function getFriends(
@@ -155,6 +162,35 @@ export async function removeFriend(
 			Authorization: `Bearer ${accessToken}`
 		}
 	});
+
+	if (!response.ok) {
+		const { message, body } = await parseErrorBody(response);
+		throw new ApiError(response.status, message, body);
+	}
+
+	return response.json();
+}
+
+export async function updateFriendAutoSharePreferences(
+	accessToken: string,
+	friendUserId: string,
+	payload: {
+		autoShareMealPlans: boolean;
+		autoShareGroceryLists: boolean;
+	},
+	fetchFn: typeof fetch = fetch
+): Promise<FriendAutoSharePreferencesResponse> {
+	const response = await fetchFn(
+		`${getApiBase()}/api/users/friends/${encodeURIComponent(friendUserId)}/preferences`,
+		{
+			method: 'PUT',
+			headers: {
+				'Content-Type': 'application/json',
+				Authorization: `Bearer ${accessToken}`
+			},
+			body: JSON.stringify(payload)
+		}
+	);
 
 	if (!response.ok) {
 		const { message, body } = await parseErrorBody(response);
