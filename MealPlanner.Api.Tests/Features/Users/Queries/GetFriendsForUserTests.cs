@@ -43,9 +43,24 @@ public class GetFriendsForUserTests
 		users.Setup(c => c.FindSync(It.IsAny<FilterDefinition<UserDocument>>(), It.IsAny<FindOptions<UserDocument, UserDocument>>(), It.IsAny<CancellationToken>()))
 			.Returns(usersCursor.Object);
 
+		var preferenceDoc = new FriendAutoSharePreferenceDocument
+		{
+			UserId = "auth0|me",
+			FriendUserId = "auth0|you",
+			AutoShareMealPlans = true,
+			AutoShareGroceryLists = false
+		};
+		var preferencesCursor = MongoTestHelpers.CreateCursor((IReadOnlyCollection<FriendAutoSharePreferenceDocument>)new[] { preferenceDoc });
+		var preferences = new Mock<IMongoCollection<FriendAutoSharePreferenceDocument>>();
+		preferences.Setup(c => c.FindAsync(It.IsAny<FilterDefinition<FriendAutoSharePreferenceDocument>>(), It.IsAny<FindOptions<FriendAutoSharePreferenceDocument, FriendAutoSharePreferenceDocument>>(), It.IsAny<CancellationToken>()))
+			.ReturnsAsync(preferencesCursor.Object);
+		preferences.Setup(c => c.FindSync(It.IsAny<FilterDefinition<FriendAutoSharePreferenceDocument>>(), It.IsAny<FindOptions<FriendAutoSharePreferenceDocument, FriendAutoSharePreferenceDocument>>(), It.IsAny<CancellationToken>()))
+			.Returns(preferencesCursor.Object);
+
 		var database = new Mock<IMongoDatabase>();
 		database.Setup(d => d.GetCollection<FriendshipDocument>("friendships", null)).Returns(friendships.Object);
 		database.Setup(d => d.GetCollection<UserDocument>("users", null)).Returns(users.Object);
+		database.Setup(d => d.GetCollection<FriendAutoSharePreferenceDocument>("friend_auto_share_preferences", null)).Returns(preferences.Object);
 		var client = new Mock<IMongoClient>();
 		client.Setup(c => c.GetDatabase("mealplannerDb", null)).Returns(database.Object);
 
@@ -55,5 +70,7 @@ public class GetFriendsForUserTests
 		Assert.True(result.IsSuccess);
 		Assert.Single(result.Value!);
 		Assert.Equal("auth0|you", result.Value![0].UserId);
+		Assert.True(result.Value[0].AutoShareMealPlans);
+		Assert.False(result.Value[0].AutoShareGroceryLists);
 	}
 }

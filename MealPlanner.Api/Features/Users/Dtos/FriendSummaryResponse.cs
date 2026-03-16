@@ -8,13 +8,17 @@ namespace MealPlanner.Api.Features.Users.Dtos;
 public record FriendSummaryResponse(
 	string UserId,
 	string Name,
-	string? Email
+	string? Email,
+	bool AutoShareMealPlans,
+	bool AutoShareGroceryLists
 )
 {
 	public static FriendSummaryResponse FromDomain(FriendSummary item) =>
 		new(
 			UserId: item.UserId,
 			Name: item.Name,
-			Email: item.Email
+			Email: item.Email,
+			AutoShareMealPlans: item.AutoShareMealPlans,
+			AutoShareGroceryLists: item.AutoShareGroceryLists
 		);
 }

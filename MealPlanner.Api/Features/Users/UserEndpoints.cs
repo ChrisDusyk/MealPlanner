@@ -29,6 +29,7 @@ public static class UserEndpoints
 		group.MapPost("/friends/requests", SendFriendRequest);
 		group.MapPost("/friends/requests/{requestId}/accept", AcceptFriendRequest);
 		group.MapPost("/friends/requests/{requestId}/reject", RejectFriendRequest);
+		group.MapPut("/friends/{friendUserId}/preferences", UpdateFriendAutoSharePreferences);
 		group.MapDelete("/friends/{friendUserId}", RemoveFriend);
 
 		return app;
@@ -346,5 +347,34 @@ public static class UserEndpoints
 			cancellationToken);
 
 		return Results.Ok(new FriendRequestActionResponse(true));
+	}
+
+	private static async Task<IResult> UpdateFriendAutoSharePreferences(
+		string friendUserId,
+		UpdateFriendAutoSharePreferencesRequest request,
+		HttpContext httpContext,
+		ICommandHandler<UpdateFriendAutoSharePreferencesCommand, UpdateFriendAutoSharePreferencesResult> handler,
+		CancellationToken cancellationToken)
+	{
+		var auth0UserId = GetAuth0UserId(httpContext);
+		if (auth0UserId is null)
+			return Results.Unauthorized();
+
+		var result = await handler.HandleAsync(
+			new UpdateFriendAutoSharePreferencesCommand(
+				auth0UserId,
+				friendUserId,
+				request.AutoShareMealPlans,
+				request.AutoShareGroceryLists),
+			cancellationToken);
+
+		return result.Match(
+			onSuccess: updated => Results.Ok(FriendAutoSharePreferencesResponse.FromDomain(updated)),
+			onFailure: error => error.Code switch
+			{
+				ErrorCodes.NotFound => Results.NotFound(error.Message),
+				ErrorCodes.ValidationFailed => Results.BadRequest(error.Message),
+				_ => Results.Problem(error.Message, statusCode: 500)
+			});
 	}
 }
