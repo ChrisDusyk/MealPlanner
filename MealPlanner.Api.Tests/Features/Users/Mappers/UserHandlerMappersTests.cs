@@ -60,11 +60,13 @@ public class UserHandlerMappersTests
 	[Fact]
 	public void GetFriendsForUser_MapToSummary_MapsUserDocument()
 	{
-		var summary = GetFriendsForUserQueryHandler.MapToSummary(CreateDocument("pal@example.com"));
+		var summary = GetFriendsForUserQueryHandler.MapToSummary(CreateDocument("pal@example.com"), null);
 
 		Assert.Equal("auth0|123", summary.UserId);
 		Assert.Equal("Pat", summary.Name);
 		Assert.Equal("pal@example.com", summary.Email);
+		Assert.False(summary.AutoShareMealPlans);
+		Assert.False(summary.AutoShareGroceryLists);
 	}
 
 	[Fact]

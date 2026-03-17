@@ -1,4 +1,5 @@
 using MealPlanner.Api.Features.MealPlans.Models;
+using MealPlanner.Api.Features.Users.Models;
 using MealPlanner.Api.Shared;
 using MongoDB.Driver;
 
@@ -31,9 +32,8 @@ public class GetMealPlanQueryHandler(IMongoClient mongoClient)
 			var weekStart = NormalizeToMonday(query.WeekStart);
 			var weekStartStr = weekStart.ToString("yyyy-MM-dd");
 
-			var collection = mongoClient
-				.GetDatabase("mealplannerDb")
-				.GetCollection<MealPlanDocument>("mealplans");
+			var database = mongoClient.GetDatabase("mealplannerDb");
+			var collection = database.GetCollection<MealPlanDocument>("mealplans");
 
 			var document = await collection
 				.Find(p => p.UserId == query.UserId && p.WeekStart == weekStartStr)
@@ -61,6 +61,7 @@ public class GetMealPlanQueryHandler(IMongoClient mongoClient)
 			};
 
 			await collection.InsertOneAsync(document, cancellationToken: cancellationToken);
+			await PropagateAutoSharesFromFriendPreferencesAsync(database, query.UserId, weekStartStr, cancellationToken);
 			return Result<MealPlan>.Success(MapToDomain(document));
 		}
 		catch (Exception ex)
@@ -99,4 +100,91 @@ public class GetMealPlanQueryHandler(IMongoClient mongoClient)
 			CreatedAt: doc.CreatedAt,
 			UpdatedAt: doc.UpdatedAt
 		);
+
+	private static async Task PropagateAutoSharesFromFriendPreferencesAsync(
+		IMongoDatabase database,
+		string ownerUserId,
+		string weekStart,
+		CancellationToken cancellationToken)
+	{
+		var preferences = database.GetCollection<FriendAutoSharePreferenceDocument>("friend_auto_share_preferences");
+		var shares = database.GetCollection<MealPlanShareDocument>("shares");
+		var friendships = database.GetCollection<FriendshipDocument>("friendships");
+
+		if (preferences is null || shares is null || friendships is null)
+			return;
+
+		var enabledPreferences = await preferences
+			.Find(p => p.UserId == ownerUserId && p.AutoShareMealPlans)
+			.ToListAsync(cancellationToken);
+
+		if (enabledPreferences.Count == 0)
+			return;
+
+		var friendUserIds = enabledPreferences
+			.Select(p => p.FriendUserId)
+			.Where(id => !string.IsNullOrWhiteSpace(id))
+			.Distinct(StringComparer.Ordinal)
+			.ToList();
+
+		if (friendUserIds.Count == 0)
+			return;
+
+		// Ensure auto-share is only propagated to current friends, not stale preference entries.
+		var activeFriendships = await friendships
+			.Find(f =>
+				(f.UserAId == ownerUserId && friendUserIds.Contains(f.UserBId)) ||
+				(f.UserBId == ownerUserId && friendUserIds.Contains(f.UserAId)))
+			.ToListAsync(cancellationToken);
+
+		var activeFriendUserIds = activeFriendships
+			.Select(f => f.UserAId == ownerUserId ? f.UserBId : f.UserAId)
+			.Where(id => !string.IsNullOrWhiteSpace(id))
+			.ToHashSet(StringComparer.Ordinal);
+
+		friendUserIds = friendUserIds
+			.Where(id => activeFriendUserIds.Contains(id))
+			.ToList();
+
+		if (friendUserIds.Count == 0)
+			return;
+
+		var existingShares = await shares
+			.Find(s =>
+				s.OwnerUserId == ownerUserId &&
+				s.WeekStart == weekStart &&
+				friendUserIds.Contains(s.SharedWithUserId))
+			.ToListAsync(cancellationToken);
+
+		var alreadySharedWith = existingShares
+			.Select(s => s.SharedWithUserId)
+			.ToHashSet(StringComparer.Ordinal);
+
+		var newShares = friendUserIds
+			.Where(friendUserId => !alreadySharedWith.Contains(friendUserId))
+			.Select(friendUserId => new MealPlanShareDocument
+			{
+				OwnerUserId = ownerUserId,
+				SharedWithUserId = friendUserId,
+				WeekStart = weekStart,
+				Permission = nameof(SharePermission.ReadWrite),
+				SharedAt = DateTime.UtcNow,
+				DismissedByRecipient = false
+			})
+			.ToList();
+
+		if (newShares.Count == 0)
+			return;
+
+		try
+		{
+			await shares.InsertManyAsync(newShares, cancellationToken: cancellationToken);
+		}
+		catch (MongoBulkWriteException<MealPlanShareDocument> ex)
+		{
+			var hasNonDuplicateErrors = ex.WriteErrors.Any(e => e.Code is not (11000 or 11001 or 12582));
+			if (hasNonDuplicateErrors)
+				throw;
+		}
+	}
 }

@@ -63,13 +63,15 @@ public class UserDtosTests
 	[Fact]
 	public void FriendSummaryResponse_FromDomain_MapsExpectedFields()
 	{
-		var summary = new FriendSummary("auth0|friend", "Friend User", "friend@example.com");
+		var summary = new FriendSummary("auth0|friend", "Friend User", "friend@example.com", true, false);
 
 		var response = FriendSummaryResponse.FromDomain(summary);
 
 		Assert.Equal("auth0|friend", response.UserId);
 		Assert.Equal("Friend User", response.Name);
 		Assert.Equal("friend@example.com", response.Email);
+		Assert.True(response.AutoShareMealPlans);
+		Assert.False(response.AutoShareGroceryLists);
 	}
 
 	[Fact]

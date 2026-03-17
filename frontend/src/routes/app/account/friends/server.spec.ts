@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiError } from '$lib/api/recipeApi';
-import { DELETE, GET, POST } from './+server';
+import { DELETE, GET, PATCH, POST } from './+server';
 import {
 	acceptFriendRequest,
 	getFriends,
@@ -8,7 +8,8 @@ import {
 	getOutgoingFriendRequests,
 	rejectFriendRequest,
 	removeFriend,
-	sendFriendRequestByEmail
+	sendFriendRequestByEmail,
+	updateFriendAutoSharePreferences
 } from '$lib/api/friendsApi';
 
 vi.mock('$lib/api/friendsApi', () => ({
@@ -18,7 +19,8 @@ vi.mock('$lib/api/friendsApi', () => ({
 	sendFriendRequestByEmail: vi.fn(),
 	acceptFriendRequest: vi.fn(),
 	rejectFriendRequest: vi.fn(),
-	removeFriend: vi.fn()
+	removeFriend: vi.fn(),
+	updateFriendAutoSharePreferences: vi.fn()
 }));
 
 function createEvent({
@@ -65,7 +67,15 @@ describe('GET /app/account/friends', () => {
 	});
 
 	it('returns bundled friends payload', async () => {
-		vi.mocked(getFriends).mockResolvedValue([{ userId: 'u1', name: 'Friend', email: 'f@example.com' }]);
+		vi.mocked(getFriends).mockResolvedValue([
+			{
+				userId: 'u1',
+				name: 'Friend',
+				email: 'f@example.com',
+				autoShareMealPlans: false,
+				autoShareGroceryLists: false
+			}
+		]);
 		vi.mocked(getIncomingFriendRequests).mockResolvedValue([]);
 		vi.mocked(getOutgoingFriendRequests).mockResolvedValue([]);
 
@@ -74,7 +84,15 @@ describe('GET /app/account/friends', () => {
 
 		expect(response.status).toBe(200);
 		expect(await response.json()).toEqual({
-			friends: [{ userId: 'u1', name: 'Friend', email: 'f@example.com' }],
+			friends: [
+				{
+					userId: 'u1',
+					name: 'Friend',
+					email: 'f@example.com',
+					autoShareMealPlans: false,
+					autoShareGroceryLists: false
+				}
+			],
 			incoming: [],
 			outgoing: []
 		});
@@ -157,6 +175,111 @@ describe('POST /app/account/friends', () => {
 		expect(response.status).toBe(200);
 		expect(await response.json()).toEqual({ success: true });
 		expect(rejectFriendRequest).toHaveBeenCalledWith('token', 'r1', event.fetch);
+	});
+});
+
+describe('PATCH /app/account/friends', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+	});
+
+	it('updates friend auto-share preferences', async () => {
+		vi.mocked(updateFriendAutoSharePreferences).mockResolvedValue({
+			autoShareMealPlans: true,
+			autoShareGroceryLists: false
+		});
+
+		const event = createEvent({
+			url: 'http://localhost/app/account/friends',
+			accessToken: 'token',
+			method: 'PATCH',
+			body: {
+				friendUserId: 'auth0|friend',
+				autoShareMealPlans: true,
+				autoShareGroceryLists: false
+			}
+		});
+
+		const response = await PATCH(event);
+		expect(response.status).toBe(200);
+		expect(await response.json()).toEqual({
+			autoShareMealPlans: true,
+			autoShareGroceryLists: false
+		});
+		expect(updateFriendAutoSharePreferences).toHaveBeenCalledWith(
+			'token',
+			'auth0|friend',
+			{ autoShareMealPlans: true, autoShareGroceryLists: false },
+			event.fetch
+		);
+	});
+
+	it('returns 400 when friendUserId is missing', async () => {
+		const event = createEvent({
+			url: 'http://localhost/app/account/friends',
+			accessToken: 'token',
+			method: 'PATCH',
+			body: {
+				autoShareMealPlans: true,
+				autoShareGroceryLists: false
+			}
+		});
+
+		const response = await PATCH(event);
+		expect(response.status).toBe(400);
+		expect(updateFriendAutoSharePreferences).not.toHaveBeenCalled();
+	});
+
+	it('returns 400 when auto-share values are not boolean', async () => {
+		const event = createEvent({
+			url: 'http://localhost/app/account/friends',
+			accessToken: 'token',
+			method: 'PATCH',
+			body: {
+				friendUserId: 'auth0|friend',
+				// invalid types
+				autoShareMealPlans: 'yes',
+				autoShareGroceryLists: null
+			}
+		});
+
+		const response = await PATCH(event);
+		expect(response.status).toBe(400);
+		expect(updateFriendAutoSharePreferences).not.toHaveBeenCalled();
+	});
+
+	it('returns 400 when request body is invalid JSON', async () => {
+		const event = createEvent({
+			url: 'http://localhost/app/account/friends',
+			accessToken: 'token',
+			method: 'PATCH',
+			// simulate invalid JSON body
+			body: 'this is not valid JSON'
+		});
+
+		const response = await PATCH(event);
+		expect(response.status).toBe(400);
+		expect(updateFriendAutoSharePreferences).not.toHaveBeenCalled();
+	});
+
+	it('propagates ApiError status from updateFriendAutoSharePreferences', async () => {
+		vi.mocked(updateFriendAutoSharePreferences).mockRejectedValue(
+			new ApiError(409, 'Conflict updating auto-share preferences')
+		);
+
+		const event = createEvent({
+			url: 'http://localhost/app/account/friends',
+			accessToken: 'token',
+			method: 'PATCH',
+			body: {
+				friendUserId: 'auth0|friend',
+				autoShareMealPlans: true,
+				autoShareGroceryLists: false
+			}
+		});
+
+		const response = await PATCH(event);
+		expect(response.status).toBe(409);
 	});
 });
 

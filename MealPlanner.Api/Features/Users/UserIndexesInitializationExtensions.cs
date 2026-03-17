@@ -20,6 +20,7 @@ public static class UserIndexesInitializationExtensions
 			var users = database.GetCollection<UserDocument>("users");
 			var friendships = database.GetCollection<FriendshipDocument>("friendships");
 			var requests = database.GetCollection<FriendRequestDocument>("friend_requests");
+			var preferences = database.GetCollection<FriendAutoSharePreferenceDocument>("friend_auto_share_preferences");
 
 			await users.Indexes.CreateOneAsync(
 				new CreateIndexModel<UserDocument>(
@@ -41,6 +42,14 @@ public static class UserIndexesInitializationExtensions
 						.Ascending(r => r.RequesterUserId)
 						.Ascending(r => r.RecipientUserId),
 					new CreateIndexOptions { Unique = true, Name = "ux_friend_requests_direction" }),
+				cancellationToken: cancellationToken);
+
+			await preferences.Indexes.CreateOneAsync(
+				new CreateIndexModel<FriendAutoSharePreferenceDocument>(
+					Builders<FriendAutoSharePreferenceDocument>.IndexKeys
+						.Ascending(p => p.UserId)
+						.Ascending(p => p.FriendUserId),
+					new CreateIndexOptions { Unique = true, Name = "ux_friend_auto_share_preferences_direction" }),
 				cancellationToken: cancellationToken);
 
 			logger.LogInformation("MongoDB user indexes ensured successfully.");

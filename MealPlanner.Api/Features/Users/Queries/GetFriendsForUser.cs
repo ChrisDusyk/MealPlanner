@@ -4,7 +4,13 @@ using MongoDB.Driver;
 
 namespace MealPlanner.Api.Features.Users.Queries;
 
-public record FriendSummary(string UserId, string Name, string? Email);
+public record FriendSummary(
+	string UserId,
+	string Name,
+	string? Email,
+	bool AutoShareMealPlans,
+	bool AutoShareGroceryLists
+);
 
 /// <summary>
 /// Query to retrieve all accepted friends for a user.
@@ -27,6 +33,7 @@ public class GetFriendsForUserQueryHandler(IMongoClient mongoClient)
 			var database = mongoClient.GetDatabase("mealplannerDb");
 			var friendships = database.GetCollection<FriendshipDocument>("friendships");
 			var users = database.GetCollection<UserDocument>("users");
+			var preferences = database.GetCollection<FriendAutoSharePreferenceDocument>("friend_auto_share_preferences");
 
 			var friendshipDocs = await friendships
 				.Find(f => f.UserAId == query.UserId || f.UserBId == query.UserId)
@@ -47,11 +54,18 @@ public class GetFriendsForUserQueryHandler(IMongoClient mongoClient)
 				.Find(u => friendUserIds.Contains(u.Auth0UserId))
 				.ToListAsync(cancellationToken);
 
+			var preferenceDocs = await preferences
+				.Find(p => p.UserId == query.UserId && friendUserIds.Contains(p.FriendUserId))
+				.ToListAsync(cancellationToken);
+
+			var preferencesByFriendId = preferenceDocs.ToDictionary(
+				p => p.FriendUserId,
+				StringComparer.Ordinal);
+
 			var byId = friendDocs.ToDictionary(u => u.Auth0UserId, StringComparer.Ordinal);
 			var ordered = friendUserIds
 				.Where(byId.ContainsKey)
-				.Select(id => byId[id])
-				.Select(MapToSummary)
+				.Select(id => MapToSummary(byId[id], preferencesByFriendId.GetValueOrDefault(id)))
 				.ToList();
 
 			return Result<IReadOnlyList<FriendSummary>>.Success(ordered);
@@ -63,6 +77,12 @@ public class GetFriendsForUserQueryHandler(IMongoClient mongoClient)
 		}
 	}
 
-	internal static FriendSummary MapToSummary(UserDocument user) =>
-		new(user.Auth0UserId, user.Name, user.Email);
+	internal static FriendSummary MapToSummary(UserDocument user, FriendAutoSharePreferenceDocument? preference) =>
+		new(
+			user.Auth0UserId,
+			user.Name,
+			user.Email,
+			preference?.AutoShareMealPlans ?? false,
+			preference?.AutoShareGroceryLists ?? false
+		);
 }

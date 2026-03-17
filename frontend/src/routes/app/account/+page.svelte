@@ -18,6 +18,7 @@
 	let sendingFriendRequest = $state(false);
 	let processingRequestId = $state('');
 	let removingFriendUserId = $state('');
+	let savingFriendPreferenceUserId = $state('');
 	let requestEmail = $state('');
 	const realtimeClient = new FriendsRealtimeClient();
 	// svelte-ignore state_referenced_locally
@@ -154,6 +155,52 @@
 		}
 	}
 
+	async function updateFriendPreference(
+		friend: FriendSummary,
+		updates: Partial<Pick<FriendSummary, 'autoShareMealPlans' | 'autoShareGroceryLists'>>
+	): Promise<void> {
+		friendActionError = '';
+		friendActionSuccess = '';
+		savingFriendPreferenceUserId = friend.userId;
+
+		const payload = {
+			friendUserId: friend.userId,
+			autoShareMealPlans: updates.autoShareMealPlans ?? friend.autoShareMealPlans,
+			autoShareGroceryLists: updates.autoShareGroceryLists ?? friend.autoShareGroceryLists
+		};
+
+		try {
+			const response = await fetch('/app/account/friends', {
+				method: 'PATCH',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify(payload)
+			});
+
+			const body = await response.json().catch(() => ({}));
+			if (!response.ok) {
+				friendActionError = body.error || 'Failed to update sharing preferences.';
+				return;
+			}
+
+			friends = friends.map((item) =>
+				item.userId === friend.userId
+					? {
+						...item,
+						autoShareMealPlans: body.autoShareMealPlans,
+						autoShareGroceryLists: body.autoShareGroceryLists
+					}
+					: item
+			);
+			friendActionSuccess = 'Sharing preferences updated.';
+		} catch (error) {
+			friendActionError = error instanceof Error ? error.message : 'Failed to update sharing preferences.';
+		} finally {
+			savingFriendPreferenceUserId = '';
+		}
+	}
+
 	onMount(() => {
 		let disposed = false;
 
@@ -282,9 +329,37 @@
 						{#each friends as friend (friend.userId)}
 							<li class="rounded-lg border border-green-100 bg-green-50/50 px-3 py-2">
 								<div class="flex items-start justify-between gap-2">
-									<div>
+									<div class="space-y-2">
 										<p class="text-sm font-semibold text-charcoal">{friend.name}</p>
 										<p class="text-xs text-charcoal/60">{friend.email ?? 'No email on profile'}</p>
+										<div class="space-y-1">
+											<label class="flex items-center gap-2 text-xs text-charcoal/80">
+												<input
+													type="checkbox"
+													checked={friend.autoShareMealPlans}
+													disabled={savingFriendPreferenceUserId === friend.userId}
+													onchange={(event) =>
+														updateFriendPreference(friend, {
+															autoShareMealPlans: (event.currentTarget as HTMLInputElement).checked
+														})}
+													class="h-4 w-4 rounded border-green-300 text-green-600 focus:ring-green-500"
+												/>
+												<span>Auto-share new meal plans</span>
+											</label>
+											<label class="flex items-center gap-2 text-xs text-charcoal/80">
+												<input
+													type="checkbox"
+													checked={friend.autoShareGroceryLists}
+													disabled={savingFriendPreferenceUserId === friend.userId}
+													onchange={(event) =>
+														updateFriendPreference(friend, {
+															autoShareGroceryLists: (event.currentTarget as HTMLInputElement).checked
+														})}
+													class="h-4 w-4 rounded border-green-300 text-green-600 focus:ring-green-500"
+												/>
+												<span>Auto-share new grocery lists</span>
+											</label>
+										</div>
 									</div>
 									<button
 										type="button"

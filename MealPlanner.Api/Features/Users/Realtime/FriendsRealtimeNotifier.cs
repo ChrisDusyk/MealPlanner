@@ -7,7 +7,8 @@ public enum FriendsRealtimeEventType
 	RequestSent,
 	RequestAccepted,
 	RequestRejected,
-	FriendshipRemoved
+	FriendshipRemoved,
+	PreferencesUpdated
 }
 
 public record FriendsUpdatedEvent(
