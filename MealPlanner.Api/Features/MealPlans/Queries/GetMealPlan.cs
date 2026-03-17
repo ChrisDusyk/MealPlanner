@@ -109,8 +109,9 @@ public class GetMealPlanQueryHandler(IMongoClient mongoClient)
 	{
 		var preferences = database.GetCollection<FriendAutoSharePreferenceDocument>("friend_auto_share_preferences");
 		var shares = database.GetCollection<MealPlanShareDocument>("shares");
+		var friendships = database.GetCollection<FriendshipDocument>("friendships");
 
-		if (preferences is null || shares is null)
+		if (preferences is null || shares is null || friendships is null)
 			return;
 
 		var enabledPreferences = await preferences
@@ -124,6 +125,23 @@ public class GetMealPlanQueryHandler(IMongoClient mongoClient)
 			.Select(p => p.FriendUserId)
 			.Where(id => !string.IsNullOrWhiteSpace(id))
 			.Distinct(StringComparer.Ordinal)
+			.ToList();
+
+		if (friendUserIds.Count == 0)
+			return;
+
+		// Ensure auto-share is only propagated to current friends, not stale preference entries.
+		var activeFriendships = await friendships
+			.Find(f => f.UserId == ownerUserId && friendUserIds.Contains(f.FriendUserId))
+			.ToListAsync(cancellationToken);
+
+		var activeFriendUserIds = activeFriendships
+			.Select(f => f.FriendUserId)
+			.Where(id => !string.IsNullOrWhiteSpace(id))
+			.ToHashSet(StringComparer.Ordinal);
+
+		friendUserIds = friendUserIds
+			.Where(id => activeFriendUserIds.Contains(id))
 			.ToList();
 
 		if (friendUserIds.Count == 0)

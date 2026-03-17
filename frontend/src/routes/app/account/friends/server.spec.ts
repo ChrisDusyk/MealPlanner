@@ -213,6 +213,74 @@ describe('PATCH /app/account/friends', () => {
 			event.fetch
 		);
 	});
+
+	it('returns 400 when friendUserId is missing', async () => {
+		const event = createEvent({
+			url: 'http://localhost/app/account/friends',
+			accessToken: 'token',
+			method: 'PATCH',
+			body: {
+				autoShareMealPlans: true,
+				autoShareGroceryLists: false
+			}
+		});
+
+		const response = await PATCH(event);
+		expect(response.status).toBe(400);
+		expect(updateFriendAutoSharePreferences).not.toHaveBeenCalled();
+	});
+
+	it('returns 400 when auto-share values are not boolean', async () => {
+		const event = createEvent({
+			url: 'http://localhost/app/account/friends',
+			accessToken: 'token',
+			method: 'PATCH',
+			body: {
+				friendUserId: 'auth0|friend',
+				// invalid types
+				autoShareMealPlans: 'yes',
+				autoShareGroceryLists: null
+			}
+		});
+
+		const response = await PATCH(event);
+		expect(response.status).toBe(400);
+		expect(updateFriendAutoSharePreferences).not.toHaveBeenCalled();
+	});
+
+	it('returns 400 when request body is invalid JSON', async () => {
+		const event = createEvent({
+			url: 'http://localhost/app/account/friends',
+			accessToken: 'token',
+			method: 'PATCH',
+			// simulate invalid JSON body
+			body: 'this is not valid JSON'
+		});
+
+		const response = await PATCH(event);
+		expect(response.status).toBe(400);
+		expect(updateFriendAutoSharePreferences).not.toHaveBeenCalled();
+	});
+
+	it('propagates ApiError status from updateFriendAutoSharePreferences', async () => {
+		vi.mocked(updateFriendAutoSharePreferences).mockRejectedValue(
+			new ApiError(409, 'Conflict updating auto-share preferences')
+		);
+
+		const event = createEvent({
+			url: 'http://localhost/app/account/friends',
+			accessToken: 'token',
+			method: 'PATCH',
+			body: {
+				friendUserId: 'auth0|friend',
+				autoShareMealPlans: true,
+				autoShareGroceryLists: false
+			}
+		});
+
+		const response = await PATCH(event);
+		expect(response.status).toBe(409);
+	});
 });
 
 describe('DELETE /app/account/friends', () => {

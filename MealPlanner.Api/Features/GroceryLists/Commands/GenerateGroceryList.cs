@@ -285,8 +285,9 @@ public class GenerateGroceryListCommandHandler(IMongoClient mongoClient)
 	{
 		var preferences = db.GetCollection<FriendAutoSharePreferenceDocument>("friend_auto_share_preferences");
 		var groceryListShares = db.GetCollection<GroceryListShareDocument>("grocerylist_shares");
+		var friendships = db.GetCollection<FriendshipDocument>("friendships");
 
-		if (preferences is null || groceryListShares is null)
+		if (preferences is null || groceryListShares is null || friendships is null)
 			return;
 
 		var enabledPreferences = await preferences
@@ -305,11 +306,27 @@ public class GenerateGroceryListCommandHandler(IMongoClient mongoClient)
 		if (recipientIds.Count == 0)
 			return;
 
+		var activeFriendships = await friendships
+			.Find(f =>
+				f.UserId == ownerUserId &&
+				f.IsActive &&
+				recipientIds.Contains(f.FriendUserId))
+			.ToListAsync(cancellationToken);
+
+		var activeRecipientIds = activeFriendships
+			.Select(f => f.FriendUserId)
+			.Where(id => !string.IsNullOrWhiteSpace(id))
+			.Distinct(StringComparer.Ordinal)
+			.ToList();
+
+		if (activeRecipientIds.Count == 0)
+			return;
+
 		var existingShares = await groceryListShares
 			.Find(s =>
 				s.OwnerUserId == ownerUserId &&
 				s.WeekStart == weekStartStr &&
-				recipientIds.Contains(s.SharedWithUserId))
+				activeRecipientIds.Contains(s.SharedWithUserId))
 			.ToListAsync(cancellationToken);
 
 		var alreadySharedWith = existingShares
@@ -317,7 +334,7 @@ public class GenerateGroceryListCommandHandler(IMongoClient mongoClient)
 			.ToHashSet(StringComparer.Ordinal);
 
 		var now = DateTime.UtcNow;
-		var newShares = recipientIds
+		var newShares = activeRecipientIds
 			.Where(recipientId => !alreadySharedWith.Contains(recipientId))
 			.Select(recipientId => new GroceryListShareDocument
 			{
@@ -346,4 +363,13 @@ public class GenerateGroceryListCommandHandler(IMongoClient mongoClient)
 				throw;
 		}
 	}
+}
+
+internal sealed class FriendshipDocument
+{
+	public string UserId { get; set; } = default!;
+
+	public string FriendUserId { get; set; } = default!;
+
+	public bool IsActive { get; set; }
 }
