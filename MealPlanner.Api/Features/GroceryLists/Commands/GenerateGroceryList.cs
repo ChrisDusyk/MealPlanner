@@ -308,13 +308,12 @@ public class GenerateGroceryListCommandHandler(IMongoClient mongoClient)
 
 		var activeFriendships = await friendships
 			.Find(f =>
-				f.UserId == ownerUserId &&
-				f.IsActive &&
-				recipientIds.Contains(f.FriendUserId))
+				(f.UserAId == ownerUserId && recipientIds.Contains(f.UserBId)) ||
+				(f.UserBId == ownerUserId && recipientIds.Contains(f.UserAId)))
 			.ToListAsync(cancellationToken);
 
 		var activeRecipientIds = activeFriendships
-			.Select(f => f.FriendUserId)
+			.Select(f => f.UserAId == ownerUserId ? f.UserBId : f.UserAId)
 			.Where(id => !string.IsNullOrWhiteSpace(id))
 			.Distinct(StringComparer.Ordinal)
 			.ToList();
@@ -363,13 +362,4 @@ public class GenerateGroceryListCommandHandler(IMongoClient mongoClient)
 				throw;
 		}
 	}
-}
-
-internal sealed class FriendshipDocument
-{
-	public string UserId { get; set; } = default!;
-
-	public string FriendUserId { get; set; } = default!;
-
-	public bool IsActive { get; set; }
 }

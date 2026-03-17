@@ -132,11 +132,13 @@ public class GetMealPlanQueryHandler(IMongoClient mongoClient)
 
 		// Ensure auto-share is only propagated to current friends, not stale preference entries.
 		var activeFriendships = await friendships
-			.Find(f => f.UserId == ownerUserId && friendUserIds.Contains(f.FriendUserId))
+			.Find(f =>
+				(f.UserAId == ownerUserId && friendUserIds.Contains(f.UserBId)) ||
+				(f.UserBId == ownerUserId && friendUserIds.Contains(f.UserAId)))
 			.ToListAsync(cancellationToken);
 
 		var activeFriendUserIds = activeFriendships
-			.Select(f => f.FriendUserId)
+			.Select(f => f.UserAId == ownerUserId ? f.UserBId : f.UserAId)
 			.Where(id => !string.IsNullOrWhiteSpace(id))
 			.ToHashSet(StringComparer.Ordinal);
 

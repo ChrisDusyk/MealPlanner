@@ -2,6 +2,7 @@ using MealPlanner.Api.Features.GroceryLists.Commands;
 using MealPlanner.Api.Features.GroceryLists.Models;
 using MealPlanner.Api.Features.MealPlans.Models;
 using MealPlanner.Api.Features.Recipes.Models;
+using MealPlanner.Api.Features.Users.Models;
 using MealPlanner.Api.Shared;
 using MealPlanner.Api.Tests.TestUtilities;
 using Moq;
@@ -488,5 +489,241 @@ public class GenerateGroceryListTests
 		Assert.Equal(2, inserted.PantryStapleItems.Count);
 		Assert.Contains(inserted.PantryStapleItems, i => i.Name == "Salt" && i.Quantity == 1 && i.Unit == "tsp");
 		Assert.Contains(inserted.PantryStapleItems, i => i.Name == "Olive Oil" && i.Quantity == 2 && i.Unit == "tbsp");
+	}
+
+	[Fact]
+	public async Task HandleAsync_AutoSharesFromFriendPreferences_WhenEnabledAndFriendshipActive()
+	{
+		var mealCursor = MongoTestHelpers.CreateCursor(new List<MealPlanDocument> { CreateMealPlan() });
+		var recipeCursor = MongoTestHelpers.CreateCursor(new List<RecipeDocument> { CreateRecipe() });
+		var emptyListCursor = MongoTestHelpers.CreateCursor(Array.Empty<GroceryListDocument>());
+		var emptyShareCursor = MongoTestHelpers.CreateCursor(Array.Empty<MealPlanShareDocument>());
+		var emptyGroceryShareCursor = MongoTestHelpers.CreateCursor(Array.Empty<GroceryListShareDocument>());
+
+		var mealPlans = new Mock<IMongoCollection<MealPlanDocument>>();
+		mealPlans.Setup(c => c.FindAsync(It.IsAny<FilterDefinition<MealPlanDocument>>(),
+				It.IsAny<FindOptions<MealPlanDocument, MealPlanDocument>>(), It.IsAny<CancellationToken>()))
+			.ReturnsAsync(mealCursor.Object);
+		mealPlans.Setup(c => c.FindSync(It.IsAny<FilterDefinition<MealPlanDocument>>(),
+				It.IsAny<FindOptions<MealPlanDocument, MealPlanDocument>>(), It.IsAny<CancellationToken>()))
+			.Returns(mealCursor.Object);
+
+		var recipes = new Mock<IMongoCollection<RecipeDocument>>();
+		recipes.Setup(c => c.FindAsync(It.IsAny<FilterDefinition<RecipeDocument>>(),
+				It.IsAny<FindOptions<RecipeDocument, RecipeDocument>>(), It.IsAny<CancellationToken>()))
+			.ReturnsAsync(recipeCursor.Object);
+		recipes.Setup(c => c.FindSync(It.IsAny<FilterDefinition<RecipeDocument>>(),
+				It.IsAny<FindOptions<RecipeDocument, RecipeDocument>>(), It.IsAny<CancellationToken>()))
+			.Returns(recipeCursor.Object);
+
+		var shares = new Mock<IMongoCollection<MealPlanShareDocument>>();
+		shares.Setup(c => c.FindAsync(It.IsAny<FilterDefinition<MealPlanShareDocument>>(),
+				It.IsAny<FindOptions<MealPlanShareDocument, MealPlanShareDocument>>(), It.IsAny<CancellationToken>()))
+			.ReturnsAsync(emptyShareCursor.Object);
+		shares.Setup(c => c.FindSync(It.IsAny<FilterDefinition<MealPlanShareDocument>>(),
+				It.IsAny<FindOptions<MealPlanShareDocument, MealPlanShareDocument>>(), It.IsAny<CancellationToken>()))
+			.Returns(emptyShareCursor.Object);
+
+		var preferencesCursor = MongoTestHelpers.CreateCursor((IReadOnlyCollection<FriendAutoSharePreferenceDocument>)
+		[
+			new FriendAutoSharePreferenceDocument
+			{
+				UserId = "u1",
+				FriendUserId = "u2",
+				AutoShareMealPlans = false,
+				AutoShareGroceryLists = true
+			}
+		]);
+		var preferences = new Mock<IMongoCollection<FriendAutoSharePreferenceDocument>>();
+		preferences.Setup(c => c.FindAsync(It.IsAny<FilterDefinition<FriendAutoSharePreferenceDocument>>(),
+				It.IsAny<FindOptions<FriendAutoSharePreferenceDocument, FriendAutoSharePreferenceDocument>>(),
+				It.IsAny<CancellationToken>())).ReturnsAsync(preferencesCursor.Object);
+		preferences.Setup(c => c.FindSync(It.IsAny<FilterDefinition<FriendAutoSharePreferenceDocument>>(),
+				It.IsAny<FindOptions<FriendAutoSharePreferenceDocument, FriendAutoSharePreferenceDocument>>(),
+				It.IsAny<CancellationToken>())).Returns(preferencesCursor.Object);
+
+		var friendshipsCursor = MongoTestHelpers.CreateCursor((IReadOnlyCollection<FriendshipDocument>)
+		[
+			new FriendshipDocument
+			{
+				UserAId = "u1",
+				UserBId = "u2",
+				CreatedAt = DateTime.UtcNow
+			}
+		]);
+		var friendships = new Mock<IMongoCollection<FriendshipDocument>>();
+		friendships.Setup(c => c.FindAsync(It.IsAny<FilterDefinition<FriendshipDocument>>(),
+				It.IsAny<FindOptions<FriendshipDocument, FriendshipDocument>>(),
+				It.IsAny<CancellationToken>())).ReturnsAsync(friendshipsCursor.Object);
+		friendships.Setup(c => c.FindSync(It.IsAny<FilterDefinition<FriendshipDocument>>(),
+				It.IsAny<FindOptions<FriendshipDocument, FriendshipDocument>>(),
+				It.IsAny<CancellationToken>())).Returns(friendshipsCursor.Object);
+
+		var groceryShares = new Mock<IMongoCollection<GroceryListShareDocument>>();
+		groceryShares
+			.Setup(c => c.FindAsync(It.IsAny<FilterDefinition<GroceryListShareDocument>>(),
+				It.IsAny<FindOptions<GroceryListShareDocument, GroceryListShareDocument>>(),
+				It.IsAny<CancellationToken>())).ReturnsAsync(emptyGroceryShareCursor.Object);
+		groceryShares
+			.Setup(c => c.FindSync(It.IsAny<FilterDefinition<GroceryListShareDocument>>(),
+				It.IsAny<FindOptions<GroceryListShareDocument, GroceryListShareDocument>>(),
+				It.IsAny<CancellationToken>())).Returns(emptyGroceryShareCursor.Object);
+		groceryShares
+			.Setup(c => c.InsertManyAsync(It.IsAny<IEnumerable<GroceryListShareDocument>>(),
+				It.IsAny<InsertManyOptions>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+
+		var groceries = new Mock<IMongoCollection<GroceryListDocument>>();
+		groceries.Setup(c => c.FindAsync(It.IsAny<FilterDefinition<GroceryListDocument>>(),
+				It.IsAny<FindOptions<GroceryListDocument, GroceryListDocument>>(), It.IsAny<CancellationToken>()))
+			.ReturnsAsync(emptyListCursor.Object);
+		groceries.Setup(c => c.FindSync(It.IsAny<FilterDefinition<GroceryListDocument>>(),
+				It.IsAny<FindOptions<GroceryListDocument, GroceryListDocument>>(), It.IsAny<CancellationToken>()))
+			.Returns(emptyListCursor.Object);
+		groceries.Setup(c => c.InsertOneAsync(It.IsAny<GroceryListDocument>(), It.IsAny<InsertOneOptions>(),
+				It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+
+		var db = new Mock<IMongoDatabase>();
+		db.Setup(d => d.GetCollection<MealPlanDocument>("mealplans", null)).Returns(mealPlans.Object);
+		db.Setup(d => d.GetCollection<RecipeDocument>("recipes", null)).Returns(recipes.Object);
+		db.Setup(d => d.GetCollection<GroceryListDocument>("grocerylists", null)).Returns(groceries.Object);
+		db.Setup(d => d.GetCollection<MealPlanShareDocument>("shares", null)).Returns(shares.Object);
+		db.Setup(d => d.GetCollection<FriendAutoSharePreferenceDocument>("friend_auto_share_preferences", null)).Returns(preferences.Object);
+		db.Setup(d => d.GetCollection<FriendshipDocument>("friendships", null)).Returns(friendships.Object);
+		db.Setup(d => d.GetCollection<GroceryListShareDocument>("grocerylist_shares", null)).Returns(groceryShares.Object);
+
+		var client = new Mock<IMongoClient>();
+		client.Setup(c => c.GetDatabase("mealplannerDb", null)).Returns(db.Object);
+
+		var handler = new GenerateGroceryListCommandHandler(client.Object);
+		var result = await handler.HandleAsync(new GenerateGroceryListCommand("u1", new DateOnly(2026, 2, 23)),
+			TestContext.Current.CancellationToken);
+
+		Assert.True(result.IsSuccess);
+		groceryShares.Verify(c => c.InsertManyAsync(
+			It.Is<IEnumerable<GroceryListShareDocument>>(items => items.Count() == 1 && items.First().SharedWithUserId == "u2"),
+			It.IsAny<InsertManyOptions>(),
+			It.IsAny<CancellationToken>()), Times.Once);
+	}
+
+	[Fact]
+	public async Task HandleAsync_DoesNotDuplicateFriendAutoShares_WhenExistingSharePresent()
+	{
+		var mealCursor = MongoTestHelpers.CreateCursor(new List<MealPlanDocument> { CreateMealPlan() });
+		var recipeCursor = MongoTestHelpers.CreateCursor(new List<RecipeDocument> { CreateRecipe() });
+		var emptyListCursor = MongoTestHelpers.CreateCursor(Array.Empty<GroceryListDocument>());
+		var emptyShareCursor = MongoTestHelpers.CreateCursor(Array.Empty<MealPlanShareDocument>());
+		var existingGroceryShareCursor = MongoTestHelpers.CreateCursor((IReadOnlyCollection<GroceryListShareDocument>)
+		[
+			new GroceryListShareDocument
+			{
+				OwnerUserId = "u1",
+				SharedWithUserId = "u2",
+				WeekStart = "2026-02-23",
+				Permission = nameof(SharePermission.ReadWrite),
+				SharedAt = DateTime.UtcNow,
+				DismissedByRecipient = false
+			}
+		]);
+
+		var mealPlans = new Mock<IMongoCollection<MealPlanDocument>>();
+		mealPlans.Setup(c => c.FindAsync(It.IsAny<FilterDefinition<MealPlanDocument>>(),
+				It.IsAny<FindOptions<MealPlanDocument, MealPlanDocument>>(), It.IsAny<CancellationToken>()))
+			.ReturnsAsync(mealCursor.Object);
+		mealPlans.Setup(c => c.FindSync(It.IsAny<FilterDefinition<MealPlanDocument>>(),
+				It.IsAny<FindOptions<MealPlanDocument, MealPlanDocument>>(), It.IsAny<CancellationToken>()))
+			.Returns(mealCursor.Object);
+
+		var recipes = new Mock<IMongoCollection<RecipeDocument>>();
+		recipes.Setup(c => c.FindAsync(It.IsAny<FilterDefinition<RecipeDocument>>(),
+				It.IsAny<FindOptions<RecipeDocument, RecipeDocument>>(), It.IsAny<CancellationToken>()))
+			.ReturnsAsync(recipeCursor.Object);
+		recipes.Setup(c => c.FindSync(It.IsAny<FilterDefinition<RecipeDocument>>(),
+				It.IsAny<FindOptions<RecipeDocument, RecipeDocument>>(), It.IsAny<CancellationToken>()))
+			.Returns(recipeCursor.Object);
+
+		var shares = new Mock<IMongoCollection<MealPlanShareDocument>>();
+		shares.Setup(c => c.FindAsync(It.IsAny<FilterDefinition<MealPlanShareDocument>>(),
+				It.IsAny<FindOptions<MealPlanShareDocument, MealPlanShareDocument>>(), It.IsAny<CancellationToken>()))
+			.ReturnsAsync(emptyShareCursor.Object);
+		shares.Setup(c => c.FindSync(It.IsAny<FilterDefinition<MealPlanShareDocument>>(),
+				It.IsAny<FindOptions<MealPlanShareDocument, MealPlanShareDocument>>(), It.IsAny<CancellationToken>()))
+			.Returns(emptyShareCursor.Object);
+
+		var preferencesCursor = MongoTestHelpers.CreateCursor((IReadOnlyCollection<FriendAutoSharePreferenceDocument>)
+		[
+			new FriendAutoSharePreferenceDocument
+			{
+				UserId = "u1",
+				FriendUserId = "u2",
+				AutoShareMealPlans = false,
+				AutoShareGroceryLists = true
+			}
+		]);
+		var preferences = new Mock<IMongoCollection<FriendAutoSharePreferenceDocument>>();
+		preferences.Setup(c => c.FindAsync(It.IsAny<FilterDefinition<FriendAutoSharePreferenceDocument>>(),
+				It.IsAny<FindOptions<FriendAutoSharePreferenceDocument, FriendAutoSharePreferenceDocument>>(),
+				It.IsAny<CancellationToken>())).ReturnsAsync(preferencesCursor.Object);
+		preferences.Setup(c => c.FindSync(It.IsAny<FilterDefinition<FriendAutoSharePreferenceDocument>>(),
+				It.IsAny<FindOptions<FriendAutoSharePreferenceDocument, FriendAutoSharePreferenceDocument>>(),
+				It.IsAny<CancellationToken>())).Returns(preferencesCursor.Object);
+
+		var friendshipsCursor = MongoTestHelpers.CreateCursor((IReadOnlyCollection<FriendshipDocument>)
+		[
+			new FriendshipDocument
+			{
+				UserAId = "u1",
+				UserBId = "u2",
+				CreatedAt = DateTime.UtcNow
+			}
+		]);
+		var friendships = new Mock<IMongoCollection<FriendshipDocument>>();
+		friendships.Setup(c => c.FindAsync(It.IsAny<FilterDefinition<FriendshipDocument>>(),
+				It.IsAny<FindOptions<FriendshipDocument, FriendshipDocument>>(),
+				It.IsAny<CancellationToken>())).ReturnsAsync(friendshipsCursor.Object);
+		friendships.Setup(c => c.FindSync(It.IsAny<FilterDefinition<FriendshipDocument>>(),
+				It.IsAny<FindOptions<FriendshipDocument, FriendshipDocument>>(),
+				It.IsAny<CancellationToken>())).Returns(friendshipsCursor.Object);
+
+		var groceryShares = new Mock<IMongoCollection<GroceryListShareDocument>>();
+		groceryShares
+			.Setup(c => c.FindAsync(It.IsAny<FilterDefinition<GroceryListShareDocument>>(),
+				It.IsAny<FindOptions<GroceryListShareDocument, GroceryListShareDocument>>(),
+				It.IsAny<CancellationToken>())).ReturnsAsync(existingGroceryShareCursor.Object);
+		groceryShares
+			.Setup(c => c.FindSync(It.IsAny<FilterDefinition<GroceryListShareDocument>>(),
+				It.IsAny<FindOptions<GroceryListShareDocument, GroceryListShareDocument>>(),
+				It.IsAny<CancellationToken>())).Returns(existingGroceryShareCursor.Object);
+
+		var groceries = new Mock<IMongoCollection<GroceryListDocument>>();
+		groceries.Setup(c => c.FindAsync(It.IsAny<FilterDefinition<GroceryListDocument>>(),
+				It.IsAny<FindOptions<GroceryListDocument, GroceryListDocument>>(), It.IsAny<CancellationToken>()))
+			.ReturnsAsync(emptyListCursor.Object);
+		groceries.Setup(c => c.FindSync(It.IsAny<FilterDefinition<GroceryListDocument>>(),
+				It.IsAny<FindOptions<GroceryListDocument, GroceryListDocument>>(), It.IsAny<CancellationToken>()))
+			.Returns(emptyListCursor.Object);
+		groceries.Setup(c => c.InsertOneAsync(It.IsAny<GroceryListDocument>(), It.IsAny<InsertOneOptions>(),
+				It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+
+		var db = new Mock<IMongoDatabase>();
+		db.Setup(d => d.GetCollection<MealPlanDocument>("mealplans", null)).Returns(mealPlans.Object);
+		db.Setup(d => d.GetCollection<RecipeDocument>("recipes", null)).Returns(recipes.Object);
+		db.Setup(d => d.GetCollection<GroceryListDocument>("grocerylists", null)).Returns(groceries.Object);
+		db.Setup(d => d.GetCollection<MealPlanShareDocument>("shares", null)).Returns(shares.Object);
+		db.Setup(d => d.GetCollection<FriendAutoSharePreferenceDocument>("friend_auto_share_preferences", null)).Returns(preferences.Object);
+		db.Setup(d => d.GetCollection<FriendshipDocument>("friendships", null)).Returns(friendships.Object);
+		db.Setup(d => d.GetCollection<GroceryListShareDocument>("grocerylist_shares", null)).Returns(groceryShares.Object);
+
+		var client = new Mock<IMongoClient>();
+		client.Setup(c => c.GetDatabase("mealplannerDb", null)).Returns(db.Object);
+
+		var handler = new GenerateGroceryListCommandHandler(client.Object);
+		var result = await handler.HandleAsync(new GenerateGroceryListCommand("u1", new DateOnly(2026, 2, 23)),
+			TestContext.Current.CancellationToken);
+
+		Assert.True(result.IsSuccess);
+		groceryShares.Verify(c => c.InsertManyAsync(
+			It.IsAny<IEnumerable<GroceryListShareDocument>>(),
+			It.IsAny<InsertManyOptions>(),
+			It.IsAny<CancellationToken>()), Times.Never);
 	}
 }
