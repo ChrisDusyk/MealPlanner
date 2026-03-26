@@ -1,6 +1,5 @@
 using MealPlanner.Api.Features.GroceryLists.Models;
 using MealPlanner.Api.Features.MealPlans.Models;
-using Microsoft.Extensions.Logging;
 using MongoDB.Driver;
 
 namespace MealPlanner.Api.Features.MealPlans;
