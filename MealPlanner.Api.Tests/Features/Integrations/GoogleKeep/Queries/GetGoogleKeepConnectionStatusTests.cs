@@ -1,4 +1,3 @@
-using MealPlanner.Api.Features.Integrations.GoogleKeep.Models;
 using MealPlanner.Api.Features.Integrations.GoogleKeep.Queries;
 using MealPlanner.Api.Shared;
 using Moq;

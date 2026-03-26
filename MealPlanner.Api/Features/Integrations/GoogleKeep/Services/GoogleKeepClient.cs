@@ -74,17 +74,12 @@ public sealed class GoogleKeepClient(
 			if (existingExternalItemId.HasValue)
 			{
 				var patchResult = await PatchNoteAsync(httpClient, accessToken, existingExternalItemId.Value, payload, cancellationToken);
-				if (patchResult.IsSuccess)
-					return patchResult;
-
-				if (patchResult.Error?.Code != ErrorCodes.NotFound)
+				if (patchResult.IsSuccess || patchResult.Error?.Code != ErrorCodes.NotFound)
 					return patchResult;
 			}
 
-			using var createRequest = new HttpRequestMessage(HttpMethod.Post, "https://keep.googleapis.com/v1/notes")
-			{
-				Content = new StringContent(payload, Encoding.UTF8, "application/json")
-			};
+			using var createRequest = new HttpRequestMessage(HttpMethod.Post, "https://keep.googleapis.com/v1/notes");
+			createRequest.Content = new StringContent(payload, Encoding.UTF8, "application/json");
 			createRequest.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
 			var createResponse = await httpClient.SendAsync(createRequest, cancellationToken);
 			var createBody = await createResponse.Content.ReadAsStringAsync(cancellationToken);
@@ -116,7 +111,7 @@ public sealed class GoogleKeepClient(
 		}
 	}
 
-	private async Task<Result<GoogleKeepUpsertResult>> PatchNoteAsync(
+	private static async Task<Result<GoogleKeepUpsertResult>> PatchNoteAsync(
 		HttpClient httpClient,
 		string accessToken,
 		string noteId,
@@ -125,10 +120,8 @@ public sealed class GoogleKeepClient(
 	{
 		using var patchRequest = new HttpRequestMessage(
 			HttpMethod.Patch,
-			$"https://keep.googleapis.com/v1/{noteId}?updateMask=title,body")
-		{
-			Content = new StringContent(payload, Encoding.UTF8, "application/json")
-		};
+			$"https://keep.googleapis.com/v1/{noteId}?updateMask=title,body");
+		patchRequest.Content = new StringContent(payload, Encoding.UTF8, "application/json");
 		patchRequest.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
 		var patchResponse = await httpClient.SendAsync(patchRequest, cancellationToken);
 		if (!patchResponse.IsSuccessStatusCode)
