@@ -1,5 +1,9 @@
 using MealPlanner.Api.Features.GroceryLists;
 using MealPlanner.Api.Features.GroceryLists.Realtime;
+using MealPlanner.Api.Features.Integrations;
+using MealPlanner.Api.Features.Integrations.GoogleKeep;
+using MealPlanner.Api.Features.Integrations.GoogleKeep.Options;
+using MealPlanner.Api.Features.Integrations.GoogleKeep.Services;
 using MealPlanner.Api.Features.MealPlans;
 using MealPlanner.Api.Features.MealPlans.Realtime;
 using MealPlanner.Api.Features.Recipes.Import;
@@ -29,6 +33,8 @@ builder.Services.AddSingleton<IUserIdProvider, GroceryListUserIdProvider>();
 builder.Services.AddScoped<IGroceryListRealtimeNotifier, GroceryListRealtimeNotifier>();
 builder.Services.AddScoped<IMealPlanRealtimeNotifier, MealPlanRealtimeNotifier>();
 builder.Services.AddScoped<IFriendsRealtimeNotifier, FriendsRealtimeNotifier>();
+builder.Services.Configure<GoogleIntegrationsOptions>(
+	builder.Configuration.GetSection(GoogleIntegrationsOptions.SectionName));
 builder.Services.Configure<AnthropicOptions>(builder.Configuration.GetSection(AnthropicOptions.SectionName));
 var anthropicOptionsSection = builder.Configuration.GetSection(AnthropicOptions.SectionName);
 var anthropicTimeoutSeconds = anthropicOptionsSection.GetValue<int?>(nameof(AnthropicOptions.HttpTimeoutSeconds))
@@ -47,6 +53,20 @@ builder.Services.AddHttpClient(AnthropicOptions.PageFetchHttpClientName, client 
 	client.Timeout = TimeSpan.FromSeconds(Math.Max(5, pageFetchTimeoutSeconds));
 	client.DefaultRequestHeaders.UserAgent.ParseAdd("MealPlanner/1.0 (recipe-import)");
 });
+
+builder.Services.AddHttpClient(GoogleIntegrationsOptions.OAuthHttpClientName, client =>
+{
+	client.Timeout = TimeSpan.FromSeconds(15);
+});
+
+builder.Services.AddHttpClient(GoogleIntegrationsOptions.KeepHttpClientName, client =>
+{
+	client.Timeout = TimeSpan.FromSeconds(15);
+});
+
+builder.Services.AddScoped<IGoogleOAuthService, GoogleOAuthService>();
+builder.Services.AddScoped<IGoogleKeepClient, GoogleKeepClient>();
+builder.Services.AddSingleton<IIntegrationTokenProtector, IntegrationTokenProtector>();
 
 builder.Services.AddScoped<IRecipePageTextExtractor, RecipePageTextExtractor>();
 builder.Services.AddScoped<IClaudeIngredientExtractorClient, ClaudeIngredientExtractorClient>();
@@ -112,6 +132,7 @@ app.MapDefaultEndpoints();
 
 await app.Services.EnsureUserIndexesAsync();
 await app.Services.EnsureSharingIndexesAsync();
+await app.Services.EnsureIntegrationIndexesAsync();
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
@@ -128,6 +149,7 @@ app.MapRecipeEndpoints();
 app.MapMealPlanEndpoints();
 app.MapGroceryListEndpoints();
 app.MapUserEndpoints();
+app.MapGoogleKeepEndpoints();
 app.MapHub<GroceryListHub>(GroceryListHub.HubRoute)
 	.RequireAuthorization();
 app.MapHub<MealPlanHub>(MealPlanHub.HubRoute)
