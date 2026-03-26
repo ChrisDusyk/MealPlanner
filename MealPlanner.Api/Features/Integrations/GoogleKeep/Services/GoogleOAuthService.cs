@@ -15,12 +15,18 @@ public sealed class GoogleOAuthService(
 	: IGoogleOAuthService
 {
 	private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
+	private static readonly TimeSpan StateTtl = TimeSpan.FromMinutes(15);
+
+	private sealed record OAuthStatePayload(string UserId, DateTime IssuedAtUtc, string Nonce);
 
 	public async Task<Result<GoogleAuthorizationStart>> BuildAuthorizationUrlAsync(
 		string userId,
 		string redirectBaseUri,
 		CancellationToken cancellationToken = default)
 	{
+		_ = redirectBaseUri;
+		_ = cancellationToken;
+
 		if (string.IsNullOrWhiteSpace(userId))
 			return Result<GoogleAuthorizationStart>.Failure(new Error(ErrorCodes.ValidationFailed, "UserId is required."));
 
@@ -29,9 +35,7 @@ public sealed class GoogleOAuthService(
 				ErrorCodes.ValidationFailed,
 				"Google integration is not configured. Missing ClientId."));
 
-		var resolvedRedirectUri = string.IsNullOrWhiteSpace(options.Value.RedirectUri)
-			? redirectBaseUri?.Trim() ?? string.Empty
-			: options.Value.RedirectUri.Trim();
+		var resolvedRedirectUri = options.Value.RedirectUri.Trim();
 
 		if (!Uri.TryCreate(resolvedRedirectUri, UriKind.Absolute, out var redirectUri))
 			return Result<GoogleAuthorizationStart>.Failure(new Error(
@@ -40,7 +44,7 @@ public sealed class GoogleOAuthService(
 
 		var now = DateTime.UtcNow;
 		var nonce = Convert.ToHexString(RandomNumberGenerator.GetBytes(16));
-		var payload = $"{userId}|{now:O}|{nonce}";
+		var payload = JsonSerializer.Serialize(new OAuthStatePayload(userId, now, nonce), JsonOptions);
 		var state = tokenProtector.Protect(payload);
 		var scopes = options.Value.KeepScopes.Count == 0
 			? ["openid", "email", "https://www.googleapis.com/auth/keep"]
@@ -137,17 +141,23 @@ public sealed class GoogleOAuthService(
 		if (!unprotected.IsSuccess)
 			return Result<string>.Failure(unprotected.Error!);
 
-		var parts = unprotected.Value!.Split('|', 3, StringSplitOptions.TrimEntries);
-		if (parts.Length != 3)
+		OAuthStatePayload? payload;
+		try
+		{
+			payload = JsonSerializer.Deserialize<OAuthStatePayload>(unprotected.Value!, JsonOptions);
+		}
+		catch (JsonException)
+		{
+			payload = null;
+		}
+
+		if (payload is null || string.IsNullOrWhiteSpace(payload.UserId))
 			return Result<string>.Failure(new Error(ErrorCodes.ValidationFailed, "State payload is invalid."));
 
-		if (!DateTime.TryParse(parts[1], out var issuedAtUtc))
-			return Result<string>.Failure(new Error(ErrorCodes.ValidationFailed, "State issue time is invalid."));
-
-		if (DateTime.UtcNow - issuedAtUtc.ToUniversalTime() > TimeSpan.FromMinutes(15))
+		if (DateTime.UtcNow - payload.IssuedAtUtc.ToUniversalTime() > StateTtl)
 			return Result<string>.Failure(new Error(ErrorCodes.ValidationFailed, "State has expired."));
 
-		return Result<string>.Success(parts[0]);
+		return Result<string>.Success(payload.UserId);
 	}
 
 	private async Task<Result<GoogleOAuthTokenSet>> ExecuteTokenRequestAsync(

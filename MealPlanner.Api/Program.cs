@@ -12,8 +12,9 @@ using MealPlanner.Api.Features.Users;
 using MealPlanner.Api.Features.Users.Realtime;
 using MealPlanner.Api.Shared;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.SignalR;
+using System.IO;
 using System.Security.Claims;
 using System.Threading.RateLimiting;
 
@@ -35,6 +36,18 @@ builder.Services.AddScoped<IMealPlanRealtimeNotifier, MealPlanRealtimeNotifier>(
 builder.Services.AddScoped<IFriendsRealtimeNotifier, FriendsRealtimeNotifier>();
 builder.Services.Configure<GoogleIntegrationsOptions>(
 	builder.Configuration.GetSection(GoogleIntegrationsOptions.SectionName));
+var googleIntegrationsSection = builder.Configuration.GetSection(GoogleIntegrationsOptions.SectionName);
+var dataProtectionApplicationName = googleIntegrationsSection.GetValue<string>(nameof(GoogleIntegrationsOptions.DataProtectionApplicationName))
+	?? "MealPlanner.Api";
+var dataProtectionKeyRingPath = googleIntegrationsSection.GetValue<string>(nameof(GoogleIntegrationsOptions.DataProtectionKeyRingPath));
+var dataProtectionBuilder = builder.Services
+	.AddDataProtection()
+	.SetApplicationName(dataProtectionApplicationName);
+if (!string.IsNullOrWhiteSpace(dataProtectionKeyRingPath))
+{
+	dataProtectionBuilder.PersistKeysToFileSystem(new DirectoryInfo(dataProtectionKeyRingPath));
+}
+
 builder.Services.Configure<AnthropicOptions>(builder.Configuration.GetSection(AnthropicOptions.SectionName));
 var anthropicOptionsSection = builder.Configuration.GetSection(AnthropicOptions.SectionName);
 var anthropicTimeoutSeconds = anthropicOptionsSection.GetValue<int?>(nameof(AnthropicOptions.HttpTimeoutSeconds))

@@ -59,7 +59,7 @@ public class ExportGroceryListToGoogleKeepCommandHandler(
 			var accessToken = accessTokenResult.Value!;
 
 			if (connection.AccessTokenExpiresAtUtc.HasValue
-			    && connection.AccessTokenExpiresAtUtc.Value <= DateTime.UtcNow.AddMinutes(-1)
+			    && connection.AccessTokenExpiresAtUtc.Value <= DateTime.UtcNow.AddMinutes(1)
 			    && !string.IsNullOrWhiteSpace(connection.EncryptedRefreshToken))
 			{
 				var refreshTokenResult = tokenProtector.Unprotect(connection.EncryptedRefreshToken!);

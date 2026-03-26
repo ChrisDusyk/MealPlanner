@@ -13,9 +13,9 @@ public sealed class IntegrationTokenProtector(
 	private const string DefaultPurpose = "mealplanner-google-integrations";
 
 	private readonly IDataProtector _protector = dataProtectionProvider.CreateProtector(
-		string.IsNullOrWhiteSpace(options.Value.TokenEncryptionKey)
+		string.IsNullOrWhiteSpace(options.Value.TokenProtectionPurpose)
 			? DefaultPurpose
-			: options.Value.TokenEncryptionKey);
+			: options.Value.TokenProtectionPurpose);
 
 	public string Protect(string plaintext)
 	{

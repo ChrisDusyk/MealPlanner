@@ -12,7 +12,11 @@ public sealed class GoogleIntegrationsOptions
 
 	public string RedirectUri { get; set; } = string.Empty;
 
-	public string TokenEncryptionKey { get; set; } = string.Empty;
+	public string TokenProtectionPurpose { get; set; } = string.Empty;
+
+	public string DataProtectionApplicationName { get; set; } = "MealPlanner.Api";
+
+	public string DataProtectionKeyRingPath { get; set; } = string.Empty;
 
 	public List<string> KeepScopes { get; set; } = [];
 
