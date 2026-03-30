@@ -8,13 +8,33 @@ In Auth0 Dashboard:
 2. Create role `user`.
 3. Create role `admin`.
 
-## 2) Assign default `user` role to existing users
+## 2) Assign default `user` role to existing users and new signups
+
+The API enforces a `RequireUserRole` policy on core endpoints (including `/api/users/sync`).
+Any authenticated user **without** the `user` role will receive `403 Forbidden` on these endpoints,
+which will break first-login/user provisioning flows.
+
+### Existing users
 Assign `user` to all existing app users.
 
 Options:
 - Dashboard (manual): **User Management → Users → [user] → Roles → Assign Roles**.
 - Management API (bulk): iterate users and assign role id for `user`.
 
+### New users and first login
+Ensure that every newly created Auth0 user automatically receives the `user` role before or at
+their first successful login. Choose one of the following strategies:
+
+- **Manual onboarding:** As part of your onboarding process, an admin periodically reviews new
+  Auth0 users and assigns the `user` role via the Dashboard before they can use the app.
+- **Automated role assignment (recommended):** Configure an Auth0 flow (e.g. Action, Rule, or
+  other automation) that, on login or user creation, checks whether the user has any roles and,
+  if not, assigns the default `user` role. This ensures `/api/users/sync` and other core
+  endpoints work on first login.
+
+If a new user reaches the app without the `user` role, they will be able to authenticate but
+will see 403 responses from protected API calls (including `/api/users/sync`) until the role
+is assigned.
 ## 3) Assign first admin
 Assign your account the `admin` role in addition to `user`.
 
