@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using MealPlanner.Api.Features.Auth;
 using MealPlanner.Api.Features.Integrations.GoogleKeep.Commands;
 using MealPlanner.Api.Features.Integrations.GoogleKeep.Dtos;
 using MealPlanner.Api.Features.Integrations.GoogleKeep.Queries;
@@ -12,7 +13,7 @@ public static class GoogleKeepEndpoints
 	{
 		var group = app.MapGroup("/api/integrations/google-keep")
 			.WithTags("Google Keep")
-			.RequireAuthorization();
+			.RequireAuthorization(RbacAuthorization.RequireUserRolePolicy);
 
 		group.MapPost("/connect/start", StartConnection);
 		group.MapPost("/connect/complete", CompleteConnection);
@@ -21,7 +22,7 @@ public static class GoogleKeepEndpoints
 
 		var exportGroup = app.MapGroup("/api/grocery-lists/export/google-keep")
 			.WithTags("Google Keep")
-			.RequireAuthorization();
+			.RequireAuthorization(RbacAuthorization.RequireUserRolePolicy);
 		exportGroup.MapPost("/", ExportGroceryList);
 
 		return app;

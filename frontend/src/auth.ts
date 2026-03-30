@@ -1,5 +1,6 @@
 import { SvelteKitAuth } from '@auth/sveltekit';
 import Auth0 from '@auth/sveltekit/providers/auth0';
+import { extractRolesFromAccessToken, extractRolesFromTokenRecord } from '$lib/auth/roles';
 
 interface SyncUserPayload {
 	name: string;
@@ -9,7 +10,6 @@ interface SyncUserPayload {
 const USER_SYNC_MAX_ATTEMPTS = 3;
 const USER_SYNC_BASE_RETRY_DELAY_MS = 250;
 const ACCESS_TOKEN_REFRESH_BUFFER_MS = 5 * 60 * 1000;
-const DEFAULT_ACCESS_TOKEN_LIFETIME_SECONDS = 60 * 60;
 
 interface RefreshTokenResponse {
 	access_token: string;
@@ -219,6 +219,7 @@ async function refreshAccessToken(token: Record<string, unknown>): Promise<Recor
 			accessTokenExpires: Date.now() + expiresInSeconds * 1000,
 			refreshToken: refreshed.refresh_token ?? refreshToken,
 			idToken: refreshed.id_token ?? token.idToken,
+			roles: extractRolesFromAccessToken(accessToken),
 			error: undefined
 		};
 	} catch (error) {
@@ -258,6 +259,9 @@ export const { handle, signIn, signOut } = SvelteKitAuth({
 					typeof account.refresh_token === 'string' ? account.refresh_token : tokenRecord.refreshToken;
 				tokenRecord.idToken = account.id_token;
 				tokenRecord.error = undefined;
+				tokenRecord.roles = extractRolesFromAccessToken(
+					typeof account.access_token === 'string' ? account.access_token : ''
+				);
 
 				const accessToken = typeof account.access_token === 'string' ? account.access_token : '';
 				const syncPayload = buildSyncUserPayload(
@@ -284,6 +288,7 @@ export const { handle, signIn, signOut } = SvelteKitAuth({
 		async session({ session, token }) {
 			// Make the access token available in the session for API calls
 			session.accessToken = typeof token.accessToken === 'string' ? token.accessToken : '';
+			session.roles = extractRolesFromTokenRecord(token as Record<string, unknown>);
 			session.error = token.error === 'RefreshAccessTokenError' ? 'RefreshAccessTokenError' : undefined;
 			return session;
 		}

@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using MealPlanner.Api.Features.Auth;
 using MealPlanner.Api.Features.GroceryLists.Commands;
 using MealPlanner.Api.Features.GroceryLists.Dtos;
 using MealPlanner.Api.Features.GroceryLists.Models;
@@ -18,7 +19,7 @@ public static class GroceryListEndpoints
 	{
 		var group = app.MapGroup("/api/grocery-lists")
 			.WithTags("Grocery Lists")
-			.RequireAuthorization();
+			.RequireAuthorization(RbacAuthorization.RequireUserRolePolicy);
 
 		group.MapPost("/generate", GenerateGroceryList);
 		group.MapGet("/", GetGroceryList);
