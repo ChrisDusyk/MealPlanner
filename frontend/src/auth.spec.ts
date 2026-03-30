@@ -22,6 +22,12 @@ function createJsonResponse(payload: unknown, status = 200): Response {
 	});
 }
 
+function createAccessToken(payload: Record<string, unknown>): string {
+	const header = Buffer.from(JSON.stringify({ alg: 'none', typ: 'JWT' })).toString('base64url');
+	const body = Buffer.from(JSON.stringify(payload)).toString('base64url');
+	return `${header}.${body}.sig`;
+}
+
 async function loadAuthCallbacks() {
 	vi.resetModules();
 	svelteKitAuthMock.mockClear();
@@ -56,13 +62,16 @@ describe('auth callbacks', () => {
 	});
 
 	it('captures access, refresh, and expiry metadata on sign-in', async () => {
+		const accessToken = createAccessToken({
+			'https://mealplanner/roles': ['user']
+		});
 		(global.fetch as Mock).mockResolvedValue(createJsonResponse({ ok: true }));
 		const callbacks = await loadAuthCallbacks();
 
 		const token = await callbacks.jwt({
 			token: {},
 			account: {
-				access_token: 'initial-access',
+				access_token: accessToken,
 				refresh_token: 'initial-refresh',
 				id_token: 'id-token',
 				expires_at: 1_800_000_000
@@ -73,10 +82,11 @@ describe('auth callbacks', () => {
 			}
 		});
 
-		expect(token.accessToken).toBe('initial-access');
+		expect(token.accessToken).toBe(accessToken);
 		expect(token.refreshToken).toBe('initial-refresh');
 		expect(token.idToken).toBe('id-token');
 		expect(token.accessTokenExpires).toBe(1_800_000_000_000);
+		expect(token.roles).toEqual(['user']);
 		expect(global.fetch).toHaveBeenCalledWith(
 			'http://api.local/api/users/sync',
 			expect.objectContaining({ method: 'POST' })
@@ -103,11 +113,14 @@ describe('auth callbacks', () => {
 	});
 
 	it('refreshes token when access token is expired', async () => {
+		const refreshedAccessToken = createAccessToken({
+			'https://mealplanner/roles': ['admin']
+		});
 		const now = 1_800_000_000_000;
 		vi.spyOn(Date, 'now').mockReturnValue(now);
 		(global.fetch as Mock).mockResolvedValue(
 			createJsonResponse({
-				access_token: 'refreshed-access',
+				access_token: refreshedAccessToken,
 				expires_in: 3600,
 				refresh_token: 'rotated-refresh',
 				id_token: 'updated-id-token'
@@ -134,9 +147,10 @@ describe('auth callbacks', () => {
 			body: URLSearchParams;
 		};
 		expect(refreshRequest.body.toString()).toContain('grant_type=refresh_token');
-		expect(token.accessToken).toBe('refreshed-access');
+		expect(token.accessToken).toBe(refreshedAccessToken);
 		expect(token.refreshToken).toBe('rotated-refresh');
 		expect(token.idToken).toBe('updated-id-token');
+		expect(token.roles).toEqual(['admin']);
 		expect(token.error).toBeUndefined();
 	});
 
@@ -175,6 +189,24 @@ describe('auth callbacks', () => {
 		expect(session).toMatchObject({
 			accessToken: '',
 			error: 'RefreshAccessTokenError'
+		});
+	});
+
+	it('propagates token roles to session', async () => {
+		const callbacks = await loadAuthCallbacks();
+		const session = await callbacks.session({
+			session: {
+				user: { name: 'Pat' }
+			},
+			token: {
+				accessToken: 'token',
+				roles: ['admin']
+			}
+		});
+
+		expect(session).toMatchObject({
+			accessToken: 'token',
+			roles: ['admin']
 		});
 	});
 });

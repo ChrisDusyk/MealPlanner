@@ -6,6 +6,7 @@ import '@auth/sveltekit';
 declare module '@auth/sveltekit' {
 	interface Session {
 		accessToken: string;
+		roles?: string[];
 		error?: 'RefreshAccessTokenError';
 	}
 }
@@ -16,6 +17,7 @@ declare module '@auth/core/jwt' {
 		accessTokenExpires?: number;
 		refreshToken?: string;
 		idToken?: string;
+		roles?: string[];
 		error?: 'RefreshAccessTokenError';
 	}
 }

@@ -1,16 +1,9 @@
-import { redirect } from '@sveltejs/kit';
 import type { LayoutServerLoad } from './$types';
+import { requireAuthenticatedSession } from '$lib/auth/guards';
 
 export const load: LayoutServerLoad = async (event) => {
-	const session = await event.locals.auth();
-
-	if (session?.error === 'RefreshAccessTokenError') {
-		throw redirect(303, '/?session=expired');
-	}
-
-	if (!session?.user) {
-		throw redirect(303, '/');
-	}
+	const rawSession = await event.locals.auth();
+	const session = requireAuthenticatedSession(rawSession);
 
 	return {
 		session
