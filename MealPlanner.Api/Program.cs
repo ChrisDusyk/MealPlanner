@@ -1,5 +1,7 @@
 using MealPlanner.Api.Features.GroceryLists;
 using MealPlanner.Api.Features.GroceryLists.Realtime;
+using MealPlanner.Api.Features.Admin;
+using MealPlanner.Api.Features.Auth;
 using MealPlanner.Api.Features.Integrations;
 using MealPlanner.Api.Features.Integrations.GoogleKeep;
 using MealPlanner.Api.Features.Integrations.GoogleKeep.Options;
@@ -116,7 +118,16 @@ builder.Services.AddAuthentication()
 			options.RequireHttpsMetadata = false;
 		}
 	});
-builder.Services.AddAuthorization();
+builder.Services.AddAuthorization(options =>
+{
+	options.AddPolicy(RbacAuthorization.RequireUserRolePolicy, policy =>
+		policy.RequireAuthenticatedUser()
+			.RequireAssertion(context => RbacAuthorization.IsUserAuthorized(context.User)));
+
+	options.AddPolicy(RbacAuthorization.RequireAdminRolePolicy, policy =>
+		policy.RequireAuthenticatedUser()
+			.RequireAssertion(context => RbacAuthorization.IsAdminAuthorized(context.User)));
+});
 builder.Services.AddRateLimiter(options =>
 {
 	options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
@@ -163,11 +174,12 @@ app.MapMealPlanEndpoints();
 app.MapGroceryListEndpoints();
 app.MapUserEndpoints();
 app.MapGoogleKeepEndpoints();
+app.MapAdminEndpoints();
 app.MapHub<GroceryListHub>(GroceryListHub.HubRoute)
-	.RequireAuthorization();
+	.RequireAuthorization(RbacAuthorization.RequireUserRolePolicy);
 app.MapHub<MealPlanHub>(MealPlanHub.HubRoute)
-	.RequireAuthorization();
+	.RequireAuthorization(RbacAuthorization.RequireUserRolePolicy);
 app.MapHub<FriendsHub>(FriendsHub.HubRoute)
-	.RequireAuthorization();
+	.RequireAuthorization(RbacAuthorization.RequireUserRolePolicy);
 
 app.Run();

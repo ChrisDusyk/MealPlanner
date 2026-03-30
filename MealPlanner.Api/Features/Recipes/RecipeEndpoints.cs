@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using MealPlanner.Api.Features.Auth;
 using MealPlanner.Api.Features.Recipes.Commands;
 using MealPlanner.Api.Features.Recipes.Dtos;
 using MealPlanner.Api.Features.Recipes.Import;
@@ -20,7 +21,7 @@ public static class RecipeEndpoints
 	{
 		var group = app.MapGroup("/api/recipes")
 			.WithTags("Recipes")
-			.RequireAuthorization();
+			.RequireAuthorization(RbacAuthorization.RequireUserRolePolicy);
 
 		group.MapGet("/", GetAllRecipes);
 		group.MapGet("/{id}", GetRecipeById);

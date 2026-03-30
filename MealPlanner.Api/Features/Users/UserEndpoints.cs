@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using MealPlanner.Api.Features.Auth;
 using MealPlanner.Api.Features.Users.Commands;
 using MealPlanner.Api.Features.Users.Dtos;
 using MealPlanner.Api.Features.Users.Models;
@@ -17,7 +18,7 @@ public static class UserEndpoints
 	{
 		var group = app.MapGroup("/api/users")
 			.WithTags("Users")
-			.RequireAuthorization();
+			.RequireAuthorization(RbacAuthorization.RequireUserRolePolicy);
 
 		group.MapPost("/sync", SyncUser);
 		group.MapGet("/me", GetCurrentUser);

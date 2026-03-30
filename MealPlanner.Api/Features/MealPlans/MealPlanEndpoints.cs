@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using MealPlanner.Api.Features.Auth;
 using MealPlanner.Api.Features.MealPlans.Commands;
 using MealPlanner.Api.Features.MealPlans.Dtos;
 using MealPlanner.Api.Features.MealPlans.Models;
@@ -19,7 +20,7 @@ public static class MealPlanEndpoints
 	{
 		var group = app.MapGroup("/api/meal-plans")
 			.WithTags("Meal Plans")
-			.RequireAuthorization();
+			.RequireAuthorization(RbacAuthorization.RequireUserRolePolicy);
 
 		group.MapGet("/", GetMealPlan);
 		group.MapPut("/slots", UpdateDaySlot);
