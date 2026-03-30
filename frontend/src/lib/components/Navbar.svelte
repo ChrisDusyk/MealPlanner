@@ -3,6 +3,7 @@
 	import { signIn, signOut } from '@auth/sveltekit/client';
 	import type { Session } from '@auth/sveltekit';
 	import { APP_USER_CONTEXT_KEY, type AppUserContextValue } from '$lib/context/appUserContext';
+	import { APP_ROLES, hasRole } from '$lib/auth/roles';
 
 	let { session }: { session: Session | null } = $props();
 	const appUserContext = getContext<AppUserContextValue | undefined>(APP_USER_CONTEXT_KEY);
@@ -17,6 +18,7 @@
 	let scrolled = $state(false);
 	let mobileOpen = $state(false);
 	let dropdownOpen = $state(false);
+	let isAdmin = $derived(hasRole(session?.roles, APP_ROLES.admin));
 
 	function handleScroll() {
 		scrolled = window.scrollY > 10;
@@ -191,6 +193,31 @@
 										Account
 									</a>
 								</li>
+								{#if isAdmin}
+									<li>
+										<a
+											href="/app/admin"
+											onclick={closeDropdown}
+											class="flex items-center gap-3 px-4 py-2.5 font-display text-sm font-medium text-green-200/80 transition-colors hover:bg-green-800/50 hover:text-white"
+										>
+											<svg
+												xmlns="http://www.w3.org/2000/svg"
+												class="h-4 w-4"
+												fill="none"
+												viewBox="0 0 24 24"
+												stroke="currentColor"
+												stroke-width="2"
+											>
+												<path
+													stroke-linecap="round"
+													stroke-linejoin="round"
+													d="M12 3l7.5 4.5v4.5c0 5.1-3.3 8.8-7.5 10.5C7.8 20.8 4.5 17.1 4.5 12V7.5L12 3z"
+												/>
+											</svg>
+											Admin
+										</a>
+									</li>
+								{/if}
 								<hr class="my-1 border-green-700/40" />
 								<li>
 									<button
@@ -356,6 +383,29 @@
 						</svg>
 						Account
 					</a>
+					{#if isAdmin}
+						<a
+							href="/app/admin"
+							onclick={() => (mobileOpen = false)}
+							class="flex items-center gap-3 rounded-lg px-3 py-2.5 font-display text-sm font-medium text-green-200/90 transition-colors hover:bg-green-800/50 hover:text-white"
+						>
+							<svg
+								xmlns="http://www.w3.org/2000/svg"
+								class="h-4 w-4"
+								fill="none"
+								viewBox="0 0 24 24"
+								stroke="currentColor"
+								stroke-width="2"
+							>
+								<path
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									d="M12 3l7.5 4.5v4.5c0 5.1-3.3 8.8-7.5 10.5C7.8 20.8 4.5 17.1 4.5 12V7.5L12 3z"
+								/>
+							</svg>
+							Admin
+						</a>
+					{/if}
 					<button
 						type="button"
 						onclick={() => {
