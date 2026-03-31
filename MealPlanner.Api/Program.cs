@@ -26,8 +26,6 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.AddServiceDefaults();
 
-builder.AddMongoDBClient("mealplannerDb");
-
 builder.AddNpgsqlDbContext<MealPlannerDbContext>("mealplannerDb");
 
 // Add services to the container.
@@ -40,7 +38,6 @@ builder.Services.AddSingleton<IUserIdProvider, GroceryListUserIdProvider>();
 builder.Services.AddScoped<IGroceryListRealtimeNotifier, GroceryListRealtimeNotifier>();
 builder.Services.AddScoped<IMealPlanRealtimeNotifier, MealPlanRealtimeNotifier>();
 builder.Services.AddScoped<IFriendsRealtimeNotifier, FriendsRealtimeNotifier>();
-builder.Services.AddHostedService<MongoToPostgresMigrationHostedService>();
 builder.Services.Configure<GoogleIntegrationsOptions>(
 	builder.Configuration.GetSection(GoogleIntegrationsOptions.SectionName));
 var googleIntegrationsSection = builder.Configuration.GetSection(GoogleIntegrationsOptions.SectionName);

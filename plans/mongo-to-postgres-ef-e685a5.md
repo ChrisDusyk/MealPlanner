@@ -37,7 +37,7 @@ Replace MongoDB persistence with PostgreSQL + EF Core across the entire API, usi
 | `MealPlanner.AppHost` | `Aspire.Hosting.PostgreSQL` | `Aspire.Hosting.MongoDB`, `CommunityToolkit.Aspire.Hosting.MongoDB.Extensions` |
 | `MealPlanner.Api` | `Aspire.Npgsql.EntityFrameworkCore.PostgreSQL`, `Microsoft.EntityFrameworkCore.Design` | `Aspire.MongoDB.Driver.v3` |
 | `MealPlanner.DataMigration` (new) | `Aspire.MongoDB.Driver.v3`, `Aspire.Npgsql.EntityFrameworkCore.PostgreSQL` | — |
-| `Directory.Packages.props` | Add versions for new packages; remove Mongo versions after cleanup | — |
+| `Directory.Packages.props` | Add versions for new packages; keep Mongo versions until migration job retirement | — |
 
 Also install `dotnet-ef` CLI tool: `dotnet tool install --global dotnet-ef`
 
@@ -122,12 +122,13 @@ Each commit converts one vertical slice from `IMongoClient` → `MealPlannerDbCo
 
 ## Phase 4 — Cleanup (commits 11–12)
 
-### Commit 11: `chore: remove MongoDB packages and dead code`
+### Commit 11: `chore: remove MongoDB runtime wiring and dead code`
 - Delete all `*Document.cs` model files (11 files)
 - Delete `MongoTestHelpers.cs`
 - Delete index initialization extensions (3 files)
-- Remove `MongoDB.Driver` / `Aspire.MongoDB.Driver.v3` from `MealPlanner.Api.csproj`
-- Remove Mongo package versions from `Directory.Packages.props` (keep only in migration project)
+- Remove Mongo runtime registration/usages from API startup/runtime code
+- Keep `MongoDB.Driver` / `Aspire.MongoDB.Driver.v3` package references while the migration job still depends on them
+- Keep Mongo package versions in `Directory.Packages.props` until the migration job is retired
 - Remove any remaining `using MongoDB.*` statements
 
 ### Commit 12: `docs: update AGENTS.md and README for Postgres + EF Core`
