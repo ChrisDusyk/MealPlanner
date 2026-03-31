@@ -1,7 +1,9 @@
+using MealPlanner.Api.Data;
+using MealPlanner.Api.Data.Entities;
 using MealPlanner.Api.Features.MealPlans.Models;
 using MealPlanner.Api.Features.MealPlans.Queries;
 using MealPlanner.Api.Shared;
-using MongoDB.Driver;
+using Microsoft.EntityFrameworkCore;
 
 namespace MealPlanner.Api.Features.MealPlans.Commands;
 
@@ -19,7 +21,7 @@ public record CopyCategoryCommand(
 /// <summary>
 /// Handles cloning a meal category's items from a source day into multiple target days.
 /// </summary>
-public class CopyCategoryCommandHandler(IMongoClient mongoClient)
+public class CopyCategoryCommandHandler(MealPlannerDbContext db)
 	: ICommandHandler<CopyCategoryCommand, MealPlan>
 {
 	public async Task<Result<MealPlan>> HandleAsync(
@@ -35,22 +37,17 @@ public class CopyCategoryCommandHandler(IMongoClient mongoClient)
 			var weekStart = GetMealPlanQueryHandler.NormalizeToMonday(command.WeekStart);
 			var weekStartStr = weekStart.ToString("yyyy-MM-dd");
 
-			var collection = mongoClient
-				.GetDatabase("mealplannerDb")
-				.GetCollection<MealPlanDocument>("mealplans");
+			var entity = await db.MealPlans
+				.FirstOrDefaultAsync(p => p.UserId == command.UserId && p.WeekStart == weekStartStr, cancellationToken);
 
-			var document = await collection
-				.Find(p => p.UserId == command.UserId && p.WeekStart == weekStartStr)
-				.FirstOrDefaultAsync(cancellationToken);
-
-			if (document is null)
+			if (entity is null)
 				return Result<MealPlan>.Failure(
 					new Error(ErrorCodes.NotFound, "Meal plan not found for the specified week."));
 
 			var sourceDayStr = command.SourceDay.ToString();
 			var categoryStr = command.Category.ToString();
 
-			var sourceDay = document.Days.FirstOrDefault(d => d.Day == sourceDayStr);
+			var sourceDay = entity.Days.FirstOrDefault(d => d.Day == sourceDayStr);
 			if (sourceDay is null)
 				return Result<MealPlan>.Failure(
 					new Error(ErrorCodes.ValidationFailed, $"Source day '{sourceDayStr}' not found."));
@@ -64,12 +61,12 @@ public class CopyCategoryCommandHandler(IMongoClient mongoClient)
 			foreach (var targetDayOfWeek in command.TargetDays)
 			{
 				var targetDayStr = targetDayOfWeek.ToString();
-				var targetDay = document.Days.FirstOrDefault(d => d.Day == targetDayStr);
+				var targetDay = entity.Days.FirstOrDefault(d => d.Day == targetDayStr);
 
 				if (targetDay is null) continue;
 
 				targetDay.Slots[categoryStr] = sourceItems
-					.Select(item => new MealSlotItemDocument
+					.Select(item => new MealSlotItemData
 					{
 						RecipeId = item.RecipeId,
 						Name = item.Name,
@@ -78,14 +75,11 @@ public class CopyCategoryCommandHandler(IMongoClient mongoClient)
 					.ToList();
 			}
 
-			document.UpdatedAt = DateTime.UtcNow;
+			entity.UpdatedAt = DateTime.UtcNow;
 
-			await collection.ReplaceOneAsync(
-				p => p.Id == document.Id,
-				document,
-				cancellationToken: cancellationToken);
+			await db.SaveChangesAsync(cancellationToken);
 
-			return Result<MealPlan>.Success(GetMealPlanQueryHandler.MapToDomain(document));
+			return Result<MealPlan>.Success(GetMealPlanQueryHandler.MapToDomain(entity));
 		}
 		catch (Exception ex)
 		{

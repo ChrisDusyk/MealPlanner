@@ -1,8 +1,7 @@
-using MealPlanner.Api.Features.MealPlans.Dtos;
+using MealPlanner.Api.Data;
 using MealPlanner.Api.Features.MealPlans.Models;
-using MealPlanner.Api.Features.Users.Models;
 using MealPlanner.Api.Shared;
-using MongoDB.Driver;
+using Microsoft.EntityFrameworkCore;
 
 namespace MealPlanner.Api.Features.MealPlans.Queries;
 
@@ -29,7 +28,7 @@ public record SharedMealPlanResult(
 /// Handles fetching plans shared with the recipient for the given week.
 /// Joins in the meal plan data and owner user info.
 /// </summary>
-public class GetSharedWithMeQueryHandler(IMongoClient mongoClient)
+public class GetSharedWithMeQueryHandler(MealPlannerDbContext db)
 	: IQueryHandler<GetSharedWithMeQuery, List<SharedMealPlanResult>>
 {
 	public async Task<Result<List<SharedMealPlanResult>>> HandleAsync(
@@ -38,34 +37,27 @@ public class GetSharedWithMeQueryHandler(IMongoClient mongoClient)
 	{
 		try
 		{
-			var db = mongoClient.GetDatabase("mealplannerDb");
-			var sharesCollection = db.GetCollection<MealPlanShareDocument>("shares");
-			var plansCollection = db.GetCollection<MealPlanDocument>("mealplans");
-			var usersCollection = db.GetCollection<UserDocument>("users");
-
 			// Get non-dismissed shares for this recipient and week
-			var shareFilter = Builders<MealPlanShareDocument>.Filter.And(
-				Builders<MealPlanShareDocument>.Filter.Eq(s => s.SharedWithUserId, query.RecipientUserId),
-				Builders<MealPlanShareDocument>.Filter.Eq(s => s.WeekStart, query.WeekStart),
-				Builders<MealPlanShareDocument>.Filter.Eq(s => s.DismissedByRecipient, false));
-
-			var shares = await sharesCollection.Find(shareFilter).ToListAsync(cancellationToken);
+			var shares = await db.MealPlanShares
+				.Where(s => s.SharedWithUserId == query.RecipientUserId
+					&& s.WeekStart == query.WeekStart
+					&& !s.DismissedByRecipient)
+				.ToListAsync(cancellationToken);
 
 			if (shares.Count == 0)
 				return Result<List<SharedMealPlanResult>>.Success([]);
 
 			// Batch-fetch owner users
 			var ownerIds = shares.Select(s => s.OwnerUserId).Distinct().ToList();
-			var usersFilter = Builders<UserDocument>.Filter.In(u => u.Auth0UserId, ownerIds);
-			var owners = await usersCollection.Find(usersFilter).ToListAsync(cancellationToken);
+			var owners = await db.Users
+				.Where(u => ownerIds.Contains(u.Auth0UserId))
+				.ToListAsync(cancellationToken);
 			var ownerLookup = owners.ToDictionary(u => u.Auth0UserId);
 
 			// Batch-fetch meal plans for the owners and this week
-			var planFilter = Builders<MealPlanDocument>.Filter.And(
-				Builders<MealPlanDocument>.Filter.In(p => p.UserId, ownerIds),
-				Builders<MealPlanDocument>.Filter.Eq(p => p.WeekStart, query.WeekStart));
-
-			var plans = await plansCollection.Find(planFilter).ToListAsync(cancellationToken);
+			var plans = await db.MealPlans
+				.Where(p => ownerIds.Contains(p.UserId) && p.WeekStart == query.WeekStart)
+				.ToListAsync(cancellationToken);
 			var planLookup = plans.ToDictionary(p => p.UserId);
 
 			var results = new List<SharedMealPlanResult>();
@@ -78,7 +70,7 @@ public class GetSharedWithMeQueryHandler(IMongoClient mongoClient)
 				ownerLookup.TryGetValue(share.OwnerUserId, out var owner);
 
 				results.Add(new SharedMealPlanResult(
-					Share: share.ToDomain(),
+					Share: GetMealPlanQueryHandler.MapShareToDomain(share),
 					MealPlan: GetMealPlanQueryHandler.MapToDomain(planDoc),
 					OwnerName: owner?.Name ?? "Unknown",
 					OwnerEmail: owner?.Email ?? ""

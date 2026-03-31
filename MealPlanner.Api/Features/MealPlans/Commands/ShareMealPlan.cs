@@ -1,7 +1,9 @@
+using MealPlanner.Api.Data;
+using MealPlanner.Api.Data.Entities;
 using MealPlanner.Api.Features.MealPlans.Models;
-using MealPlanner.Api.Features.Users.Models;
+using MealPlanner.Api.Features.MealPlans.Queries;
 using MealPlanner.Api.Shared;
-using MongoDB.Driver;
+using Microsoft.EntityFrameworkCore;
 
 namespace MealPlanner.Api.Features.MealPlans.Commands;
 
@@ -17,9 +19,9 @@ public record ShareMealPlanCommand(
 
 /// <summary>
 /// Handles creating a meal plan share: validates the recipient, prevents duplicates
-/// and self-shares, then inserts a share document.
+/// and self-shares, then inserts a share entity.
 /// </summary>
-public class ShareMealPlanCommandHandler(IMongoClient mongoClient)
+public class ShareMealPlanCommandHandler(MealPlannerDbContext db)
 	: ICommandHandler<ShareMealPlanCommand, MealPlanShare>
 {
 	public async Task<Result<MealPlanShare>> HandleAsync(
@@ -36,24 +38,17 @@ public class ShareMealPlanCommandHandler(IMongoClient mongoClient)
 
 		try
 		{
-			var db = mongoClient.GetDatabase("mealplannerDb");
-			var usersCollection = db.GetCollection<UserDocument>("users");
-			var sharesCollection = db.GetCollection<MealPlanShareDocument>("shares");
-
-			// Look up the owner to get their Auth0UserId for self-share check
-			var ownerFilter = Builders<UserDocument>.Filter.Eq(u => u.Auth0UserId, command.OwnerUserId);
-			var owner = await usersCollection.Find(ownerFilter).FirstOrDefaultAsync(cancellationToken);
+			// Look up the owner
+			var owner = await db.Users
+				.FirstOrDefaultAsync(u => u.Auth0UserId == command.OwnerUserId, cancellationToken);
 			if (owner is null)
 				return Result<MealPlanShare>.Failure(
 					new Error(ErrorCodes.NotFound, "Owner user not found."));
 
 			// Find recipient by email (case-insensitive)
-			var emailFilter = Builders<UserDocument>.Filter.Regex(
-				u => u.Email,
-				new MongoDB.Bson.BsonRegularExpression(
-					$"^{System.Text.RegularExpressions.Regex.Escape(command.SharedWithEmail)}$", "i"));
-
-			var recipient = await usersCollection.Find(emailFilter).FirstOrDefaultAsync(cancellationToken);
+			var normalizedEmail = command.SharedWithEmail.ToUpper();
+			var recipient = await db.Users
+				.FirstOrDefaultAsync(u => u.Email != null && u.Email.ToUpper() == normalizedEmail, cancellationToken);
 			if (recipient is null)
 				return Result<MealPlanShare>.Failure(
 					new Error(ErrorCodes.NotFound, $"No user found with email '{command.SharedWithEmail}'."));
@@ -64,19 +59,18 @@ public class ShareMealPlanCommandHandler(IMongoClient mongoClient)
 					new Error(ErrorCodes.ValidationFailed, "You cannot share a meal plan with yourself."));
 
 			// Check for existing share
-			var existingFilter = Builders<MealPlanShareDocument>.Filter.And(
-				Builders<MealPlanShareDocument>.Filter.Eq(s => s.OwnerUserId, command.OwnerUserId),
-				Builders<MealPlanShareDocument>.Filter.Eq(s => s.SharedWithUserId, recipient.Auth0UserId),
-				Builders<MealPlanShareDocument>.Filter.Eq(s => s.WeekStart, command.WeekStart));
-
-			var existing = await sharesCollection.Find(existingFilter).FirstOrDefaultAsync(cancellationToken);
-			if (existing is not null)
+			var exists = await db.MealPlanShares
+				.AnyAsync(s => s.OwnerUserId == command.OwnerUserId
+					&& s.SharedWithUserId == recipient.Auth0UserId
+					&& s.WeekStart == command.WeekStart, cancellationToken);
+			if (exists)
 				return Result<MealPlanShare>.Failure(
 					new Error(ErrorCodes.ValidationFailed, "This meal plan is already shared with that user."));
 
 			// Create the share
-			var document = new MealPlanShareDocument
+			var entity = new MealPlanShareEntity
 			{
+				Id = Guid.NewGuid(),
 				OwnerUserId = command.OwnerUserId,
 				SharedWithUserId = recipient.Auth0UserId,
 				WeekStart = command.WeekStart,
@@ -85,11 +79,12 @@ public class ShareMealPlanCommandHandler(IMongoClient mongoClient)
 				DismissedByRecipient = false
 			};
 
-			await sharesCollection.InsertOneAsync(document, cancellationToken: cancellationToken);
+			db.MealPlanShares.Add(entity);
+			await db.SaveChangesAsync(cancellationToken);
 
-			return Result<MealPlanShare>.Success(document.ToDomain());
+			return Result<MealPlanShare>.Success(GetMealPlanQueryHandler.MapShareToDomain(entity));
 		}
-		catch (MongoWriteException ex) when (ex.WriteError?.Category == ServerErrorCategory.DuplicateKey)
+		catch (DbUpdateException)
 		{
 			return Result<MealPlanShare>.Failure(
 				new Error(ErrorCodes.ValidationFailed, "This meal plan is already shared with that user."));
@@ -100,5 +95,4 @@ public class ShareMealPlanCommandHandler(IMongoClient mongoClient)
 				new Error(ErrorCodes.DatabaseError, "Failed to share meal plan.", ex));
 		}
 	}
-
 }

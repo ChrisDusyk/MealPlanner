@@ -1,6 +1,6 @@
-using MealPlanner.Api.Features.MealPlans.Models;
+using MealPlanner.Api.Data;
 using MealPlanner.Api.Shared;
-using MongoDB.Driver;
+using Microsoft.EntityFrameworkCore;
 
 namespace MealPlanner.Api.Features.MealPlans.Commands;
 
@@ -16,7 +16,7 @@ public record DismissSharedMealPlanCommand(
 /// Handles dismissing a shared meal plan by setting DismissedByRecipient = true.
 /// Only the recipient can dismiss.
 /// </summary>
-public class DismissSharedMealPlanCommandHandler(IMongoClient mongoClient)
+public class DismissSharedMealPlanCommandHandler(MealPlannerDbContext db)
 	: ICommandHandler<DismissSharedMealPlanCommand, Unit>
 {
 	public async Task<Result<Unit>> HandleAsync(
@@ -27,24 +27,21 @@ public class DismissSharedMealPlanCommandHandler(IMongoClient mongoClient)
 			return Result<Unit>.Failure(
 				new Error(ErrorCodes.ValidationFailed, "Share ID is required."));
 
+		if (!Guid.TryParse(command.ShareId, out var shareGuid))
+			return Result<Unit>.Failure(
+				new Error(ErrorCodes.ValidationFailed, "Share ID is invalid."));
+
 		try
 		{
-			var collection = mongoClient
-				.GetDatabase("mealplannerDb")
-				.GetCollection<MealPlanShareDocument>("shares");
+			var share = await db.MealPlanShares
+				.FirstOrDefaultAsync(s => s.Id == shareGuid && s.SharedWithUserId == command.RecipientUserId, cancellationToken);
 
-			var filter = Builders<MealPlanShareDocument>.Filter.And(
-				Builders<MealPlanShareDocument>.Filter.Eq(s => s.Id, command.ShareId),
-				Builders<MealPlanShareDocument>.Filter.Eq(s => s.SharedWithUserId, command.RecipientUserId));
-
-			var update = Builders<MealPlanShareDocument>.Update
-				.Set(s => s.DismissedByRecipient, true);
-
-			var result = await collection.UpdateOneAsync(filter, update, cancellationToken: cancellationToken);
-
-			if (result.MatchedCount == 0)
+			if (share is null)
 				return Result<Unit>.Failure(
 					new Error(ErrorCodes.NotFound, "Share not found or you are not the recipient."));
+
+			share.DismissedByRecipient = true;
+			await db.SaveChangesAsync(cancellationToken);
 
 			return Result<Unit>.Success(Unit.Value);
 		}
