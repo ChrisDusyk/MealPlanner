@@ -1,10 +1,9 @@
+using MealPlanner.Api.Data.Entities;
 using MealPlanner.Api.Features.GroceryLists.Models;
 using MealPlanner.Api.Features.GroceryLists.Realtime;
 using MealPlanner.Api.Tests.TestUtilities;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
-using Moq;
-using MongoDB.Driver;
 
 namespace MealPlanner.Api.Tests.Features.GroceryLists.Realtime;
 
@@ -13,39 +12,30 @@ public class GroceryListRealtimeNotifierTests
 	[Fact]
 	public async Task PublishListUpdatedAsync_SendsUpdateToOwnerAndActiveRecipients()
 	{
-		var shares = new List<GroceryListShareDocument>
+		var context = TestDbContextFactory.CreateContext(seed: db =>
 		{
-			new()
-			{
-				OwnerUserId = "owner-1",
-				SharedWithUserId = "guest-1",
-				WeekStart = "2026-02-23",
-				DismissedByRecipient = false
-			},
-			new()
-			{
-				OwnerUserId = "owner-1",
-				SharedWithUserId = "guest-2",
-				WeekStart = "2026-02-23",
-				DismissedByRecipient = false
-			}
-		};
-
-		var sharesCursor = MongoTestHelpers.CreateCursor((IReadOnlyCollection<GroceryListShareDocument>)shares);
-		var sharesCollection = new Mock<IMongoCollection<GroceryListShareDocument>>();
-		sharesCollection
-			.Setup(c => c.FindAsync(
-				It.IsAny<FilterDefinition<GroceryListShareDocument>>(),
-				It.IsAny<FindOptions<GroceryListShareDocument, GroceryListShareDocument>>(),
-				It.IsAny<CancellationToken>()))
-			.ReturnsAsync(sharesCursor.Object);
-
-		var db = new Mock<IMongoDatabase>();
-		db.Setup(d => d.GetCollection<GroceryListShareDocument>("grocerylist_shares", null))
-			.Returns(sharesCollection.Object);
-
-		var mongoClient = new Mock<IMongoClient>();
-		mongoClient.Setup(c => c.GetDatabase("mealplannerDb", null)).Returns(db.Object);
+			db.GroceryListShares.AddRange(
+				new GroceryListShareEntity
+				{
+					Id = Guid.NewGuid(),
+					OwnerUserId = "owner-1",
+					SharedWithUserId = "guest-1",
+					WeekStart = "2026-02-23",
+					Permission = "ReadWrite",
+					DismissedByRecipient = false,
+					SharedAt = DateTime.UtcNow
+				},
+				new GroceryListShareEntity
+				{
+					Id = Guid.NewGuid(),
+					OwnerUserId = "owner-1",
+					SharedWithUserId = "guest-2",
+					WeekStart = "2026-02-23",
+					Permission = "ReadWrite",
+					DismissedByRecipient = false,
+					SharedAt = DateTime.UtcNow
+				});
+		});
 
 		var clientProxy = new Mock<IClientProxy>();
 		IReadOnlyList<string>? recipientIds = null;
@@ -60,7 +50,7 @@ public class GroceryListRealtimeNotifierTests
 		hubContext.SetupGet(h => h.Clients).Returns(hubClients.Object);
 
 		var logger = new Mock<ILogger<GroceryListRealtimeNotifier>>();
-		var notifier = new GroceryListRealtimeNotifier(TestDbContextFactory.CreateContext(), hubContext.Object, logger.Object);
+		var notifier = new GroceryListRealtimeNotifier(context, hubContext.Object, logger.Object);
 
 		var updatedList = new GroceryList(
 			Id: "list-1",
