@@ -1,6 +1,8 @@
+using MealPlanner.Api.Data;
+using MealPlanner.Api.Data.Entities;
 using MealPlanner.Api.Features.Users.Models;
 using MealPlanner.Api.Shared;
-using MongoDB.Driver;
+using Microsoft.EntityFrameworkCore;
 
 namespace MealPlanner.Api.Features.Users.Commands;
 
@@ -13,9 +15,9 @@ public record UpdateCurrentUserNameCommand(
 ) : ICommand<User>;
 
 /// <summary>
-/// Handles updating the current user's name in MongoDB.
+/// Handles updating the current user's name.
 /// </summary>
-public class UpdateCurrentUserNameCommandHandler(IMongoClient mongoClient)
+public class UpdateCurrentUserNameCommandHandler(MealPlannerDbContext db)
 	: ICommandHandler<UpdateCurrentUserNameCommand, User>
 {
 	public async Task<Result<User>> HandleAsync(
@@ -32,29 +34,19 @@ public class UpdateCurrentUserNameCommandHandler(IMongoClient mongoClient)
 
 		try
 		{
-			var collection = mongoClient
-				.GetDatabase("mealplannerDb")
-				.GetCollection<UserDocument>("users");
+			var entity = await db.Users
+				.FirstOrDefaultAsync(u => u.Auth0UserId == command.Auth0UserId, cancellationToken);
 
-			var updateDefinition = Builders<UserDocument>.Update
-				.Set(u => u.Name, command.Name)
-				.Set(u => u.UpdatedAt, DateTime.UtcNow);
-
-			var updated = await collection.FindOneAndUpdateAsync(
-				u => u.Auth0UserId == command.Auth0UserId,
-				updateDefinition,
-				new FindOneAndUpdateOptions<UserDocument>
-				{
-					ReturnDocument = ReturnDocument.After,
-					IsUpsert = false
-				},
-				cancellationToken);
-
-			if (updated is null)
+			if (entity is null)
 				return Result<User>.Failure(
 					new Error(ErrorCodes.NotFound, "User was not found."));
 
-			return Result<User>.Success(MapToDomain(updated));
+			entity.Name = command.Name;
+			entity.UpdatedAt = DateTime.UtcNow;
+
+			await db.SaveChangesAsync(cancellationToken);
+
+			return Result<User>.Success(MapToDomain(entity));
 		}
 		catch (Exception ex)
 		{
@@ -63,13 +55,13 @@ public class UpdateCurrentUserNameCommandHandler(IMongoClient mongoClient)
 		}
 	}
 
-	internal static User MapToDomain(UserDocument document) =>
+	internal static User MapToDomain(UserEntity entity) =>
 		new(
-			Id: document.Id ?? string.Empty,
-			Auth0UserId: document.Auth0UserId,
-			Name: document.Name,
-			Email: Option<string>.From(document.Email),
-			CreatedAt: document.CreatedAt,
-			UpdatedAt: document.UpdatedAt
+			Id: entity.Id.ToString(),
+			Auth0UserId: entity.Auth0UserId,
+			Name: entity.Name,
+			Email: Option<string>.From(entity.Email),
+			CreatedAt: entity.CreatedAt,
+			UpdatedAt: entity.UpdatedAt
 		);
 }

@@ -1,8 +1,7 @@
-using MealPlanner.Api.Features.Users.Models;
+using MealPlanner.Api.Data;
+using MealPlanner.Api.Data.Entities;
 using MealPlanner.Api.Shared;
-using MongoDB.Bson;
-using MongoDB.Driver;
-using System.Text.RegularExpressions;
+using Microsoft.EntityFrameworkCore;
 
 namespace MealPlanner.Api.Features.Users.Commands;
 
@@ -27,7 +26,7 @@ public record SendFriendRequestByEmailCommand(
 /// <summary>
 /// Handles sending friend requests with reciprocal-request auto-accept behavior.
 /// </summary>
-public class SendFriendRequestByEmailCommandHandler(IMongoClient mongoClient)
+public class SendFriendRequestByEmailCommandHandler(MealPlannerDbContext db)
 	: ICommandHandler<SendFriendRequestByEmailCommand, SendFriendRequestResult>
 {
 	public async Task<Result<SendFriendRequestResult>> HandleAsync(
@@ -44,24 +43,17 @@ public class SendFriendRequestByEmailCommandHandler(IMongoClient mongoClient)
 
 		try
 		{
-			var database = mongoClient.GetDatabase("mealplannerDb");
-			var users = database.GetCollection<UserDocument>("users");
-			var friendships = database.GetCollection<FriendshipDocument>("friendships");
-			var requests = database.GetCollection<FriendRequestDocument>("friend_requests");
-
-			var requester = await users
-				.Find(u => u.Auth0UserId == command.RequesterUserId)
-				.FirstOrDefaultAsync(cancellationToken);
+			var requester = await db.Users
+				.FirstOrDefaultAsync(u => u.Auth0UserId == command.RequesterUserId, cancellationToken);
 			if (requester is null)
 			{
 				return Result<SendFriendRequestResult>.Failure(
 					new Error(ErrorCodes.NotFound, "Current user was not found."));
 			}
 
-			var emailPattern = new BsonRegularExpression($"^{Regex.Escape(command.RecipientEmail.Trim())}$", "i");
-			var recipient = await users
-				.Find(Builders<UserDocument>.Filter.Regex(u => u.Email, emailPattern))
-				.FirstOrDefaultAsync(cancellationToken);
+			var normalizedEmail = command.RecipientEmail.Trim().ToUpperInvariant();
+			var recipient = await db.Users
+				.FirstOrDefaultAsync(u => u.Email != null && u.Email.ToUpper() == normalizedEmail, cancellationToken);
 
 			if (recipient is null)
 			{
@@ -76,48 +68,43 @@ public class SendFriendRequestByEmailCommandHandler(IMongoClient mongoClient)
 			}
 
 			var (userAId, userBId) = NormalizePair(command.RequesterUserId, recipient.Auth0UserId);
-			var existingFriendship = await friendships
-				.Find(f => f.UserAId == userAId && f.UserBId == userBId)
-				.FirstOrDefaultAsync(cancellationToken);
-			if (existingFriendship is not null)
+			var existingFriendship = await db.Friendships
+				.AnyAsync(f => f.UserAId == userAId && f.UserBId == userBId, cancellationToken);
+			if (existingFriendship)
 			{
 				return Result<SendFriendRequestResult>.Failure(
 					new Error(ErrorCodes.ValidationFailed, "You are already friends with this user."));
 			}
 
-			var existingRequest = await requests
-				.Find(r => r.RequesterUserId == command.RequesterUserId && r.RecipientUserId == recipient.Auth0UserId)
-				.FirstOrDefaultAsync(cancellationToken);
-			if (existingRequest is not null)
+			var existingRequest = await db.FriendRequests
+				.AnyAsync(r => r.RequesterUserId == command.RequesterUserId && r.RecipientUserId == recipient.Auth0UserId, cancellationToken);
+			if (existingRequest)
 			{
 				return Result<SendFriendRequestResult>.Failure(
 					new Error(ErrorCodes.ValidationFailed, "A friend request is already pending for this user."));
 			}
 
-			var reciprocalRequest = await requests
-				.Find(r => r.RequesterUserId == recipient.Auth0UserId && r.RecipientUserId == command.RequesterUserId)
-				.FirstOrDefaultAsync(cancellationToken);
+			var reciprocalRequest = await db.FriendRequests
+				.FirstOrDefaultAsync(r => r.RequesterUserId == recipient.Auth0UserId && r.RecipientUserId == command.RequesterUserId, cancellationToken);
 
 			if (reciprocalRequest is not null)
 			{
 				var now = DateTime.UtcNow;
-				try
+				var existingPair = await db.Friendships
+					.AnyAsync(f => f.UserAId == userAId && f.UserBId == userBId, cancellationToken);
+				if (!existingPair)
 				{
-					await friendships.InsertOneAsync(new FriendshipDocument
+					db.Friendships.Add(new FriendshipEntity
 					{
+						Id = Guid.NewGuid(),
 						UserAId = userAId,
 						UserBId = userBId,
 						CreatedAt = now
-					}, cancellationToken: cancellationToken);
-				}
-				catch (MongoWriteException ex) when (ex.WriteError?.Category == ServerErrorCategory.DuplicateKey)
-				{
-					// Another request may have accepted concurrently; treat as accepted state.
+					});
 				}
 
-				await requests.DeleteOneAsync(
-					r => r.Id == reciprocalRequest.Id,
-					cancellationToken);
+				db.FriendRequests.Remove(reciprocalRequest);
+				await db.SaveChangesAsync(cancellationToken);
 
 				return Result<SendFriendRequestResult>.Success(
 					new SendFriendRequestResult(
@@ -125,19 +112,21 @@ public class SendFriendRequestByEmailCommandHandler(IMongoClient mongoClient)
 						recipient.Auth0UserId));
 			}
 
-			await requests.InsertOneAsync(new FriendRequestDocument
+			db.FriendRequests.Add(new FriendRequestEntity
 			{
+				Id = Guid.NewGuid(),
 				RequesterUserId = command.RequesterUserId,
 				RecipientUserId = recipient.Auth0UserId,
 				CreatedAt = DateTime.UtcNow
-			}, cancellationToken: cancellationToken);
+			});
+			await db.SaveChangesAsync(cancellationToken);
 
 			return Result<SendFriendRequestResult>.Success(
 				new SendFriendRequestResult(
 					SendFriendRequestStatus.Pending,
 					recipient.Auth0UserId));
 		}
-		catch (MongoWriteException ex) when (ex.WriteError?.Category == ServerErrorCategory.DuplicateKey)
+		catch (DbUpdateException)
 		{
 			return Result<SendFriendRequestResult>.Failure(
 				new Error(ErrorCodes.ValidationFailed, "A friend request is already pending for this user."));

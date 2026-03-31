@@ -1,8 +1,8 @@
-using MealPlanner.Api.Features.Users.Models;
-using MealPlanner.Api.Features.GroceryLists.Models;
+using MealPlanner.Api.Data;
+using MealPlanner.Api.Data.Entities;
 using MealPlanner.Api.Features.MealPlans.Models;
 using MealPlanner.Api.Shared;
-using MongoDB.Driver;
+using Microsoft.EntityFrameworkCore;
 
 namespace MealPlanner.Api.Features.Users.Commands;
 
@@ -21,7 +21,7 @@ public record UpdateFriendAutoSharePreferencesResult(
 	bool AutoShareGroceryLists
 );
 
-public class UpdateFriendAutoSharePreferencesCommandHandler(IMongoClient mongoClient)
+public class UpdateFriendAutoSharePreferencesCommandHandler(MealPlannerDbContext db)
 	: ICommandHandler<UpdateFriendAutoSharePreferencesCommand, UpdateFriendAutoSharePreferencesResult>
 {
 	public async Task<Result<UpdateFriendAutoSharePreferencesResult>> HandleAsync(
@@ -42,63 +42,52 @@ public class UpdateFriendAutoSharePreferencesCommandHandler(IMongoClient mongoCl
 
 		try
 		{
-			var database = mongoClient.GetDatabase("mealplannerDb");
-			var friendships = database.GetCollection<FriendshipDocument>("friendships");
-			var preferences = database.GetCollection<FriendAutoSharePreferenceDocument>("friend_auto_share_preferences");
-
 			var (userAId, userBId) = SendFriendRequestByEmailCommandHandler.NormalizePair(
 				command.UserId,
 				command.FriendUserId);
 
-			var existingFriendship = await friendships
-				.Find(f => f.UserAId == userAId && f.UserBId == userBId)
-				.FirstOrDefaultAsync(cancellationToken);
+			var existingFriendship = await db.Friendships
+				.AnyAsync(f => f.UserAId == userAId && f.UserBId == userBId, cancellationToken);
 
-			if (existingFriendship is null)
+			if (!existingFriendship)
 			{
 				return Result<UpdateFriendAutoSharePreferencesResult>.Failure(
 					new Error(ErrorCodes.NotFound, "Friendship was not found."));
 			}
 
 			var now = DateTime.UtcNow;
-			var filter = Builders<FriendAutoSharePreferenceDocument>.Filter.And(
-				Builders<FriendAutoSharePreferenceDocument>.Filter.Eq(p => p.UserId, command.UserId),
-				Builders<FriendAutoSharePreferenceDocument>.Filter.Eq(p => p.FriendUserId, command.FriendUserId));
+			var pref = await db.FriendAutoSharePreferences
+				.FirstOrDefaultAsync(p => p.UserId == command.UserId && p.FriendUserId == command.FriendUserId, cancellationToken);
 
-			var update = Builders<FriendAutoSharePreferenceDocument>.Update
-				.Set(p => p.AutoShareMealPlans, command.AutoShareMealPlans)
-				.Set(p => p.AutoShareGroceryLists, command.AutoShareGroceryLists)
-				.Set(p => p.UpdatedAt, now)
-				.SetOnInsert(p => p.UserId, command.UserId)
-				.SetOnInsert(p => p.FriendUserId, command.FriendUserId)
-				.SetOnInsert(p => p.CreatedAt, now);
-
-			await preferences.UpdateOneAsync(
-				filter,
-				update,
-				new UpdateOptions { IsUpsert = true },
-				cancellationToken);
+			if (pref is null)
+			{
+				pref = new FriendAutoSharePreferenceEntity
+				{
+					Id = Guid.NewGuid(),
+					UserId = command.UserId,
+					FriendUserId = command.FriendUserId,
+					AutoShareMealPlans = command.AutoShareMealPlans,
+					AutoShareGroceryLists = command.AutoShareGroceryLists,
+					CreatedAt = now,
+					UpdatedAt = now
+				};
+				db.FriendAutoSharePreferences.Add(pref);
+			}
+			else
+			{
+				pref.AutoShareMealPlans = command.AutoShareMealPlans;
+				pref.AutoShareGroceryLists = command.AutoShareGroceryLists;
+				pref.UpdatedAt = now;
+			}
 
 			var weekStart = NormalizeToMonday(DateOnly.FromDateTime(DateTime.UtcNow)).ToString("yyyy-MM-dd");
 			if (command.AutoShareMealPlans)
-			{
-				await TryBackfillMealPlanShareAsync(
-					database,
-					command.UserId,
-					command.FriendUserId,
-					weekStart,
-					cancellationToken);
-			}
+				await TryBackfillMealPlanShareAsync(db, command.UserId, command.FriendUserId, weekStart, cancellationToken);
 
 			if (command.AutoShareGroceryLists)
-			{
-				await TryBackfillGroceryListShareAsync(
-					database,
-					command.UserId,
-					command.FriendUserId,
-					weekStart,
-					cancellationToken);
-			}
+				await TryBackfillGroceryListShareAsync(db, command.UserId, command.FriendUserId, weekStart, cancellationToken);
+
+			await db.SaveChangesAsync(cancellationToken);
 
 			return Result<UpdateFriendAutoSharePreferencesResult>.Success(
 				new UpdateFriendAutoSharePreferencesResult(
@@ -113,79 +102,57 @@ public class UpdateFriendAutoSharePreferencesCommandHandler(IMongoClient mongoCl
 	}
 
 	private static async Task TryBackfillMealPlanShareAsync(
-		IMongoDatabase database,
+		MealPlannerDbContext db,
 		string ownerUserId,
 		string sharedWithUserId,
 		string weekStart,
 		CancellationToken cancellationToken)
 	{
-		var mealPlans = database.GetCollection<MealPlanDocument>("mealplans");
-		var shares = database.GetCollection<MealPlanShareDocument>("shares");
+		var hasPlan = await db.MealPlans
+			.AnyAsync(p => p.UserId == ownerUserId && p.WeekStart == weekStart, cancellationToken);
+		if (!hasPlan) return;
 
-		if (mealPlans is null || shares is null)
-			return;
+		var shareExists = await db.MealPlanShares
+			.AnyAsync(s => s.OwnerUserId == ownerUserId && s.SharedWithUserId == sharedWithUserId && s.WeekStart == weekStart, cancellationToken);
+		if (shareExists) return;
 
-		var mealPlan = await mealPlans
-			.Find(p => p.UserId == ownerUserId && p.WeekStart == weekStart)
-			.FirstOrDefaultAsync(cancellationToken);
-
-		if (mealPlan is null)
-			return;
-
-		try
+		db.MealPlanShares.Add(new MealPlanShareEntity
 		{
-			await shares.InsertOneAsync(new MealPlanShareDocument
-			{
-				OwnerUserId = ownerUserId,
-				SharedWithUserId = sharedWithUserId,
-				WeekStart = weekStart,
-				Permission = nameof(SharePermission.ReadWrite),
-				SharedAt = DateTime.UtcNow,
-				DismissedByRecipient = false
-			}, cancellationToken: cancellationToken);
-		}
-		catch (MongoWriteException ex) when (ex.WriteError?.Category == ServerErrorCategory.DuplicateKey)
-		{
-			// Share already exists, no additional action required.
-		}
+			Id = Guid.NewGuid(),
+			OwnerUserId = ownerUserId,
+			SharedWithUserId = sharedWithUserId,
+			WeekStart = weekStart,
+			Permission = nameof(SharePermission.ReadWrite),
+			SharedAt = DateTime.UtcNow,
+			DismissedByRecipient = false
+		});
 	}
 
 	private static async Task TryBackfillGroceryListShareAsync(
-		IMongoDatabase database,
+		MealPlannerDbContext db,
 		string ownerUserId,
 		string sharedWithUserId,
 		string weekStart,
 		CancellationToken cancellationToken)
 	{
-		var groceryLists = database.GetCollection<GroceryListDocument>("grocerylists");
-		var shares = database.GetCollection<GroceryListShareDocument>("grocerylist_shares");
+		var hasList = await db.GroceryLists
+			.AnyAsync(g => g.UserId == ownerUserId && g.WeekStart == weekStart, cancellationToken);
+		if (!hasList) return;
 
-		if (groceryLists is null || shares is null)
-			return;
+		var shareExists = await db.GroceryListShares
+			.AnyAsync(s => s.OwnerUserId == ownerUserId && s.SharedWithUserId == sharedWithUserId && s.WeekStart == weekStart, cancellationToken);
+		if (shareExists) return;
 
-		var groceryList = await groceryLists
-			.Find(g => g.UserId == ownerUserId && g.WeekStart == weekStart)
-			.FirstOrDefaultAsync(cancellationToken);
-
-		if (groceryList is null)
-			return;
-
-		try
+		db.GroceryListShares.Add(new GroceryListShareEntity
 		{
-			await shares.InsertOneAsync(new GroceryListShareDocument
-			{
-				OwnerUserId = ownerUserId,
-				SharedWithUserId = sharedWithUserId,
-				WeekStart = weekStart,
-				Permission = nameof(SharePermission.ReadWrite),
-				SharedAt = DateTime.UtcNow,
-				DismissedByRecipient = false
-			}, cancellationToken: cancellationToken);
-		}
-		catch (MongoWriteException ex) when (ex.WriteError?.Category == ServerErrorCategory.DuplicateKey)
-		{
-			// Share already exists, no additional action required.
-		}
+			Id = Guid.NewGuid(),
+			OwnerUserId = ownerUserId,
+			SharedWithUserId = sharedWithUserId,
+			WeekStart = weekStart,
+			Permission = nameof(SharePermission.ReadWrite),
+			SharedAt = DateTime.UtcNow,
+			DismissedByRecipient = false
+		});
 	}
 
 	private static DateOnly NormalizeToMonday(DateOnly date)

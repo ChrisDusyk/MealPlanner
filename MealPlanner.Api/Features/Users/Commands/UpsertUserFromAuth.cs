@@ -1,6 +1,8 @@
+using MealPlanner.Api.Data;
+using MealPlanner.Api.Data.Entities;
 using MealPlanner.Api.Features.Users.Models;
 using MealPlanner.Api.Shared;
-using MongoDB.Driver;
+using Microsoft.EntityFrameworkCore;
 
 namespace MealPlanner.Api.Features.Users.Commands;
 
@@ -14,9 +16,9 @@ public record UpsertUserFromAuthCommand(
 ) : ICommand<User>;
 
 /// <summary>
-/// Handles upserting a user in MongoDB.
+/// Handles upserting a user.
 /// </summary>
-public class UpsertUserFromAuthCommandHandler(IMongoClient mongoClient)
+public class UpsertUserFromAuthCommandHandler(MealPlannerDbContext db)
 	: ICommandHandler<UpsertUserFromAuthCommand, User>
 {
 	public async Task<Result<User>> HandleAsync(
@@ -33,39 +35,34 @@ public class UpsertUserFromAuthCommandHandler(IMongoClient mongoClient)
 
 		try
 		{
-			var collection = mongoClient
-				.GetDatabase("mealplannerDb")
-				.GetCollection<UserDocument>("users");
-
 			var now = DateTime.UtcNow;
 			var email = command.Email.GetValueOrNull();
 
-			var updateDefinition = Builders<UserDocument>.Update
-				.Set(u => u.Email, email)
-				.Set(u => u.UpdatedAt, now)
-				.SetOnInsert(u => u.Auth0UserId, command.Auth0UserId)
-				.SetOnInsert(u => u.Name, command.Name)
-				.SetOnInsert(u => u.CreatedAt, now);
+			var entity = await db.Users
+				.FirstOrDefaultAsync(u => u.Auth0UserId == command.Auth0UserId, cancellationToken);
 
-			var options = new FindOneAndUpdateOptions<UserDocument>
+			if (entity is null)
 			{
-				IsUpsert = true,
-				ReturnDocument = ReturnDocument.After
-			};
-
-			var updated = await collection.FindOneAndUpdateAsync(
-				u => u.Auth0UserId == command.Auth0UserId,
-				updateDefinition,
-				options,
-				cancellationToken);
-
-			if (updated is null)
+				entity = new UserEntity
+				{
+					Id = Guid.NewGuid(),
+					Auth0UserId = command.Auth0UserId,
+					Name = command.Name,
+					Email = email,
+					CreatedAt = now,
+					UpdatedAt = now
+				};
+				db.Users.Add(entity);
+			}
+			else
 			{
-				return Result<User>.Failure(
-					new Error(ErrorCodes.DatabaseError, "Failed to upsert user."));
+				entity.Email = email;
+				entity.UpdatedAt = now;
 			}
 
-			return Result<User>.Success(MapToDomain(updated));
+			await db.SaveChangesAsync(cancellationToken);
+
+			return Result<User>.Success(MapToDomain(entity));
 		}
 		catch (Exception ex)
 		{
@@ -74,13 +71,13 @@ public class UpsertUserFromAuthCommandHandler(IMongoClient mongoClient)
 		}
 	}
 
-	internal static User MapToDomain(UserDocument document) =>
+	internal static User MapToDomain(UserEntity entity) =>
 		new(
-			Id: document.Id ?? string.Empty,
-			Auth0UserId: document.Auth0UserId,
-			Name: document.Name,
-			Email: Option<string>.From(document.Email),
-			CreatedAt: document.CreatedAt,
-			UpdatedAt: document.UpdatedAt
+			Id: entity.Id.ToString(),
+			Auth0UserId: entity.Auth0UserId,
+			Name: entity.Name,
+			Email: Option<string>.From(entity.Email),
+			CreatedAt: entity.CreatedAt,
+			UpdatedAt: entity.UpdatedAt
 		);
 }

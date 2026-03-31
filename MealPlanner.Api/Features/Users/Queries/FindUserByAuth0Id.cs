@@ -1,6 +1,8 @@
+using MealPlanner.Api.Data;
+using MealPlanner.Api.Data.Entities;
 using MealPlanner.Api.Features.Users.Models;
 using MealPlanner.Api.Shared;
-using MongoDB.Driver;
+using Microsoft.EntityFrameworkCore;
 
 namespace MealPlanner.Api.Features.Users.Queries;
 
@@ -10,9 +12,9 @@ namespace MealPlanner.Api.Features.Users.Queries;
 public record FindUserByAuth0IdQuery(string Auth0UserId) : IQuery<User>;
 
 /// <summary>
-/// Handles looking up a user by Auth0 user id in MongoDB.
+/// Handles looking up a user by Auth0 user id.
 /// </summary>
-public class FindUserByAuth0IdQueryHandler(IMongoClient mongoClient)
+public class FindUserByAuth0IdQueryHandler(MealPlannerDbContext db)
 	: IQueryHandler<FindUserByAuth0IdQuery, User>
 {
 	public async Task<Result<User>> HandleAsync(
@@ -25,19 +27,14 @@ public class FindUserByAuth0IdQueryHandler(IMongoClient mongoClient)
 
 		try
 		{
-			var collection = mongoClient
-				.GetDatabase("mealplannerDb")
-				.GetCollection<UserDocument>("users");
+			var entity = await db.Users
+				.FirstOrDefaultAsync(u => u.Auth0UserId == query.Auth0UserId, cancellationToken);
 
-			var document = await collection
-				.Find(u => u.Auth0UserId == query.Auth0UserId)
-				.FirstOrDefaultAsync(cancellationToken);
-
-			if (document is null)
+			if (entity is null)
 				return Result<User>.Failure(
 					new Error(ErrorCodes.NotFound, "User was not found."));
 
-			return Result<User>.Success(MapToDomain(document));
+			return Result<User>.Success(MapToDomain(entity));
 		}
 		catch (Exception ex)
 		{
@@ -46,13 +43,13 @@ public class FindUserByAuth0IdQueryHandler(IMongoClient mongoClient)
 		}
 	}
 
-	internal static User MapToDomain(UserDocument document) =>
+	internal static User MapToDomain(UserEntity entity) =>
 		new(
-			Id: document.Id ?? string.Empty,
-			Auth0UserId: document.Auth0UserId,
-			Name: document.Name,
-			Email: Option<string>.From(document.Email),
-			CreatedAt: document.CreatedAt,
-			UpdatedAt: document.UpdatedAt
+			Id: entity.Id.ToString(),
+			Auth0UserId: entity.Auth0UserId,
+			Name: entity.Name,
+			Email: Option<string>.From(entity.Email),
+			CreatedAt: entity.CreatedAt,
+			UpdatedAt: entity.UpdatedAt
 		);
 }
