@@ -22,7 +22,7 @@ public class RejectFriendRequestTests
 	{
 		using var db = TestDbContextFactory.CreateContext();
 		var handler = new RejectFriendRequestCommandHandler(db);
-		var result = await handler.HandleAsync(new RejectFriendRequestCommand("auth0|me", "r1"), TestContext.Current.CancellationToken);
+		var result = await handler.HandleAsync(new RejectFriendRequestCommand("auth0|me", "11111111-1111-1111-1111-111111111111"), TestContext.Current.CancellationToken);
 
 		Assert.False(result.IsSuccess);
 		Assert.Equal(ErrorCodes.NotFound, result.Error?.Code);

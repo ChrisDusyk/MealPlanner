@@ -1,10 +1,15 @@
 using MealPlanner.Api.Data.Entities;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using System.Text.Json;
 
 namespace MealPlanner.Api.Data;
 
 public class MealPlannerDbContext(DbContextOptions<MealPlannerDbContext> options) : DbContext(options)
 {
+	private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
+
 	public DbSet<UserEntity> Users => Set<UserEntity>();
 	public DbSet<FriendshipEntity> Friendships => Set<FriendshipEntity>();
 	public DbSet<FriendRequestEntity> FriendRequests => Set<FriendRequestEntity>();
@@ -20,6 +25,7 @@ public class MealPlannerDbContext(DbContextOptions<MealPlannerDbContext> options
 	protected override void OnModelCreating(ModelBuilder modelBuilder)
 	{
 		base.OnModelCreating(modelBuilder);
+		var isNpgsql = Database.IsNpgsql();
 
 		// ── Users ──
 		modelBuilder.Entity<UserEntity>(entity =>
@@ -59,7 +65,14 @@ public class MealPlannerDbContext(DbContextOptions<MealPlannerDbContext> options
 			entity.ToTable("recipes");
 			entity.HasKey(e => e.Id);
 			entity.HasIndex(e => e.UserId);
-			entity.Property(e => e.Ingredients).HasColumnType("jsonb");
+			if (isNpgsql)
+			{
+				entity.Property(e => e.Ingredients).HasColumnType("jsonb");
+			}
+			else
+			{
+				ConfigureJsonProperty(entity.Property(e => e.Ingredients));
+			}
 		});
 
 		// ── Meal Plans ──
@@ -68,7 +81,14 @@ public class MealPlannerDbContext(DbContextOptions<MealPlannerDbContext> options
 			entity.ToTable("meal_plans");
 			entity.HasKey(e => e.Id);
 			entity.HasIndex(e => new { e.UserId, e.WeekStart }).IsUnique();
-			entity.Property(e => e.Days).HasColumnType("jsonb");
+			if (isNpgsql)
+			{
+				entity.Property(e => e.Days).HasColumnType("jsonb");
+			}
+			else
+			{
+				ConfigureJsonProperty(entity.Property(e => e.Days));
+			}
 		});
 
 		// ── Meal Plan Shares ──
@@ -85,8 +105,16 @@ public class MealPlannerDbContext(DbContextOptions<MealPlannerDbContext> options
 			entity.ToTable("grocery_lists");
 			entity.HasKey(e => e.Id);
 			entity.HasIndex(e => new { e.UserId, e.WeekStart }).IsUnique();
-			entity.Property(e => e.Items).HasColumnType("jsonb");
-			entity.Property(e => e.PantryStapleItems).HasColumnType("jsonb");
+			if (isNpgsql)
+			{
+				entity.Property(e => e.Items).HasColumnType("jsonb");
+				entity.Property(e => e.PantryStapleItems).HasColumnType("jsonb");
+			}
+			else
+			{
+				ConfigureJsonProperty(entity.Property(e => e.Items));
+				ConfigureJsonProperty(entity.Property(e => e.PantryStapleItems));
+			}
 		});
 
 		// ── Grocery List Shares ──
@@ -104,7 +132,14 @@ public class MealPlannerDbContext(DbContextOptions<MealPlannerDbContext> options
 			entity.HasKey(e => e.Id);
 			entity.HasIndex(e => new { e.UserId, e.Provider }).IsUnique();
 			entity.HasIndex(e => new { e.GoogleSubject, e.Provider }).IsUnique();
-			entity.Property(e => e.Scopes).HasColumnType("jsonb");
+			if (isNpgsql)
+			{
+				entity.Property(e => e.Scopes).HasColumnType("jsonb");
+			}
+			else
+			{
+				ConfigureJsonProperty(entity.Property(e => e.Scopes));
+			}
 		});
 
 		// ── Grocery List Export Links ──
@@ -115,5 +150,20 @@ public class MealPlannerDbContext(DbContextOptions<MealPlannerDbContext> options
 			entity.HasIndex(e => new { e.UserId, e.WeekStart, e.Provider }).IsUnique();
 			entity.HasIndex(e => new { e.UserId, e.GroceryListId, e.Provider }).IsUnique();
 		});
+	}
+
+	private static void ConfigureJsonProperty<T>(PropertyBuilder<T> property)
+		where T : class, new()
+	{
+		property.HasConversion(
+			value => JsonSerializer.Serialize(value, JsonOptions),
+			value => string.IsNullOrWhiteSpace(value)
+				? new T()
+				: JsonSerializer.Deserialize<T>(value, JsonOptions) ?? new T());
+
+		property.Metadata.SetValueComparer(new ValueComparer<T>(
+			(left, right) => JsonSerializer.Serialize(left, JsonOptions) == JsonSerializer.Serialize(right, JsonOptions),
+			value => JsonSerializer.Serialize(value, JsonOptions).GetHashCode(),
+			value => JsonSerializer.Deserialize<T>(JsonSerializer.Serialize(value, JsonOptions), JsonOptions) ?? new T()));
 	}
 }

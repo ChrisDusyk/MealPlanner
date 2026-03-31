@@ -51,7 +51,7 @@ public class GetAllRecipesTests
 		var client = new Mock<IMongoClient>();
 		client.Setup(c => c.GetDatabase("mealplannerDb", null)).Returns(database.Object);
 
-		var handler = new GetAllRecipesQueryHandler(client.Object);
+		var handler = new GetAllRecipesQueryHandler(TestDbContextFactory.CreateContext());
 		var result = await handler.HandleAsync(new GetAllRecipesQuery("u1"), TestContext.Current.CancellationToken);
 
 		Assert.True(result.IsSuccess);
@@ -74,7 +74,7 @@ public class GetAllRecipesTests
 		client.Setup(c => c.GetDatabase("mealplannerDb", null))
 			.Throws(new InvalidOperationException("db failed"));
 
-		var handler = new GetAllRecipesQueryHandler(client.Object);
+		var handler = new GetAllRecipesQueryHandler(TestDbContextFactory.CreateContext());
 		var result = await handler.HandleAsync(new GetAllRecipesQuery("u1"), TestContext.Current.CancellationToken);
 
 		Assert.False(result.IsSuccess);

@@ -120,7 +120,7 @@ public class SendFriendRequestByEmailTests
 		var client = new Mock<IMongoClient>();
 		client.Setup(c => c.GetDatabase("mealplannerDb", null)).Returns(database.Object);
 
-		var handler = new SendFriendRequestByEmailCommandHandler(client.Object);
+		var handler = new SendFriendRequestByEmailCommandHandler(TestDbContextFactory.CreateContext());
 		var result = await handler.HandleAsync(
 			new SendFriendRequestByEmailCommand("auth0|missing", "pal@example.com"),
 			TestContext.Current.CancellationToken);
@@ -149,7 +149,7 @@ public class SendFriendRequestByEmailTests
 		var client = new Mock<IMongoClient>();
 		client.Setup(c => c.GetDatabase("mealplannerDb", null)).Returns(database.Object);
 
-		var handler = new SendFriendRequestByEmailCommandHandler(client.Object);
+		var handler = new SendFriendRequestByEmailCommandHandler(TestDbContextFactory.CreateContext());
 		var result = await handler.HandleAsync(
 			new SendFriendRequestByEmailCommand("auth0|me", "missing@example.com"),
 			TestContext.Current.CancellationToken);
@@ -180,7 +180,7 @@ public class SendFriendRequestByEmailTests
 		var client = new Mock<IMongoClient>();
 		client.Setup(c => c.GetDatabase("mealplannerDb", null)).Returns(database.Object);
 
-		var handler = new SendFriendRequestByEmailCommandHandler(client.Object);
+		var handler = new SendFriendRequestByEmailCommandHandler(TestDbContextFactory.CreateContext());
 		var result = await handler.HandleAsync(
 			new SendFriendRequestByEmailCommand("auth0|me", "you@example.com"),
 			TestContext.Current.CancellationToken);
@@ -211,7 +211,7 @@ public class SendFriendRequestByEmailTests
 		var client = new Mock<IMongoClient>();
 		client.Setup(c => c.GetDatabase("mealplannerDb", null)).Returns(database.Object);
 
-		var handler = new SendFriendRequestByEmailCommandHandler(client.Object);
+		var handler = new SendFriendRequestByEmailCommandHandler(TestDbContextFactory.CreateContext());
 		var result = await handler.HandleAsync(
 			new SendFriendRequestByEmailCommand("auth0|me", "you@example.com"),
 			TestContext.Current.CancellationToken);
@@ -258,7 +258,7 @@ public class SendFriendRequestByEmailTests
 		var client = new Mock<IMongoClient>();
 		client.Setup(c => c.GetDatabase("mealplannerDb", null)).Returns(database.Object);
 
-		var handler = new SendFriendRequestByEmailCommandHandler(client.Object);
+		var handler = new SendFriendRequestByEmailCommandHandler(TestDbContextFactory.CreateContext());
 		var result = await handler.HandleAsync(
 			new SendFriendRequestByEmailCommand("auth0|me", "you@example.com"),
 			TestContext.Current.CancellationToken);
@@ -301,7 +301,7 @@ public class SendFriendRequestByEmailTests
 		var client = new Mock<IMongoClient>();
 		client.Setup(c => c.GetDatabase("mealplannerDb", null)).Returns(database.Object);
 
-		var handler = new SendFriendRequestByEmailCommandHandler(client.Object);
+		var handler = new SendFriendRequestByEmailCommandHandler(TestDbContextFactory.CreateContext());
 		var result = await handler.HandleAsync(
 			new SendFriendRequestByEmailCommand("auth0|me", "you@example.com"),
 			TestContext.Current.CancellationToken);
@@ -340,7 +340,7 @@ public class SendFriendRequestByEmailTests
 		var client = new Mock<IMongoClient>();
 		client.Setup(c => c.GetDatabase("mealplannerDb", null)).Returns(database.Object);
 
-		var handler = new SendFriendRequestByEmailCommandHandler(client.Object);
+		var handler = new SendFriendRequestByEmailCommandHandler(TestDbContextFactory.CreateContext());
 		var result = await handler.HandleAsync(
 			new SendFriendRequestByEmailCommand("auth0|me", "you@example.com"),
 			TestContext.Current.CancellationToken);

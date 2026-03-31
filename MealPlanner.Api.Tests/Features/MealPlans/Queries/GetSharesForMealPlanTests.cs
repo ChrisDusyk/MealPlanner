@@ -25,7 +25,7 @@ public class GetSharesForMealPlanTests
 		var client = new Mock<IMongoClient>();
 		client.Setup(c => c.GetDatabase("mealplannerDb", null)).Returns(db.Object);
 
-		var handler = new GetSharesForMealPlanQueryHandler(client.Object);
+		var handler = new GetSharesForMealPlanQueryHandler(TestDbContextFactory.CreateContext());
 		var result = await handler.HandleAsync(new GetSharesForMealPlanQuery("owner1", "2026-02-23"), TestContext.Current.CancellationToken);
 
 		Assert.True(result.IsSuccess);
@@ -64,7 +64,7 @@ public class GetSharesForMealPlanTests
 		var client = new Mock<IMongoClient>();
 		client.Setup(c => c.GetDatabase("mealplannerDb", null)).Returns(db.Object);
 
-		var handler = new GetSharesForMealPlanQueryHandler(client.Object);
+		var handler = new GetSharesForMealPlanQueryHandler(TestDbContextFactory.CreateContext());
 		var result = await handler.HandleAsync(new GetSharesForMealPlanQuery("owner1", "2026-02-23"), TestContext.Current.CancellationToken);
 
 		Assert.True(result.IsSuccess);
@@ -79,7 +79,7 @@ public class GetSharesForMealPlanTests
 		var client = new Mock<IMongoClient>();
 		client.Setup(c => c.GetDatabase("mealplannerDb", null)).Throws(new Exception("boom"));
 
-		var handler = new GetSharesForMealPlanQueryHandler(client.Object);
+		var handler = new GetSharesForMealPlanQueryHandler(TestDbContextFactory.CreateContext());
 		var result = await handler.HandleAsync(new GetSharesForMealPlanQuery("owner1", "2026-02-23"), TestContext.Current.CancellationToken);
 
 		Assert.False(result.IsSuccess);

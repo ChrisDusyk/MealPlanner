@@ -52,7 +52,7 @@ public class FindUserByEmailTests
 		var client = new Mock<IMongoClient>();
 		client.Setup(c => c.GetDatabase("mealplannerDb", null)).Returns(database.Object);
 
-		var handler = new FindUserByEmailQueryHandler(client.Object);
+		var handler = new FindUserByEmailQueryHandler(TestDbContextFactory.CreateContext());
 		var result = await handler.HandleAsync(new FindUserByEmailQuery("pat@example.com"), TestContext.Current.CancellationToken);
 
 		Assert.True(result.IsSuccess);
@@ -84,7 +84,7 @@ public class FindUserByEmailTests
 		var client = new Mock<IMongoClient>();
 		client.Setup(c => c.GetDatabase("mealplannerDb", null)).Returns(database.Object);
 
-		var handler = new FindUserByEmailQueryHandler(client.Object);
+		var handler = new FindUserByEmailQueryHandler(TestDbContextFactory.CreateContext());
 		var result = await handler.HandleAsync(new FindUserByEmailQuery("missing@example.com"), TestContext.Current.CancellationToken);
 
 		Assert.False(result.IsSuccess);
@@ -98,7 +98,7 @@ public class FindUserByEmailTests
 		var client = new Mock<IMongoClient>();
 		client.Setup(c => c.GetDatabase("mealplannerDb", null)).Throws(new Exception("boom"));
 
-		var handler = new FindUserByEmailQueryHandler(client.Object);
+		var handler = new FindUserByEmailQueryHandler(TestDbContextFactory.CreateContext());
 		var result = await handler.HandleAsync(new FindUserByEmailQuery("pat@example.com"), TestContext.Current.CancellationToken);
 
 		Assert.False(result.IsSuccess);

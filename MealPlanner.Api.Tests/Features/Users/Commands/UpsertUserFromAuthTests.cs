@@ -92,7 +92,7 @@ public class UpsertUserFromAuthTests
 		var client = new Mock<IMongoClient>();
 		client.Setup(c => c.GetDatabase("mealplannerDb", null)).Returns(database.Object);
 
-		var handler = new UpsertUserFromAuthCommandHandler(client.Object);
+		var handler = new UpsertUserFromAuthCommandHandler(TestDbContextFactory.CreateContext());
 		var command = new UpsertUserFromAuthCommand("auth0|123", "Pat", Option<string>.Some("pat@example.com"));
 		var result = await handler.HandleAsync(command, TestContext.Current.CancellationToken);
 
@@ -127,7 +127,7 @@ public class UpsertUserFromAuthTests
 		var client = new Mock<IMongoClient>();
 		client.Setup(c => c.GetDatabase("mealplannerDb", null)).Returns(database.Object);
 
-		var handler = new UpsertUserFromAuthCommandHandler(client.Object);
+		var handler = new UpsertUserFromAuthCommandHandler(TestDbContextFactory.CreateContext());
 		var result = await handler.HandleAsync(
 			new UpsertUserFromAuthCommand("auth0|123", "Pat", Option<string>.None()),
 			TestContext.Current.CancellationToken);
@@ -162,7 +162,7 @@ public class UpsertUserFromAuthTests
 		var client = new Mock<IMongoClient>();
 		client.Setup(c => c.GetDatabase("mealplannerDb", null)).Returns(database.Object);
 
-		var handler = new UpsertUserFromAuthCommandHandler(client.Object);
+		var handler = new UpsertUserFromAuthCommandHandler(TestDbContextFactory.CreateContext());
 		var result = await handler.HandleAsync(
 			new UpsertUserFromAuthCommand("auth0|123", "Pat", Option<string>.Some("pat@example.com")),
 			TestContext.Current.CancellationToken);
@@ -209,7 +209,7 @@ public class UpsertUserFromAuthTests
 		var client = new Mock<IMongoClient>();
 		client.Setup(c => c.GetDatabase("mealplannerDb", null)).Returns(database.Object);
 
-		var handler = new UpsertUserFromAuthCommandHandler(client.Object);
+		var handler = new UpsertUserFromAuthCommandHandler(TestDbContextFactory.CreateContext());
 		var result = await handler.HandleAsync(
 			new UpsertUserFromAuthCommand("auth0|123", "Pat", Option<string>.Some("pat@example.com")),
 			TestContext.Current.CancellationToken);
@@ -253,7 +253,7 @@ public class UpsertUserFromAuthTests
 		var client = new Mock<IMongoClient>();
 		client.Setup(c => c.GetDatabase("mealplannerDb", null)).Returns(database.Object);
 
-		var handler = new UpsertUserFromAuthCommandHandler(client.Object);
+		var handler = new UpsertUserFromAuthCommandHandler(TestDbContextFactory.CreateContext());
 		var result = await handler.HandleAsync(
 			new UpsertUserFromAuthCommand("auth0|123", "Pat", Option<string>.Some("pat@example.com")),
 			TestContext.Current.CancellationToken);

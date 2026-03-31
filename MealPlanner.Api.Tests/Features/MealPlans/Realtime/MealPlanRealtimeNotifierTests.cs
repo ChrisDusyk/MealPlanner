@@ -61,7 +61,7 @@ public class MealPlanRealtimeNotifierTests
 		hubContext.SetupGet(h => h.Clients).Returns(hubClients.Object);
 
 		var logger = new Mock<ILogger<MealPlanRealtimeNotifier>>();
-		var notifier = new MealPlanRealtimeNotifier(mongoClient.Object, hubContext.Object, logger.Object);
+		var notifier = new MealPlanRealtimeNotifier(TestDbContextFactory.CreateContext(), hubContext.Object, logger.Object);
 
 		var updatedPlan = new MealPlan(
 			Id: "plan-1",

@@ -37,7 +37,7 @@ public class UpdateDaySlotTests
 		var client = new Mock<IMongoClient>();
 		client.Setup(c => c.GetDatabase("mealplannerDb", null)).Returns(db.Object);
 
-		var handler = new UpdateDaySlotCommandHandler(client.Object);
+		var handler = new UpdateDaySlotCommandHandler(TestDbContextFactory.CreateContext());
 		var result = await handler.HandleAsync(
 			new UpdateDaySlotCommand("u1", new DateOnly(2026, 2, 23), DayOfWeek.Monday, MealCategory.Breakfast, [new MealSlotItem(Option<string>.Some("r1"), "Oats", 4)]),
 			TestContext.Current.CancellationToken);
@@ -64,7 +64,7 @@ public class UpdateDaySlotTests
 		var client = new Mock<IMongoClient>();
 		client.Setup(c => c.GetDatabase("mealplannerDb", null)).Returns(db.Object);
 
-		var handler = new UpdateDaySlotCommandHandler(client.Object);
+		var handler = new UpdateDaySlotCommandHandler(TestDbContextFactory.CreateContext());
 		var result = await handler.HandleAsync(
 			new UpdateDaySlotCommand("u1", new DateOnly(2026, 2, 23), DayOfWeek.Monday, MealCategory.Breakfast, []),
 			TestContext.Current.CancellationToken);
@@ -96,7 +96,7 @@ public class UpdateDaySlotTests
 		var client = new Mock<IMongoClient>();
 		client.Setup(c => c.GetDatabase("mealplannerDb", null)).Throws(new Exception("boom"));
 
-		var handler = new UpdateDaySlotCommandHandler(client.Object);
+		var handler = new UpdateDaySlotCommandHandler(TestDbContextFactory.CreateContext());
 		var result = await handler.HandleAsync(new UpdateDaySlotCommand("u1", new DateOnly(2026, 2, 23), DayOfWeek.Monday, MealCategory.Breakfast, []), TestContext.Current.CancellationToken);
 
 		Assert.False(result.IsSuccess);

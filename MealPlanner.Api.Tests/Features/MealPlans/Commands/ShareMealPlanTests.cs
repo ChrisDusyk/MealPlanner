@@ -102,7 +102,7 @@ public class ShareMealPlanTests
 		var client = new Mock<IMongoClient>();
 		client.Setup(c => c.GetDatabase("mealplannerDb", null)).Returns(db.Object);
 
-		var handler = new ShareMealPlanCommandHandler(client.Object);
+		var handler = new ShareMealPlanCommandHandler(TestDbContextFactory.CreateContext());
 		var result = await handler.HandleAsync(new ShareMealPlanCommand("owner1", "a@example.com", "2026-02-23", SharePermission.ReadOnly), TestContext.Current.CancellationToken);
 
 		Assert.False(result.IsSuccess);
@@ -121,7 +121,7 @@ public class ShareMealPlanTests
 		var client = new Mock<IMongoClient>();
 		client.Setup(c => c.GetDatabase("mealplannerDb", null)).Returns(db.Object);
 
-		var handler = new ShareMealPlanCommandHandler(client.Object);
+		var handler = new ShareMealPlanCommandHandler(TestDbContextFactory.CreateContext());
 		var result = await handler.HandleAsync(new ShareMealPlanCommand("owner1", "owner@example.com", "2026-02-23", SharePermission.ReadOnly), TestContext.Current.CancellationToken);
 
 		Assert.False(result.IsSuccess);
@@ -150,7 +150,7 @@ public class ShareMealPlanTests
 		var client = new Mock<IMongoClient>();
 		client.Setup(c => c.GetDatabase("mealplannerDb", null)).Returns(db.Object);
 
-		var handler = new ShareMealPlanCommandHandler(client.Object);
+		var handler = new ShareMealPlanCommandHandler(TestDbContextFactory.CreateContext());
 		var result = await handler.HandleAsync(new ShareMealPlanCommand("owner1", "recipient@example.com", "2026-02-23", SharePermission.ReadOnly), TestContext.Current.CancellationToken);
 
 		Assert.False(result.IsSuccess);
@@ -172,7 +172,7 @@ public class ShareMealPlanTests
 		var client = new Mock<IMongoClient>();
 		client.Setup(c => c.GetDatabase("mealplannerDb", null)).Returns(db.Object);
 
-		var handler = new ShareMealPlanCommandHandler(client.Object);
+		var handler = new ShareMealPlanCommandHandler(TestDbContextFactory.CreateContext());
 		var result = await handler.HandleAsync(new ShareMealPlanCommand("owner1", "recipient@example.com", "2026-02-23", SharePermission.ReadOnly), TestContext.Current.CancellationToken);
 
 		Assert.False(result.IsSuccess);
@@ -197,7 +197,7 @@ public class ShareMealPlanTests
 		var client = new Mock<IMongoClient>();
 		client.Setup(c => c.GetDatabase("mealplannerDb", null)).Returns(db.Object);
 
-		var handler = new ShareMealPlanCommandHandler(client.Object);
+		var handler = new ShareMealPlanCommandHandler(TestDbContextFactory.CreateContext());
 		var result = await handler.HandleAsync(new ShareMealPlanCommand("owner1", "recipient@example.com", "2026-02-23", SharePermission.ReadWrite), TestContext.Current.CancellationToken);
 
 		Assert.True(result.IsSuccess);
@@ -213,7 +213,7 @@ public class ShareMealPlanTests
 		var client = new Mock<IMongoClient>();
 		client.Setup(c => c.GetDatabase("mealplannerDb", null)).Throws(new Exception("boom"));
 
-		var handler = new ShareMealPlanCommandHandler(client.Object);
+		var handler = new ShareMealPlanCommandHandler(TestDbContextFactory.CreateContext());
 		var result = await handler.HandleAsync(new ShareMealPlanCommand("owner1", "recipient@example.com", "2026-02-23", SharePermission.ReadOnly), TestContext.Current.CancellationToken);
 
 		Assert.False(result.IsSuccess);
@@ -250,7 +250,7 @@ public class ShareMealPlanTests
 		var client = new Mock<IMongoClient>();
 		client.Setup(c => c.GetDatabase("mealplannerDb", null)).Returns(db.Object);
 
-		var handler = new ShareMealPlanCommandHandler(client.Object);
+		var handler = new ShareMealPlanCommandHandler(TestDbContextFactory.CreateContext());
 		var result = await handler.HandleAsync(new ShareMealPlanCommand("owner1", "recipient@example.com", "2026-02-23", SharePermission.ReadOnly), TestContext.Current.CancellationToken);
 
 		Assert.True(result.IsSuccess);
@@ -276,7 +276,7 @@ public class ShareMealPlanTests
 		var client = new Mock<IMongoClient>();
 		client.Setup(c => c.GetDatabase("mealplannerDb", null)).Returns(db.Object);
 
-		var handler = new ShareMealPlanCommandHandler(client.Object);
+		var handler = new ShareMealPlanCommandHandler(TestDbContextFactory.CreateContext());
 		var result = await handler.HandleAsync(new ShareMealPlanCommand("owner1", "recipient@example.com", "2026-02-23", SharePermission.ReadOnly), TestContext.Current.CancellationToken);
 
 		Assert.False(result.IsSuccess);

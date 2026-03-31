@@ -22,7 +22,7 @@ public class ToggleGroceryListItemTests
 		var client = new Mock<IMongoClient>();
 		client.Setup(c => c.GetDatabase("mealplannerDb", null)).Returns(db.Object);
 
-		var handler = new ToggleGroceryListItemCommandHandler(client.Object);
+		var handler = new ToggleGroceryListItemCommandHandler(TestDbContextFactory.CreateContext());
 		var result = await handler.HandleAsync(new ToggleGroceryListItemCommand("u1", new DateOnly(2026, 2, 23), 0), TestContext.Current.CancellationToken);
 
 		Assert.False(result.IsSuccess);
@@ -43,7 +43,7 @@ public class ToggleGroceryListItemTests
 		var client = new Mock<IMongoClient>();
 		client.Setup(c => c.GetDatabase("mealplannerDb", null)).Returns(db.Object);
 
-		var handler = new ToggleGroceryListItemCommandHandler(client.Object);
+		var handler = new ToggleGroceryListItemCommandHandler(TestDbContextFactory.CreateContext());
 		var result = await handler.HandleAsync(new ToggleGroceryListItemCommand("u1", new DateOnly(2026, 2, 23), 5), TestContext.Current.CancellationToken);
 
 		Assert.False(result.IsSuccess);
@@ -77,7 +77,7 @@ public class ToggleGroceryListItemTests
 		var client = new Mock<IMongoClient>();
 		client.Setup(c => c.GetDatabase("mealplannerDb", null)).Returns(db.Object);
 
-		var handler = new ToggleGroceryListItemCommandHandler(client.Object);
+		var handler = new ToggleGroceryListItemCommandHandler(TestDbContextFactory.CreateContext());
 		var result = await handler.HandleAsync(new ToggleGroceryListItemCommand("u1", new DateOnly(2026, 2, 23), 0), TestContext.Current.CancellationToken);
 
 		Assert.True(result.IsSuccess);
@@ -91,7 +91,7 @@ public class ToggleGroceryListItemTests
 		var client = new Mock<IMongoClient>();
 		client.Setup(c => c.GetDatabase("mealplannerDb", null)).Throws(new Exception("boom"));
 
-		var handler = new ToggleGroceryListItemCommandHandler(client.Object);
+		var handler = new ToggleGroceryListItemCommandHandler(TestDbContextFactory.CreateContext());
 		var result = await handler.HandleAsync(new ToggleGroceryListItemCommand("u1", new DateOnly(2026, 2, 23), 0), TestContext.Current.CancellationToken);
 
 		Assert.False(result.IsSuccess);

@@ -57,7 +57,7 @@ public class UpdateRecipeTests
 		var client = new Mock<IMongoClient>();
 		client.Setup(c => c.GetDatabase("mealplannerDb", null)).Returns(database.Object);
 
-		var handler = new UpdateRecipeCommandHandler(client.Object);
+		var handler = new UpdateRecipeCommandHandler(TestDbContextFactory.CreateContext());
 		var command = new UpdateRecipeCommand("missing", "u1", "Updated", "desc", 1, Option<string>.None(), []);
 		var result = await handler.HandleAsync(command, TestContext.Current.CancellationToken);
 
@@ -99,7 +99,7 @@ public class UpdateRecipeTests
 		var client = new Mock<IMongoClient>();
 		client.Setup(c => c.GetDatabase("mealplannerDb", null)).Returns(database.Object);
 
-		var handler = new UpdateRecipeCommandHandler(client.Object);
+		var handler = new UpdateRecipeCommandHandler(TestDbContextFactory.CreateContext());
 		var command = new UpdateRecipeCommand("r1", "u1", "Updated", "desc", 1, Option<string>.None(), []);
 		var result = await handler.HandleAsync(command, TestContext.Current.CancellationToken);
 
@@ -149,7 +149,7 @@ public class UpdateRecipeTests
 		var client = new Mock<IMongoClient>();
 		client.Setup(c => c.GetDatabase("mealplannerDb", null)).Returns(database.Object);
 
-		var handler = new UpdateRecipeCommandHandler(client.Object);
+		var handler = new UpdateRecipeCommandHandler(TestDbContextFactory.CreateContext());
 		var command = new UpdateRecipeCommand(
 			"r1",
 			"u1",
@@ -182,7 +182,7 @@ public class UpdateRecipeTests
 		client.Setup(c => c.GetDatabase("mealplannerDb", null))
 			.Throws(new Exception("boom"));
 
-		var handler = new UpdateRecipeCommandHandler(client.Object);
+		var handler = new UpdateRecipeCommandHandler(TestDbContextFactory.CreateContext());
 		var command = new UpdateRecipeCommand("r1", "u1", "Name", "desc", 1, Option<string>.None(), []);
 		var result = await handler.HandleAsync(command, TestContext.Current.CancellationToken);
 

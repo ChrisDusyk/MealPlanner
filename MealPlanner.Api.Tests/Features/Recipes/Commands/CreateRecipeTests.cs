@@ -53,7 +53,7 @@ public class CreateRecipeTests
 		var client = new Mock<IMongoClient>();
 		client.Setup(c => c.GetDatabase("mealplannerDb", null)).Returns(database.Object);
 
-		var handler = new CreateRecipeCommandHandler(client.Object);
+		var handler = new CreateRecipeCommandHandler(TestDbContextFactory.CreateContext());
 		var command = new CreateRecipeCommand(
 			"u1",
 			"Chili",
@@ -96,7 +96,7 @@ public class CreateRecipeTests
 		var client = new Mock<IMongoClient>();
 		client.Setup(c => c.GetDatabase("mealplannerDb", null)).Returns(database.Object);
 
-		var handler = new CreateRecipeCommandHandler(client.Object);
+		var handler = new CreateRecipeCommandHandler(TestDbContextFactory.CreateContext());
 		var command = new CreateRecipeCommand("u1", "Chili", "Spicy", 1, Option<string>.None(), []);
 		var result = await handler.HandleAsync(command, TestContext.Current.CancellationToken);
 

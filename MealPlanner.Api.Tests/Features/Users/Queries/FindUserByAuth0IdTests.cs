@@ -52,7 +52,7 @@ public class FindUserByAuth0IdTests
 		var client = new Mock<IMongoClient>();
 		client.Setup(c => c.GetDatabase("mealplannerDb", null)).Returns(database.Object);
 
-		var handler = new FindUserByAuth0IdQueryHandler(client.Object);
+		var handler = new FindUserByAuth0IdQueryHandler(TestDbContextFactory.CreateContext());
 		var result = await handler.HandleAsync(new FindUserByAuth0IdQuery("auth0|123"),
 			TestContext.Current.CancellationToken);
 
@@ -85,7 +85,7 @@ public class FindUserByAuth0IdTests
 		var client = new Mock<IMongoClient>();
 		client.Setup(c => c.GetDatabase("mealplannerDb", null)).Returns(database.Object);
 
-		var handler = new FindUserByAuth0IdQueryHandler(client.Object);
+		var handler = new FindUserByAuth0IdQueryHandler(TestDbContextFactory.CreateContext());
 		var result = await handler.HandleAsync(new FindUserByAuth0IdQuery("auth0|missing"),
 			TestContext.Current.CancellationToken);
 
@@ -100,7 +100,7 @@ public class FindUserByAuth0IdTests
 		var client = new Mock<IMongoClient>();
 		client.Setup(c => c.GetDatabase("mealplannerDb", null)).Throws(new Exception("boom"));
 
-		var handler = new FindUserByAuth0IdQueryHandler(client.Object);
+		var handler = new FindUserByAuth0IdQueryHandler(TestDbContextFactory.CreateContext());
 		var result = await handler.HandleAsync(new FindUserByAuth0IdQuery("auth0|123"),
 			TestContext.Current.CancellationToken);
 

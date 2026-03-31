@@ -45,7 +45,7 @@ public class CopyCategoryTests
 		var client = new Mock<IMongoClient>();
 		client.Setup(c => c.GetDatabase("mealplannerDb", null)).Returns(db.Object);
 
-		var handler = new CopyCategoryCommandHandler(client.Object);
+		var handler = new CopyCategoryCommandHandler(TestDbContextFactory.CreateContext());
 		var result = await handler.HandleAsync(new CopyCategoryCommand("u1", new DateOnly(2026, 2, 23), DayOfWeek.Monday, MealCategory.Breakfast, [DayOfWeek.Tuesday]), TestContext.Current.CancellationToken);
 
 		Assert.False(result.IsSuccess);
@@ -69,7 +69,7 @@ public class CopyCategoryTests
 		var client = new Mock<IMongoClient>();
 		client.Setup(c => c.GetDatabase("mealplannerDb", null)).Returns(db.Object);
 
-		var handler = new CopyCategoryCommandHandler(client.Object);
+		var handler = new CopyCategoryCommandHandler(TestDbContextFactory.CreateContext());
 		var result = await handler.HandleAsync(new CopyCategoryCommand("u1", new DateOnly(2026, 2, 23), DayOfWeek.Monday, MealCategory.Breakfast, [DayOfWeek.Tuesday]), TestContext.Current.CancellationToken);
 
 		Assert.True(result.IsSuccess);
@@ -85,7 +85,7 @@ public class CopyCategoryTests
 		var client = new Mock<IMongoClient>();
 		client.Setup(c => c.GetDatabase("mealplannerDb", null)).Throws(new Exception("boom"));
 
-		var handler = new CopyCategoryCommandHandler(client.Object);
+		var handler = new CopyCategoryCommandHandler(TestDbContextFactory.CreateContext());
 		var result = await handler.HandleAsync(new CopyCategoryCommand("u1", new DateOnly(2026, 2, 23), DayOfWeek.Monday, MealCategory.Breakfast, [DayOfWeek.Tuesday]), TestContext.Current.CancellationToken);
 
 		Assert.False(result.IsSuccess);

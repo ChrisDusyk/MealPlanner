@@ -50,7 +50,7 @@ public class GetOutgoingFriendRequestsTests
 		var client = new Mock<IMongoClient>();
 		client.Setup(c => c.GetDatabase("mealplannerDb", null)).Returns(database.Object);
 
-		var handler = new GetOutgoingFriendRequestsQueryHandler(client.Object);
+		var handler = new GetOutgoingFriendRequestsQueryHandler(TestDbContextFactory.CreateContext());
 		var result = await handler.HandleAsync(new GetOutgoingFriendRequestsQuery("auth0|me"), TestContext.Current.CancellationToken);
 
 		Assert.True(result.IsSuccess);

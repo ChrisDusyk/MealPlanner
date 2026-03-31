@@ -22,7 +22,7 @@ public class PromotePantryStapleItemTests
 		var client = new Mock<IMongoClient>();
 		client.Setup(c => c.GetDatabase("mealplannerDb", null)).Returns(db.Object);
 
-		var handler = new PromotePantryStapleItemCommandHandler(client.Object);
+		var handler = new PromotePantryStapleItemCommandHandler(TestDbContextFactory.CreateContext());
 		var result = await handler.HandleAsync(new PromotePantryStapleItemCommand("u1", new DateOnly(2026, 2, 23), 0), TestContext.Current.CancellationToken);
 
 		Assert.False(result.IsSuccess);
@@ -53,7 +53,7 @@ public class PromotePantryStapleItemTests
 		var client = new Mock<IMongoClient>();
 		client.Setup(c => c.GetDatabase("mealplannerDb", null)).Returns(db.Object);
 
-		var handler = new PromotePantryStapleItemCommandHandler(client.Object);
+		var handler = new PromotePantryStapleItemCommandHandler(TestDbContextFactory.CreateContext());
 		var result = await handler.HandleAsync(new PromotePantryStapleItemCommand("u1", new DateOnly(2026, 2, 23), 5), TestContext.Current.CancellationToken);
 
 		Assert.False(result.IsSuccess);
@@ -84,7 +84,7 @@ public class PromotePantryStapleItemTests
 		var client = new Mock<IMongoClient>();
 		client.Setup(c => c.GetDatabase("mealplannerDb", null)).Returns(db.Object);
 
-		var handler = new PromotePantryStapleItemCommandHandler(client.Object);
+		var handler = new PromotePantryStapleItemCommandHandler(TestDbContextFactory.CreateContext());
 		var result = await handler.HandleAsync(new PromotePantryStapleItemCommand("u1", new DateOnly(2026, 2, 23), -1), TestContext.Current.CancellationToken);
 
 		Assert.False(result.IsSuccess);
@@ -123,7 +123,7 @@ public class PromotePantryStapleItemTests
 		var client = new Mock<IMongoClient>();
 		client.Setup(c => c.GetDatabase("mealplannerDb", null)).Returns(db.Object);
 
-		var handler = new PromotePantryStapleItemCommandHandler(client.Object);
+		var handler = new PromotePantryStapleItemCommandHandler(TestDbContextFactory.CreateContext());
 		var result = await handler.HandleAsync(new PromotePantryStapleItemCommand("u1", new DateOnly(2026, 2, 23), 0), TestContext.Current.CancellationToken);
 
 		Assert.True(result.IsSuccess);
@@ -147,7 +147,7 @@ public class PromotePantryStapleItemTests
 		var client = new Mock<IMongoClient>();
 		client.Setup(c => c.GetDatabase("mealplannerDb", null)).Throws(new Exception("boom"));
 
-		var handler = new PromotePantryStapleItemCommandHandler(client.Object);
+		var handler = new PromotePantryStapleItemCommandHandler(TestDbContextFactory.CreateContext());
 		var result = await handler.HandleAsync(new PromotePantryStapleItemCommand("u1", new DateOnly(2026, 2, 23), 0), TestContext.Current.CancellationToken);
 
 		Assert.False(result.IsSuccess);

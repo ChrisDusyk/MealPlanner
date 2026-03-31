@@ -46,7 +46,7 @@ public class GetMealPlanTests
 		var client = new Mock<IMongoClient>();
 		client.Setup(c => c.GetDatabase("mealplannerDb", null)).Returns(db.Object);
 
-		var handler = new GetMealPlanQueryHandler(client.Object);
+		var handler = new GetMealPlanQueryHandler(TestDbContextFactory.CreateContext());
 		var result = await handler.HandleAsync(new GetMealPlanQuery("u1", new DateOnly(2026, 2, 25)), TestContext.Current.CancellationToken);
 
 		Assert.True(result.IsSuccess);
@@ -72,7 +72,7 @@ public class GetMealPlanTests
 		var client = new Mock<IMongoClient>();
 		client.Setup(c => c.GetDatabase("mealplannerDb", null)).Returns(db.Object);
 
-		var handler = new GetMealPlanQueryHandler(client.Object);
+		var handler = new GetMealPlanQueryHandler(TestDbContextFactory.CreateContext());
 		var result = await handler.HandleAsync(new GetMealPlanQuery("u1", new DateOnly(2026, 2, 26)), TestContext.Current.CancellationToken);
 
 		Assert.True(result.IsSuccess);
@@ -143,7 +143,7 @@ public class GetMealPlanTests
 		var client = new Mock<IMongoClient>();
 		client.Setup(c => c.GetDatabase("mealplannerDb", null)).Returns(db.Object);
 
-		var handler = new GetMealPlanQueryHandler(client.Object);
+		var handler = new GetMealPlanQueryHandler(TestDbContextFactory.CreateContext());
 		var result = await handler.HandleAsync(new GetMealPlanQuery("u1", new DateOnly(2026, 2, 26)), TestContext.Current.CancellationToken);
 
 		Assert.True(result.IsSuccess);
@@ -159,7 +159,7 @@ public class GetMealPlanTests
 		var client = new Mock<IMongoClient>();
 		client.Setup(c => c.GetDatabase("mealplannerDb", null)).Throws(new Exception("boom"));
 
-		var handler = new GetMealPlanQueryHandler(client.Object);
+		var handler = new GetMealPlanQueryHandler(TestDbContextFactory.CreateContext());
 		var result = await handler.HandleAsync(new GetMealPlanQuery("u1", new DateOnly(2026, 2, 23)), TestContext.Current.CancellationToken);
 
 		Assert.False(result.IsSuccess);

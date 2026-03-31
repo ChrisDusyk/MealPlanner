@@ -50,7 +50,7 @@ public class UpdateFriendAutoSharePreferencesTests
 		var client = new Mock<IMongoClient>();
 		client.Setup(c => c.GetDatabase("mealplannerDb", null)).Returns(database.Object);
 
-		var handler = new UpdateFriendAutoSharePreferencesCommandHandler(client.Object);
+		var handler = new UpdateFriendAutoSharePreferencesCommandHandler(TestDbContextFactory.CreateContext());
 		var result = await handler.HandleAsync(
 			new UpdateFriendAutoSharePreferencesCommand("auth0|me", "auth0|friend", true, false),
 			TestContext.Current.CancellationToken);
@@ -97,7 +97,7 @@ public class UpdateFriendAutoSharePreferencesTests
 		var client = new Mock<IMongoClient>();
 		client.Setup(c => c.GetDatabase("mealplannerDb", null)).Returns(database.Object);
 
-		var handler = new UpdateFriendAutoSharePreferencesCommandHandler(client.Object);
+		var handler = new UpdateFriendAutoSharePreferencesCommandHandler(TestDbContextFactory.CreateContext());
 		var result = await handler.HandleAsync(
 			new UpdateFriendAutoSharePreferencesCommand("auth0|me", "auth0|friend", true, true),
 			TestContext.Current.CancellationToken);
@@ -222,7 +222,7 @@ public class UpdateFriendAutoSharePreferencesTests
 		var client = new Mock<IMongoClient>();
 		client.Setup(c => c.GetDatabase("mealplannerDb", null)).Returns(database.Object);
 
-		var handler = new UpdateFriendAutoSharePreferencesCommandHandler(client.Object);
+		var handler = new UpdateFriendAutoSharePreferencesCommandHandler(TestDbContextFactory.CreateContext());
 		var result = await handler.HandleAsync(
 			new UpdateFriendAutoSharePreferencesCommand("auth0|me", "auth0|friend", true, true),
 			TestContext.Current.CancellationToken);

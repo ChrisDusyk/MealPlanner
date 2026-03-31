@@ -39,7 +39,7 @@ public class AddCustomItemTests
 		var client = new Mock<IMongoClient>();
 		client.Setup(c => c.GetDatabase("mealplannerDb", null)).Returns(db.Object);
 
-		var handler = new AddCustomItemCommandHandler(client.Object);
+		var handler = new AddCustomItemCommandHandler(TestDbContextFactory.CreateContext());
 		var result = await handler.HandleAsync(new AddCustomItemCommand("u1", new DateOnly(2026, 2, 23), "Milk"),
 			TestContext.Current.CancellationToken);
 
@@ -81,7 +81,7 @@ public class AddCustomItemTests
 		var client = new Mock<IMongoClient>();
 		client.Setup(c => c.GetDatabase("mealplannerDb", null)).Returns(db.Object);
 
-		var handler = new AddCustomItemCommandHandler(client.Object);
+		var handler = new AddCustomItemCommandHandler(TestDbContextFactory.CreateContext());
 		var result = await handler.HandleAsync(new AddCustomItemCommand("u1", new DateOnly(2026, 2, 23), "  Milk  "),
 			TestContext.Current.CancellationToken);
 
@@ -96,7 +96,7 @@ public class AddCustomItemTests
 		var client = new Mock<IMongoClient>();
 		client.Setup(c => c.GetDatabase("mealplannerDb", null)).Throws(new Exception("boom"));
 
-		var handler = new AddCustomItemCommandHandler(client.Object);
+		var handler = new AddCustomItemCommandHandler(TestDbContextFactory.CreateContext());
 		var result = await handler.HandleAsync(new AddCustomItemCommand("u1", new DateOnly(2026, 2, 23), "Milk"),
 			TestContext.Current.CancellationToken);
 
@@ -166,7 +166,7 @@ public class AddCustomItemTests
 		var client = new Mock<IMongoClient>();
 		client.Setup(c => c.GetDatabase("mealplannerDb", null)).Returns(db.Object);
 
-		var handler = new AddCustomItemCommandHandler(client.Object);
+		var handler = new AddCustomItemCommandHandler(TestDbContextFactory.CreateContext());
 		var result = await handler.HandleAsync(
 			new AddCustomItemCommand("guest1", new DateOnly(2026, 2, 23), "Bread", "owner1"),
 			TestContext.Current.CancellationToken);
@@ -213,7 +213,7 @@ public class AddCustomItemTests
 		var client = new Mock<IMongoClient>();
 		client.Setup(c => c.GetDatabase("mealplannerDb", null)).Returns(db.Object);
 
-		var handler = new AddCustomItemCommandHandler(client.Object);
+		var handler = new AddCustomItemCommandHandler(TestDbContextFactory.CreateContext());
 		var result = await handler.HandleAsync(
 			new AddCustomItemCommand("guest1", new DateOnly(2026, 2, 23), "Bread", "owner1"),
 			TestContext.Current.CancellationToken);

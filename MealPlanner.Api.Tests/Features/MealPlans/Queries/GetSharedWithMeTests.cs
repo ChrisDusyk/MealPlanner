@@ -37,7 +37,7 @@ public class GetSharedWithMeTests
 		var client = new Mock<IMongoClient>();
 		client.Setup(c => c.GetDatabase("mealplannerDb", null)).Returns(db.Object);
 
-		var handler = new GetSharedWithMeQueryHandler(client.Object);
+		var handler = new GetSharedWithMeQueryHandler(TestDbContextFactory.CreateContext());
 		var result = await handler.HandleAsync(new GetSharedWithMeQuery("recipient1", "2026-02-23"), TestContext.Current.CancellationToken);
 
 		Assert.True(result.IsSuccess);
@@ -82,7 +82,7 @@ public class GetSharedWithMeTests
 		var client = new Mock<IMongoClient>();
 		client.Setup(c => c.GetDatabase("mealplannerDb", null)).Returns(db.Object);
 
-		var handler = new GetSharedWithMeQueryHandler(client.Object);
+		var handler = new GetSharedWithMeQueryHandler(TestDbContextFactory.CreateContext());
 		var result = await handler.HandleAsync(new GetSharedWithMeQuery("recipient1", "2026-02-23"), TestContext.Current.CancellationToken);
 
 		Assert.True(result.IsSuccess);
@@ -97,7 +97,7 @@ public class GetSharedWithMeTests
 		var client = new Mock<IMongoClient>();
 		client.Setup(c => c.GetDatabase("mealplannerDb", null)).Throws(new Exception("boom"));
 
-		var handler = new GetSharedWithMeQueryHandler(client.Object);
+		var handler = new GetSharedWithMeQueryHandler(TestDbContextFactory.CreateContext());
 		var result = await handler.HandleAsync(new GetSharedWithMeQuery("recipient1", "2026-02-23"), TestContext.Current.CancellationToken);
 
 		Assert.False(result.IsSuccess);

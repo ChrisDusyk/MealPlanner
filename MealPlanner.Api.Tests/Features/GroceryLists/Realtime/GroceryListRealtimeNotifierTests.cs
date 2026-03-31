@@ -60,7 +60,7 @@ public class GroceryListRealtimeNotifierTests
 		hubContext.SetupGet(h => h.Clients).Returns(hubClients.Object);
 
 		var logger = new Mock<ILogger<GroceryListRealtimeNotifier>>();
-		var notifier = new GroceryListRealtimeNotifier(mongoClient.Object, hubContext.Object, logger.Object);
+		var notifier = new GroceryListRealtimeNotifier(TestDbContextFactory.CreateContext(), hubContext.Object, logger.Object);
 
 		var updatedList = new GroceryList(
 			Id: "list-1",

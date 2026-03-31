@@ -61,7 +61,7 @@ public class UpdateCurrentUserNameTests
 		var client = new Mock<IMongoClient>();
 		client.Setup(c => c.GetDatabase("mealplannerDb", null)).Returns(database.Object);
 
-		var handler = new UpdateCurrentUserNameCommandHandler(client.Object);
+		var handler = new UpdateCurrentUserNameCommandHandler(TestDbContextFactory.CreateContext());
 		var result = await handler.HandleAsync(
 			new UpdateCurrentUserNameCommand("auth0|123", "Updated Name"),
 			TestContext.Current.CancellationToken);
@@ -89,7 +89,7 @@ public class UpdateCurrentUserNameTests
 		var client = new Mock<IMongoClient>();
 		client.Setup(c => c.GetDatabase("mealplannerDb", null)).Returns(database.Object);
 
-		var handler = new UpdateCurrentUserNameCommandHandler(client.Object);
+		var handler = new UpdateCurrentUserNameCommandHandler(TestDbContextFactory.CreateContext());
 		var result = await handler.HandleAsync(
 			new UpdateCurrentUserNameCommand("auth0|123", "Updated Name"),
 			TestContext.Current.CancellationToken);
@@ -116,7 +116,7 @@ public class UpdateCurrentUserNameTests
 		var client = new Mock<IMongoClient>();
 		client.Setup(c => c.GetDatabase("mealplannerDb", null)).Returns(database.Object);
 
-		var handler = new UpdateCurrentUserNameCommandHandler(client.Object);
+		var handler = new UpdateCurrentUserNameCommandHandler(TestDbContextFactory.CreateContext());
 		var result = await handler.HandleAsync(
 			new UpdateCurrentUserNameCommand("auth0|123", "Updated Name"),
 			TestContext.Current.CancellationToken);

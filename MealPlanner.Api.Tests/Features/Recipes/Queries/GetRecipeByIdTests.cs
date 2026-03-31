@@ -47,7 +47,7 @@ public class GetRecipeByIdTests
 		var client = new Mock<IMongoClient>();
 		client.Setup(c => c.GetDatabase("mealplannerDb", null)).Returns(database.Object);
 
-		var handler = new GetRecipeByIdQueryHandler(client.Object);
+		var handler = new GetRecipeByIdQueryHandler(TestDbContextFactory.CreateContext());
 		var result = await handler.HandleAsync(new GetRecipeByIdQuery("r1", "u1"), TestContext.Current.CancellationToken);
 
 		Assert.True(result.IsSuccess);
@@ -81,7 +81,7 @@ public class GetRecipeByIdTests
 		var client = new Mock<IMongoClient>();
 		client.Setup(c => c.GetDatabase("mealplannerDb", null)).Returns(database.Object);
 
-		var handler = new GetRecipeByIdQueryHandler(client.Object);
+		var handler = new GetRecipeByIdQueryHandler(TestDbContextFactory.CreateContext());
 		var result = await handler.HandleAsync(new GetRecipeByIdQuery("missing", "u1"), TestContext.Current.CancellationToken);
 
 		Assert.False(result.IsSuccess);
@@ -120,7 +120,7 @@ public class GetRecipeByIdTests
 		var client = new Mock<IMongoClient>();
 		client.Setup(c => c.GetDatabase("mealplannerDb", null)).Returns(database.Object);
 
-		var handler = new GetRecipeByIdQueryHandler(client.Object);
+		var handler = new GetRecipeByIdQueryHandler(TestDbContextFactory.CreateContext());
 		var result = await handler.HandleAsync(new GetRecipeByIdQuery("r1", "u1"), TestContext.Current.CancellationToken);
 
 		Assert.False(result.IsSuccess);
@@ -135,7 +135,7 @@ public class GetRecipeByIdTests
 		client.Setup(c => c.GetDatabase("mealplannerDb", null))
 			.Throws(new Exception("boom"));
 
-		var handler = new GetRecipeByIdQueryHandler(client.Object);
+		var handler = new GetRecipeByIdQueryHandler(TestDbContextFactory.CreateContext());
 		var result = await handler.HandleAsync(new GetRecipeByIdQuery("r1", "u1"), TestContext.Current.CancellationToken);
 
 		Assert.False(result.IsSuccess);
