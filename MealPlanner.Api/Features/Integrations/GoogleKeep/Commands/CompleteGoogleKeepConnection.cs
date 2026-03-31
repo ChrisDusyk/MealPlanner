@@ -1,8 +1,10 @@
+using MealPlanner.Api.Data;
+using MealPlanner.Api.Data.Entities;
 using MealPlanner.Api.Features.Integrations.GoogleKeep.Models;
 using MealPlanner.Api.Features.Integrations.GoogleKeep.Queries;
 using MealPlanner.Api.Features.Integrations.GoogleKeep.Services;
 using MealPlanner.Api.Shared;
-using MongoDB.Driver;
+using Microsoft.EntityFrameworkCore;
 
 namespace MealPlanner.Api.Features.Integrations.GoogleKeep.Commands;
 
@@ -10,7 +12,7 @@ public record CompleteGoogleKeepConnectionCommand(string UserId, string Authoriz
 	: ICommand<GoogleKeepConnectionStatus>;
 
 public class CompleteGoogleKeepConnectionCommandHandler(
-	IMongoClient mongoClient,
+	MealPlannerDbContext db,
 	IGoogleOAuthService googleOAuthService,
 	IGoogleKeepClient googleKeepClient,
 	IIntegrationTokenProtector tokenProtector)
@@ -41,14 +43,11 @@ public class CompleteGoogleKeepConnectionCommandHandler(
 			return Result<GoogleKeepConnectionStatus>.Failure(capabilityResult.Error!);
 
 		var capability = capabilityResult.IsSuccess
-			? capabilityResult.Value!
+			? capabilityResult.Value
 			: IntegrationCapability.Unknown;
 
 		try
 		{
-			var collection = mongoClient.GetDatabase("mealplannerDb")
-				.GetCollection<GoogleIntegrationConnectionDocument>(IntegrationCollections.Connections);
-
 			var now = DateTime.UtcNow;
 			var tokenValue = tokenResult.Value;
 			var googleSubject = tokenValue.GoogleSubject.GetValueOrDefault(command.UserId);
@@ -56,34 +55,32 @@ public class CompleteGoogleKeepConnectionCommandHandler(
 				onSome: value => (string?)tokenProtector.Protect(value),
 				onNone: () => null);
 
-			var update = Builders<GoogleIntegrationConnectionDocument>.Update
-				.Set(x => x.GoogleSubject, googleSubject)
-				.Set(x => x.Provider, IntegrationProvider.GoogleKeep.ToString())
-				.Set(x => x.GoogleEmail, tokenValue.Email.GetValueOrNull())
-				.Set(x => x.EncryptedAccessToken, tokenProtector.Protect(tokenValue.AccessToken))
-				.Set(x => x.EncryptedRefreshToken, encryptedRefreshToken)
-				.Set(x => x.AccessTokenExpiresAtUtc, tokenValue.ExpiresAtUtc.GetValueOrNull())
-				.Set(x => x.Scopes, tokenValue.Scopes.ToList())
-				.Set(x => x.Capability, capability.ToString())
-				.Set(x => x.UpdatedAt, now)
-				.Set(x => x.DisconnectedAtUtc, null)
-				.SetOnInsert(x => x.UserId, command.UserId)
-				.SetOnInsert(x => x.CreatedAt, now);
-
-			var options = new FindOneAndUpdateOptions<GoogleIntegrationConnectionDocument>
-			{
-				IsUpsert = true,
-				ReturnDocument = ReturnDocument.After
-			};
-
-			var updated = await collection.FindOneAndUpdateAsync(
-				x => x.UserId == command.UserId && x.Provider == IntegrationProvider.GoogleKeep.ToString(),
-				update,
-				options,
-				cancellationToken);
+			var updated = await db.GoogleIntegrationConnections
+				.FirstOrDefaultAsync(x => x.UserId == command.UserId && x.Provider == IntegrationProvider.GoogleKeep.ToString(), cancellationToken);
 
 			if (updated is null)
-				return Result<GoogleKeepConnectionStatus>.Failure(new Error(ErrorCodes.DatabaseError, "Failed to persist Google Keep connection."));
+			{
+				updated = new GoogleIntegrationConnectionEntity
+				{
+					Id = Guid.NewGuid(),
+					UserId = command.UserId,
+					CreatedAt = now,
+					Provider = IntegrationProvider.GoogleKeep.ToString()
+				};
+				db.GoogleIntegrationConnections.Add(updated);
+			}
+
+			updated.GoogleSubject = googleSubject;
+			updated.GoogleEmail = tokenValue.Email.GetValueOrNull();
+			updated.EncryptedAccessToken = tokenProtector.Protect(tokenValue.AccessToken);
+			updated.EncryptedRefreshToken = encryptedRefreshToken;
+			updated.AccessTokenExpiresAtUtc = tokenValue.ExpiresAtUtc.GetValueOrNull();
+			updated.Scopes = tokenValue.Scopes.ToList();
+			updated.Capability = capability.ToString();
+			updated.UpdatedAt = now;
+			updated.DisconnectedAtUtc = null;
+
+			await db.SaveChangesAsync(cancellationToken);
 
 			return Result<GoogleKeepConnectionStatus>.Success(new GoogleKeepConnectionStatus(
 				IsConnected: true,

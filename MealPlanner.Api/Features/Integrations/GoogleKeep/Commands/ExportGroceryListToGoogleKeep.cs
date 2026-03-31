@@ -1,10 +1,12 @@
 using System.Security.Cryptography;
 using System.Text;
+using MealPlanner.Api.Data;
+using MealPlanner.Api.Data.Entities;
 using MealPlanner.Api.Features.GroceryLists.Models;
 using MealPlanner.Api.Features.Integrations.GoogleKeep.Models;
 using MealPlanner.Api.Features.Integrations.GoogleKeep.Services;
 using MealPlanner.Api.Shared;
-using MongoDB.Driver;
+using Microsoft.EntityFrameworkCore;
 
 namespace MealPlanner.Api.Features.Integrations.GoogleKeep.Commands;
 
@@ -19,7 +21,7 @@ public record GoogleKeepExportResult(
 	bool CreatedNewItem);
 
 public class ExportGroceryListToGoogleKeepCommandHandler(
-	IMongoClient mongoClient,
+	MealPlannerDbContext db,
 	IGoogleKeepClient googleKeepClient,
 	IGoogleOAuthService googleOAuthService,
 	IIntegrationTokenProtector tokenProtector)
@@ -34,22 +36,17 @@ public class ExportGroceryListToGoogleKeepCommandHandler(
 
 		try
 		{
-			var db = mongoClient.GetDatabase("mealplannerDb");
 			var normalizedWeek = NormalizeToMonday(command.WeekStart);
 			var weekStartStr = normalizedWeek.ToString("yyyy-MM-dd");
-			var groceryCollection = db.GetCollection<GroceryListDocument>("grocerylists");
-			var listDoc = await groceryCollection
-				.Find(g => g.UserId == command.UserId && g.WeekStart == weekStartStr)
-				.FirstOrDefaultAsync(cancellationToken);
-			if (listDoc is null)
+			var listEntity = await db.GroceryLists
+				.FirstOrDefaultAsync(g => g.UserId == command.UserId && g.WeekStart == weekStartStr, cancellationToken);
+			if (listEntity is null)
 				return Result<GoogleKeepExportResult>.Failure(new Error(ErrorCodes.NotFound, "Grocery list not found for the requested week."));
 
-			var connectionCollection = db.GetCollection<GoogleIntegrationConnectionDocument>(IntegrationCollections.Connections);
-			var connection = await connectionCollection
-				.Find(c => c.UserId == command.UserId
-				           && c.Provider == IntegrationProvider.GoogleKeep.ToString()
-				           && c.DisconnectedAtUtc == null)
-				.FirstOrDefaultAsync(cancellationToken);
+			var connection = await db.GoogleIntegrationConnections
+				.FirstOrDefaultAsync(c => c.UserId == command.UserId
+					&& c.Provider == IntegrationProvider.GoogleKeep.ToString()
+					&& c.DisconnectedAtUtc == null, cancellationToken);
 			if (connection is null)
 				return Result<GoogleKeepExportResult>.Failure(new Error(ErrorCodes.NotFound, "Google Keep connection was not found."));
 
@@ -70,14 +67,11 @@ public class ExportGroceryListToGoogleKeepCommandHandler(
 					{
 						accessToken = refreshed.Value!.AccessToken;
 						var refreshToken = refreshed.Value.RefreshToken.GetValueOrDefault(refreshTokenResult.Value!);
-						await connectionCollection.UpdateOneAsync(
-							x => x.Id == connection.Id,
-							Builders<GoogleIntegrationConnectionDocument>.Update
-								.Set(x => x.EncryptedAccessToken, tokenProtector.Protect(accessToken))
-								.Set(x => x.EncryptedRefreshToken, tokenProtector.Protect(refreshToken))
-								.Set(x => x.AccessTokenExpiresAtUtc, refreshed.Value.ExpiresAtUtc.GetValueOrNull())
-								.Set(x => x.UpdatedAt, DateTime.UtcNow),
-							cancellationToken: cancellationToken);
+						connection.EncryptedAccessToken = tokenProtector.Protect(accessToken);
+						connection.EncryptedRefreshToken = tokenProtector.Protect(refreshToken);
+						connection.AccessTokenExpiresAtUtc = refreshed.Value.ExpiresAtUtc.GetValueOrNull();
+						connection.UpdatedAt = DateTime.UtcNow;
+						await db.SaveChangesAsync(cancellationToken);
 					}
 				}
 			}
@@ -90,13 +84,12 @@ public class ExportGroceryListToGoogleKeepCommandHandler(
 					ErrorCodes.ExternalServiceError,
 					$"Google Keep is not available for this account ({capability.Value})."));
 
-			var exportLinks = db.GetCollection<GroceryListExportLinkDocument>(IntegrationCollections.ExportLinks);
-			var existingLink = await exportLinks.Find(x =>
+			var existingLink = await db.GroceryListExportLinks.FirstOrDefaultAsync(x =>
 				x.UserId == command.UserId
 				&& x.WeekStart == weekStartStr
-				&& x.Provider == IntegrationProvider.GoogleKeep.ToString()).FirstOrDefaultAsync(cancellationToken);
+				&& x.Provider == IntegrationProvider.GoogleKeep.ToString(), cancellationToken);
 
-			var list = MapToDomain(listDoc);
+			var list = MapToDomain(listEntity);
 			var existingExternalId = command.ForceNewNote || existingLink is null
 				? Option<string>.None()
 				: Option<string>.Some(existingLink.ExternalItemId);
@@ -111,20 +104,31 @@ public class ExportGroceryListToGoogleKeepCommandHandler(
 
 			var hash = ComputeHash(list);
 			var now = DateTime.UtcNow;
-			await exportLinks.UpdateOneAsync(
-				x => x.UserId == command.UserId
-				     && x.WeekStart == weekStartStr
-				     && x.Provider == IntegrationProvider.GoogleKeep.ToString(),
-				Builders<GroceryListExportLinkDocument>.Update
-					.Set(x => x.UserId, command.UserId)
-					.Set(x => x.GroceryListId, list.Id)
-					.Set(x => x.WeekStart, weekStartStr)
-					.Set(x => x.Provider, IntegrationProvider.GoogleKeep.ToString())
-					.Set(x => x.ExternalItemId, upsertResult.Value!.ExternalItemId)
-					.Set(x => x.LastSyncHash, hash)
-					.Set(x => x.LastExportedAtUtc, now),
-				new UpdateOptions { IsUpsert = true },
-				cancellationToken);
+
+			if (existingLink is null)
+			{
+				existingLink = new GroceryListExportLinkEntity
+				{
+					Id = Guid.NewGuid(),
+					UserId = command.UserId,
+					GroceryListId = list.Id,
+					WeekStart = weekStartStr,
+					Provider = IntegrationProvider.GoogleKeep.ToString(),
+					ExternalItemId = upsertResult.Value!.ExternalItemId,
+					LastSyncHash = hash,
+					LastExportedAtUtc = now
+				};
+				db.GroceryListExportLinks.Add(existingLink);
+			}
+			else
+			{
+				existingLink.GroceryListId = list.Id;
+				existingLink.ExternalItemId = upsertResult.Value!.ExternalItemId;
+				existingLink.LastSyncHash = hash;
+				existingLink.LastExportedAtUtc = now;
+			}
+
+			await db.SaveChangesAsync(cancellationToken);
 
 			return Result<GoogleKeepExportResult>.Success(new GoogleKeepExportResult(
 				Provider: IntegrationProvider.GoogleKeep,
@@ -148,9 +152,9 @@ public class ExportGroceryListToGoogleKeepCommandHandler(
 		return date.AddDays(-diff);
 	}
 
-	internal static GroceryList MapToDomain(GroceryListDocument doc) =>
+	internal static GroceryList MapToDomain(GroceryListEntity doc) =>
 		new(
-			doc.Id ?? string.Empty,
+			doc.Id.ToString(),
 			doc.UserId,
 			DateOnly.ParseExact(doc.WeekStart, "yyyy-MM-dd"),
 			doc.Items.Select(i => new GroceryListItem(i.Name, i.Quantity, i.Unit, i.IsChecked, i.SourceRecipeNames)).ToList(),
