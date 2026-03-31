@@ -1,8 +1,9 @@
+using MealPlanner.Api.Data;
 using MealPlanner.Api.Features.MealPlans.Dtos;
 using MealPlanner.Api.Features.MealPlans.Models;
 using MealPlanner.Api.Features.MealPlans.Queries;
 using Microsoft.AspNetCore.SignalR;
-using MongoDB.Driver;
+using Microsoft.EntityFrameworkCore;
 
 namespace MealPlanner.Api.Features.MealPlans.Realtime;
 
@@ -34,7 +35,7 @@ public interface IMealPlanRealtimeNotifier
 }
 
 public sealed class MealPlanRealtimeNotifier(
-	IMongoClient mongoClient,
+	MealPlannerDbContext db,
 	IHubContext<MealPlanHub> hubContext,
 	ILogger<MealPlanRealtimeNotifier> logger)
 	: IMealPlanRealtimeNotifier
@@ -50,15 +51,11 @@ public sealed class MealPlanRealtimeNotifier(
 		try
 		{
 			var weekStartString = GetMealPlanQueryHandler.NormalizeToMonday(weekStart).ToString("yyyy-MM-dd");
-			var db = mongoClient.GetDatabase("mealplannerDb");
-			var sharesCollection = db.GetCollection<MealPlanShareDocument>("shares");
-			var shareFilter = Builders<MealPlanShareDocument>.Filter.And(
-				Builders<MealPlanShareDocument>.Filter.Eq(s => s.OwnerUserId, ownerUserId),
-				Builders<MealPlanShareDocument>.Filter.Eq(s => s.WeekStart, weekStartString),
-				Builders<MealPlanShareDocument>.Filter.Eq(s => s.DismissedByRecipient, false));
-
-			using var cursor = await sharesCollection.FindAsync(shareFilter, cancellationToken: cancellationToken);
-			var shares = await cursor.ToListAsync(cancellationToken);
+			var shares = await db.MealPlanShares
+				.Where(s => s.OwnerUserId == ownerUserId
+					&& s.WeekStart == weekStartString
+					&& !s.DismissedByRecipient)
+				.ToListAsync(cancellationToken);
 			var recipients = shares.Select(s => s.SharedWithUserId)
 				.Append(ownerUserId)
 				.Where(id => !string.IsNullOrWhiteSpace(id))

@@ -1,8 +1,9 @@
 using System.Security.Claims;
+using MealPlanner.Api.Data;
 using MealPlanner.Api.Features.GroceryLists.Dtos;
 using MealPlanner.Api.Features.GroceryLists.Models;
 using Microsoft.AspNetCore.SignalR;
-using MongoDB.Driver;
+using Microsoft.EntityFrameworkCore;
 
 namespace MealPlanner.Api.Features.GroceryLists.Realtime;
 
@@ -34,7 +35,7 @@ public interface IGroceryListRealtimeNotifier
 }
 
 public sealed class GroceryListRealtimeNotifier(
-	IMongoClient mongoClient,
+	MealPlannerDbContext db,
 	IHubContext<GroceryListHub> hubContext,
 	ILogger<GroceryListRealtimeNotifier> logger)
 	: IGroceryListRealtimeNotifier
@@ -50,15 +51,11 @@ public sealed class GroceryListRealtimeNotifier(
 		try
 		{
 			var weekStartString = GroceryListHelpers.NormalizeToMonday(weekStart).ToString("yyyy-MM-dd");
-			var db = mongoClient.GetDatabase("mealplannerDb");
-			var sharesCollection = db.GetCollection<GroceryListShareDocument>("grocerylist_shares");
-			var shareFilter = Builders<GroceryListShareDocument>.Filter.And(
-				Builders<GroceryListShareDocument>.Filter.Eq(s => s.OwnerUserId, ownerUserId),
-				Builders<GroceryListShareDocument>.Filter.Eq(s => s.WeekStart, weekStartString),
-				Builders<GroceryListShareDocument>.Filter.Eq(s => s.DismissedByRecipient, false));
-
-			using var cursor = await sharesCollection.FindAsync(shareFilter, cancellationToken: cancellationToken);
-			var shares = await cursor.ToListAsync(cancellationToken);
+			var shares = await db.GroceryListShares
+				.Where(s => s.OwnerUserId == ownerUserId
+					&& s.WeekStart == weekStartString
+					&& !s.DismissedByRecipient)
+				.ToListAsync(cancellationToken);
 			var recipients = shares.Select(s => s.SharedWithUserId)
 				.Append(ownerUserId)
 				.Where(id => !string.IsNullOrWhiteSpace(id))
@@ -95,7 +92,7 @@ public sealed class GroceryListUserIdProvider : IUserIdProvider
 	public string? GetUserId(HubConnectionContext connection)
 	{
 		var user = connection.User;
-		return user?.FindFirst(ClaimTypes.NameIdentifier)?.Value
-		       ?? user?.FindFirst("sub")?.Value;
+		return user.FindFirst(ClaimTypes.NameIdentifier)?.Value
+		       ?? user.FindFirst("sub")?.Value;
 	}
 }
