@@ -1,6 +1,8 @@
+using MealPlanner.Api.Data;
+using MealPlanner.Api.Data.Entities;
 using MealPlanner.Api.Features.Recipes.Models;
 using MealPlanner.Api.Shared;
-using MongoDB.Driver;
+using Microsoft.EntityFrameworkCore;
 
 namespace MealPlanner.Api.Features.Recipes.Queries;
 
@@ -10,9 +12,9 @@ namespace MealPlanner.Api.Features.Recipes.Queries;
 public record GetAllRecipesQuery(string UserId) : IQuery<IReadOnlyList<Recipe>>;
 
 /// <summary>
-/// Handles retrieving all recipes from MongoDB.
+/// Handles retrieving all recipes.
 /// </summary>
-public class GetAllRecipesQueryHandler(IMongoClient mongoClient)
+public class GetAllRecipesQueryHandler(MealPlannerDbContext db)
 	: IQueryHandler<GetAllRecipesQuery, IReadOnlyList<Recipe>>
 {
 	public async Task<Result<IReadOnlyList<Recipe>>> HandleAsync(
@@ -21,15 +23,11 @@ public class GetAllRecipesQueryHandler(IMongoClient mongoClient)
 	{
 		try
 		{
-			var collection = mongoClient
-				.GetDatabase("mealplannerDb")
-				.GetCollection<RecipeDocument>("recipes");
-
-			var documents = await collection
-				.Find(r => r.UserId == query.UserId)
+			var entities = await db.Recipes
+				.Where(r => r.UserId == query.UserId)
 				.ToListAsync(cancellationToken);
 
-			var recipes = documents
+			var recipes = entities
 				.Select(MapToRecipe)
 				.ToList() as IReadOnlyList<Recipe>;
 
@@ -42,16 +40,16 @@ public class GetAllRecipesQueryHandler(IMongoClient mongoClient)
 		}
 	}
 
-	internal static Recipe MapToRecipe(RecipeDocument doc) =>
+	internal static Recipe MapToRecipe(RecipeEntity entity) =>
 		new(
-			Id: doc.Id!,
-			UserId: doc.UserId,
-			Name: doc.Name,
-			Description: doc.Description,
-			Servings: doc.Servings,
-			SourceUrl: Option<string>.From(doc.SourceUrl),
-			Ingredients: doc.Ingredients.Select(i => new Ingredient(i.Name, i.Quantity, i.Unit, i.IsPantryStaple)).ToList(),
-			CreatedAt: doc.CreatedAt,
-			UpdatedAt: doc.UpdatedAt
+			Id: entity.Id.ToString(),
+			UserId: entity.UserId,
+			Name: entity.Name,
+			Description: entity.Description,
+			Servings: entity.Servings,
+			SourceUrl: Option<string>.From(entity.SourceUrl),
+			Ingredients: entity.Ingredients.Select(i => new Ingredient(i.Name, i.Quantity, i.Unit, i.IsPantryStaple)).ToList(),
+			CreatedAt: entity.CreatedAt,
+			UpdatedAt: entity.UpdatedAt
 		);
 }
