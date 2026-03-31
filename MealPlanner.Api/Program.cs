@@ -1,4 +1,5 @@
 using MealPlanner.Api.Data;
+using Microsoft.EntityFrameworkCore;
 using MealPlanner.Api.Features.GroceryLists;
 using MealPlanner.Api.Features.GroceryLists.Realtime;
 using MealPlanner.Api.Features.Admin;
@@ -157,9 +158,11 @@ var app = builder.Build();
 
 app.MapDefaultEndpoints();
 
-await app.Services.EnsureUserIndexesAsync();
-await app.Services.EnsureSharingIndexesAsync();
-await app.Services.EnsureIntegrationIndexesAsync();
+using (var scope = app.Services.CreateScope())
+{
+	var db = scope.ServiceProvider.GetRequiredService<MealPlannerDbContext>();
+	await db.Database.MigrateAsync();
+}
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
