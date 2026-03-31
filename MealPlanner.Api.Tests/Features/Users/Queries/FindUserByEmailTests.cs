@@ -12,7 +12,7 @@ public class FindUserByEmailTests
 	[Fact]
 	public async Task HandleAsync_ReturnsValidationFailure_WhenEmailMissing()
 	{
-		var handler = new FindUserByEmailQueryHandler(new Mock<IMongoClient>().Object);
+		var handler = new FindUserByEmailQueryHandler(TestDbContextFactory.CreateContext());
 		var result = await handler.HandleAsync(new FindUserByEmailQuery(" "), TestContext.Current.CancellationToken);
 
 		Assert.False(result.IsSuccess);

@@ -80,7 +80,7 @@ public class SendFriendRequestByEmailTests
 	[Fact]
 	public async Task HandleAsync_ReturnsValidationFailure_WhenRequesterMissing()
 	{
-		var handler = new SendFriendRequestByEmailCommandHandler(new Mock<IMongoClient>().Object);
+		var handler = new SendFriendRequestByEmailCommandHandler(TestDbContextFactory.CreateContext());
 
 		var result = await handler.HandleAsync(
 			new SendFriendRequestByEmailCommand(" ", "pal@example.com"),
@@ -93,7 +93,7 @@ public class SendFriendRequestByEmailTests
 	[Fact]
 	public async Task HandleAsync_ReturnsValidationFailure_WhenEmailMissing()
 	{
-		var handler = new SendFriendRequestByEmailCommandHandler(new Mock<IMongoClient>().Object);
+		var handler = new SendFriendRequestByEmailCommandHandler(TestDbContextFactory.CreateContext());
 
 		var result = await handler.HandleAsync(
 			new SendFriendRequestByEmailCommand("auth0|me", " "),

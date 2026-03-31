@@ -12,7 +12,7 @@ public class GetIncomingFriendRequestsTests
 	[Fact]
 	public async Task HandleAsync_ReturnsValidationFailure_WhenRecipientMissing()
 	{
-		var handler = new GetIncomingFriendRequestsQueryHandler(new Mock<IMongoClient>().Object);
+		var handler = new GetIncomingFriendRequestsQueryHandler(TestDbContextFactory.CreateContext());
 		var result = await handler.HandleAsync(new GetIncomingFriendRequestsQuery(" "), TestContext.Current.CancellationToken);
 
 		Assert.False(result.IsSuccess);

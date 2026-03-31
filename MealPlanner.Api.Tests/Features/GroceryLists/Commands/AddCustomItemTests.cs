@@ -13,7 +13,7 @@ public class AddCustomItemTests
 	[Fact]
 	public async Task HandleAsync_ReturnsValidationFailure_WhenItemNameEmpty()
 	{
-		var handler = new AddCustomItemCommandHandler(new Mock<IMongoClient>().Object);
+		var handler = new AddCustomItemCommandHandler(TestDbContextFactory.CreateContext());
 		var result = await handler.HandleAsync(new AddCustomItemCommand("u1", new DateOnly(2026, 2, 23), "  "),
 			TestContext.Current.CancellationToken);
 

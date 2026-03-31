@@ -76,7 +76,7 @@ public class UpdateDaySlotTests
 	[Fact]
 	public async Task HandleAsync_ReturnsValidationFailure_WhenAnyItemServingsIsLessThanOne()
 	{
-		var handler = new UpdateDaySlotCommandHandler(new Mock<IMongoClient>().Object);
+		var handler = new UpdateDaySlotCommandHandler(TestDbContextFactory.CreateContext());
 		var result = await handler.HandleAsync(
 			new UpdateDaySlotCommand(
 				"u1",

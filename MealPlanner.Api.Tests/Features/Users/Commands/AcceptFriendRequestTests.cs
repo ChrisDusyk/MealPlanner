@@ -47,7 +47,7 @@ public class AcceptFriendRequestTests
 	[Fact]
 	public async Task HandleAsync_ReturnsValidationFailure_WhenRecipientMissing()
 	{
-		var handler = new AcceptFriendRequestCommandHandler(new Mock<IMongoClient>().Object);
+		var handler = new AcceptFriendRequestCommandHandler(TestDbContextFactory.CreateContext());
 		var result = await handler.HandleAsync(new AcceptFriendRequestCommand(" ", "r1"), TestContext.Current.CancellationToken);
 
 		Assert.False(result.IsSuccess);

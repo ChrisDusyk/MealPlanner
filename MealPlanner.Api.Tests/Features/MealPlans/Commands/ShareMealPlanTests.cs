@@ -74,7 +74,7 @@ public class ShareMealPlanTests
 	[Fact]
 	public async Task HandleAsync_ReturnsValidationFailure_WhenEmailMissing()
 	{
-		var handler = new ShareMealPlanCommandHandler(new Mock<IMongoClient>().Object);
+		var handler = new ShareMealPlanCommandHandler(TestDbContextFactory.CreateContext());
 		var result = await handler.HandleAsync(new ShareMealPlanCommand("owner1", " ", "2026-02-23", SharePermission.ReadOnly), TestContext.Current.CancellationToken);
 
 		Assert.False(result.IsSuccess);
@@ -84,7 +84,7 @@ public class ShareMealPlanTests
 	[Fact]
 	public async Task HandleAsync_ReturnsValidationFailure_WhenWeekStartMissing()
 	{
-		var handler = new ShareMealPlanCommandHandler(new Mock<IMongoClient>().Object);
+		var handler = new ShareMealPlanCommandHandler(TestDbContextFactory.CreateContext());
 		var result = await handler.HandleAsync(new ShareMealPlanCommand("owner1", "recipient@example.com", " ", SharePermission.ReadOnly), TestContext.Current.CancellationToken);
 
 		Assert.False(result.IsSuccess);

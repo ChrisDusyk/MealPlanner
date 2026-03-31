@@ -11,7 +11,7 @@ public class CreateRecipeTests
 	[Fact]
 	public async Task HandleAsync_ReturnsValidationFailure_WhenNameIsMissing()
 	{
-		var handler = new CreateRecipeCommandHandler(new Mock<IMongoClient>().Object);
+		var handler = new CreateRecipeCommandHandler(TestDbContextFactory.CreateContext());
 		var command = new CreateRecipeCommand("u1", " ", "desc", 1, Option<string>.None(), []);
 
 		var result = await handler.HandleAsync(command, TestContext.Current.CancellationToken);
@@ -24,7 +24,7 @@ public class CreateRecipeTests
 	[Fact]
 	public async Task HandleAsync_ReturnsValidationFailure_WhenServingsIsLessThanOne()
 	{
-		var handler = new CreateRecipeCommandHandler(new Mock<IMongoClient>().Object);
+		var handler = new CreateRecipeCommandHandler(TestDbContextFactory.CreateContext());
 		var command = new CreateRecipeCommand("u1", "Chili", "desc", 0, Option<string>.None(), []);
 
 		var result = await handler.HandleAsync(command, TestContext.Current.CancellationToken);

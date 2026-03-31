@@ -34,7 +34,7 @@ public class UpsertUserFromAuthTests
 	[Fact]
 	public async Task HandleAsync_ReturnsValidationFailure_WhenAuth0IdMissing()
 	{
-		var handler = new UpsertUserFromAuthCommandHandler(new Mock<IMongoClient>().Object);
+		var handler = new UpsertUserFromAuthCommandHandler(TestDbContextFactory.CreateContext());
 		var command = new UpsertUserFromAuthCommand(" ", "Pat", Option<string>.Some("pat@example.com"));
 
 		var result = await handler.HandleAsync(command, TestContext.Current.CancellationToken);
@@ -47,7 +47,7 @@ public class UpsertUserFromAuthTests
 	[Fact]
 	public async Task HandleAsync_ReturnsValidationFailure_WhenNameMissing()
 	{
-		var handler = new UpsertUserFromAuthCommandHandler(new Mock<IMongoClient>().Object);
+		var handler = new UpsertUserFromAuthCommandHandler(TestDbContextFactory.CreateContext());
 		var command = new UpsertUserFromAuthCommand("auth0|123", " ", Option<string>.Some("pat@example.com"));
 
 		var result = await handler.HandleAsync(command, TestContext.Current.CancellationToken);

@@ -1,16 +1,16 @@
 using MealPlanner.Api.Features.Users.Commands;
-using MealPlanner.Api.Features.Users.Models;
 using MealPlanner.Api.Features.Users.Queries;
+using MealPlanner.Api.Data.Entities;
 
 namespace MealPlanner.Api.Tests.Features.Users.Mappers;
 
 public class UserHandlerMappersTests
 {
-	private static UserDocument CreateDocument(string? email)
+	private static UserEntity CreateEntity(string? email)
 	{
-		return new UserDocument
+		return new UserEntity
 		{
-			Id = "u1",
+			Id = Guid.Parse("11111111-1111-1111-1111-111111111111"),
 			Auth0UserId = "auth0|123",
 			Name = "Pat",
 			Email = email,
@@ -22,9 +22,9 @@ public class UserHandlerMappersTests
 	[Fact]
 	public void FindUserByEmail_MapToDomain_MapsEmailSome_WhenPresent()
 	{
-		var user = FindUserByEmailQueryHandler.MapToDomain(CreateDocument("pat@example.com"));
+		var user = FindUserByEmailQueryHandler.MapToDomain(CreateEntity("pat@example.com"));
 
-		Assert.Equal("u1", user.Id);
+		Assert.Equal("11111111-1111-1111-1111-111111111111", user.Id);
 		Assert.True(user.Email.HasValue);
 		Assert.Equal("pat@example.com", user.Email.Value);
 	}
@@ -32,18 +32,18 @@ public class UserHandlerMappersTests
 	[Fact]
 	public void UpsertUserFromAuth_MapToDomain_MapsEmailNone_WhenMissing()
 	{
-		var user = UpsertUserFromAuthCommandHandler.MapToDomain(CreateDocument(null));
+		var user = UpsertUserFromAuthCommandHandler.MapToDomain(CreateEntity(null));
 
-		Assert.Equal("u1", user.Id);
+		Assert.Equal("11111111-1111-1111-1111-111111111111", user.Id);
 		Assert.False(user.Email.HasValue);
 	}
 
 	[Fact]
 	public void FindUserByAuth0Id_MapToDomain_MapsEmailSome_WhenPresent()
 	{
-		var user = FindUserByAuth0IdQueryHandler.MapToDomain(CreateDocument("pat@example.com"));
+		var user = FindUserByAuth0IdQueryHandler.MapToDomain(CreateEntity("pat@example.com"));
 
-		Assert.Equal("u1", user.Id);
+		Assert.Equal("11111111-1111-1111-1111-111111111111", user.Id);
 		Assert.True(user.Email.HasValue);
 		Assert.Equal("pat@example.com", user.Email.Value);
 	}
@@ -51,16 +51,16 @@ public class UserHandlerMappersTests
 	[Fact]
 	public void UpdateCurrentUserName_MapToDomain_MapsEmailNone_WhenMissing()
 	{
-		var user = UpdateCurrentUserNameCommandHandler.MapToDomain(CreateDocument(null));
+		var user = UpdateCurrentUserNameCommandHandler.MapToDomain(CreateEntity(null));
 
-		Assert.Equal("u1", user.Id);
+		Assert.Equal("11111111-1111-1111-1111-111111111111", user.Id);
 		Assert.False(user.Email.HasValue);
 	}
 
 	[Fact]
 	public void GetFriendsForUser_MapToSummary_MapsUserDocument()
 	{
-		var summary = GetFriendsForUserQueryHandler.MapToSummary(CreateDocument("pal@example.com"), null);
+		var summary = GetFriendsForUserQueryHandler.MapToSummary(CreateEntity("pal@example.com"), null);
 
 		Assert.Equal("auth0|123", summary.UserId);
 		Assert.Equal("Pat", summary.Name);

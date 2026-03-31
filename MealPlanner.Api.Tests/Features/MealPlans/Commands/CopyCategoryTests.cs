@@ -26,7 +26,7 @@ public class CopyCategoryTests
 	[Fact]
 	public async Task HandleAsync_ReturnsValidationFailure_WhenNoTargets()
 	{
-		var handler = new CopyCategoryCommandHandler(new Mock<IMongoClient>().Object);
+		var handler = new CopyCategoryCommandHandler(TestDbContextFactory.CreateContext());
 		var result = await handler.HandleAsync(new CopyCategoryCommand("u1", new DateOnly(2026, 2, 23), DayOfWeek.Monday, MealCategory.Breakfast, []), TestContext.Current.CancellationToken);
 
 		Assert.False(result.IsSuccess);

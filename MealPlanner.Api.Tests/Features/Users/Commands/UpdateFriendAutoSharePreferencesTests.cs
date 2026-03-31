@@ -14,7 +14,7 @@ public class UpdateFriendAutoSharePreferencesTests
 	[Fact]
 	public async Task HandleAsync_ReturnsValidationFailure_WhenUserIdMissing()
 	{
-		var handler = new UpdateFriendAutoSharePreferencesCommandHandler(new Mock<IMongoClient>().Object);
+		var handler = new UpdateFriendAutoSharePreferencesCommandHandler(TestDbContextFactory.CreateContext());
 
 		var result = await handler.HandleAsync(
 			new UpdateFriendAutoSharePreferencesCommand(" ", "auth0|friend", true, false),

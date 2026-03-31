@@ -12,7 +12,7 @@ public class GetFriendsForUserTests
 	[Fact]
 	public async Task HandleAsync_ReturnsValidationFailure_WhenUserMissing()
 	{
-		var handler = new GetFriendsForUserQueryHandler(new Mock<IMongoClient>().Object);
+		var handler = new GetFriendsForUserQueryHandler(TestDbContextFactory.CreateContext());
 		var result = await handler.HandleAsync(new GetFriendsForUserQuery(" "), TestContext.Current.CancellationToken);
 
 		Assert.False(result.IsSuccess);

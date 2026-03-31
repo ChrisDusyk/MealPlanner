@@ -11,7 +11,7 @@ public class RemoveFriendTests
 	[Fact]
 	public async Task HandleAsync_ReturnsValidationFailure_WhenFriendMissing()
 	{
-		var handler = new RemoveFriendCommandHandler(new Mock<IMongoClient>().Object);
+		var handler = new RemoveFriendCommandHandler(TestDbContextFactory.CreateContext());
 		var result = await handler.HandleAsync(new RemoveFriendCommand("auth0|me", " "), TestContext.Current.CancellationToken);
 
 		Assert.False(result.IsSuccess);

@@ -12,7 +12,7 @@ public class FindUserByAuth0IdTests
 	[Fact]
 	public async Task HandleAsync_ReturnsValidationFailure_WhenAuth0IdMissing()
 	{
-		var handler = new FindUserByAuth0IdQueryHandler(new Mock<IMongoClient>().Object);
+		var handler = new FindUserByAuth0IdQueryHandler(TestDbContextFactory.CreateContext());
 		var result = await handler.HandleAsync(new FindUserByAuth0IdQuery(" "), TestContext.Current.CancellationToken);
 
 		Assert.False(result.IsSuccess);

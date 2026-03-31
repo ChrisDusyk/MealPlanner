@@ -11,7 +11,7 @@ public class RevokeMealPlanShareTests
 	[Fact]
 	public async Task HandleAsync_ReturnsValidationFailure_WhenShareIdMissing()
 	{
-		var handler = new RevokeMealPlanShareCommandHandler(new Mock<IMongoClient>().Object);
+		var handler = new RevokeMealPlanShareCommandHandler(TestDbContextFactory.CreateContext());
 		var result = await handler.HandleAsync(new RevokeMealPlanShareCommand("owner1", " "), TestContext.Current.CancellationToken);
 
 		Assert.False(result.IsSuccess);

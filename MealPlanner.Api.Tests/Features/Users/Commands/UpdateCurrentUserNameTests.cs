@@ -11,7 +11,7 @@ public class UpdateCurrentUserNameTests
 	[Fact]
 	public async Task HandleAsync_ReturnsValidationFailure_WhenAuth0IdMissing()
 	{
-		var handler = new UpdateCurrentUserNameCommandHandler(new Mock<IMongoClient>().Object);
+		var handler = new UpdateCurrentUserNameCommandHandler(TestDbContextFactory.CreateContext());
 		var command = new UpdateCurrentUserNameCommand(" ", "Pat");
 
 		var result = await handler.HandleAsync(command, TestContext.Current.CancellationToken);
@@ -24,7 +24,7 @@ public class UpdateCurrentUserNameTests
 	[Fact]
 	public async Task HandleAsync_ReturnsValidationFailure_WhenNameMissing()
 	{
-		var handler = new UpdateCurrentUserNameCommandHandler(new Mock<IMongoClient>().Object);
+		var handler = new UpdateCurrentUserNameCommandHandler(TestDbContextFactory.CreateContext());
 		var command = new UpdateCurrentUserNameCommand("auth0|123", " ");
 
 		var result = await handler.HandleAsync(command, TestContext.Current.CancellationToken);

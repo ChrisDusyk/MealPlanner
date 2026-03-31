@@ -11,7 +11,7 @@ public class DismissSharedMealPlanTests
 	[Fact]
 	public async Task HandleAsync_ReturnsValidationFailure_WhenShareIdMissing()
 	{
-		var handler = new DismissSharedMealPlanCommandHandler(new Mock<IMongoClient>().Object);
+		var handler = new DismissSharedMealPlanCommandHandler(TestDbContextFactory.CreateContext());
 		var result = await handler.HandleAsync(new DismissSharedMealPlanCommand("recipient1", " "), TestContext.Current.CancellationToken);
 
 		Assert.False(result.IsSuccess);
