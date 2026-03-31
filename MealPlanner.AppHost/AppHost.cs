@@ -1,10 +1,8 @@
 var builder = DistributedApplication.CreateBuilder(args);
 
-var mongoDb = builder.AddMongoDB("mongodb")
-	.WithLifetime(ContainerLifetime.Persistent)
-	.WithDataVolume()
-	.WithDbGate();
-var mealPlannerDb = mongoDb.AddDatabase("mealplannerDb");
+var postgres = builder.AddPostgres("postgres")
+	.WithPgWeb();
+var mealPlannerDb = postgres.AddDatabase("mealplannerDb");
 
 var api = builder.AddProject<Projects.MealPlanner_Api>("api")
 	.WithReference(mealPlannerDb).WaitFor(mealPlannerDb)
