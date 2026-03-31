@@ -1,3 +1,4 @@
+using MealPlanner.Api.Data;
 using MealPlanner.Api.Features.GroceryLists;
 using MealPlanner.Api.Features.GroceryLists.Realtime;
 using MealPlanner.Api.Features.Admin;
@@ -25,6 +26,8 @@ var builder = WebApplication.CreateBuilder(args);
 builder.AddServiceDefaults();
 
 builder.AddMongoDBClient("mealplannerDb");
+
+builder.AddNpgsqlDbContext<MealPlannerDbContext>("mealplannerDb");
 
 // Add services to the container.
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
