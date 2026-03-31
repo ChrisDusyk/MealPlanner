@@ -1,6 +1,6 @@
-using MealPlanner.Api.Features.GroceryLists.Models;
+using MealPlanner.Api.Data;
 using MealPlanner.Api.Shared;
-using MongoDB.Driver;
+using Microsoft.EntityFrameworkCore;
 
 namespace MealPlanner.Api.Features.GroceryLists.Commands;
 
@@ -15,7 +15,7 @@ public record RevokeGroceryListShareCommand(
 /// <summary>
 /// Handles revoking (deleting) a grocery list share. Only the share owner can revoke.
 /// </summary>
-public class RevokeGroceryListShareCommandHandler(IMongoClient mongoClient)
+public class RevokeGroceryListShareCommandHandler(MealPlannerDbContext db)
 	: ICommandHandler<RevokeGroceryListShareCommand, Unit>
 {
 	public async Task<Result<Unit>> HandleAsync(
@@ -26,21 +26,21 @@ public class RevokeGroceryListShareCommandHandler(IMongoClient mongoClient)
 			return Result<Unit>.Failure(
 				new Error(ErrorCodes.ValidationFailed, "Share ID is required."));
 
+		if (!Guid.TryParse(command.ShareId, out var shareGuid))
+			return Result<Unit>.Failure(
+				new Error(ErrorCodes.ValidationFailed, "Share ID is invalid."));
+
 		try
 		{
-			var collection = mongoClient
-				.GetDatabase("mealplannerDb")
-				.GetCollection<GroceryListShareDocument>("grocerylist_shares");
+			var share = await db.GroceryListShares
+				.FirstOrDefaultAsync(s => s.Id == shareGuid && s.OwnerUserId == command.OwnerUserId, cancellationToken);
 
-			var filter = Builders<GroceryListShareDocument>.Filter.And(
-				Builders<GroceryListShareDocument>.Filter.Eq(s => s.Id, command.ShareId),
-				Builders<GroceryListShareDocument>.Filter.Eq(s => s.OwnerUserId, command.OwnerUserId));
-
-			var result = await collection.DeleteOneAsync(filter, cancellationToken);
-
-			if (result.DeletedCount == 0)
+			if (share is null)
 				return Result<Unit>.Failure(
 					new Error(ErrorCodes.NotFound, "Share not found or you are not the owner."));
+
+			db.GroceryListShares.Remove(share);
+			await db.SaveChangesAsync(cancellationToken);
 
 			return Result<Unit>.Success(Unit.Value);
 		}

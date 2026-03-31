@@ -1,8 +1,9 @@
+using MealPlanner.Api.Data;
+using MealPlanner.Api.Data.Entities;
 using MealPlanner.Api.Features.GroceryLists.Models;
 using MealPlanner.Api.Features.MealPlans.Models;
-using MealPlanner.Api.Features.Users.Models;
 using MealPlanner.Api.Shared;
-using MongoDB.Driver;
+using Microsoft.EntityFrameworkCore;
 
 namespace MealPlanner.Api.Features.GroceryLists.Commands;
 
@@ -20,7 +21,7 @@ public record ShareGroceryListCommand(
 /// Handles creating a grocery list share: validates the recipient, prevents duplicates
 /// and self-shares, then inserts a share document.
 /// </summary>
-public class ShareGroceryListCommandHandler(IMongoClient mongoClient)
+public class ShareGroceryListCommandHandler(MealPlannerDbContext db)
 	: ICommandHandler<ShareGroceryListCommand, GroceryListShare>
 {
 	public async Task<Result<GroceryListShare>> HandleAsync(
@@ -37,25 +38,16 @@ public class ShareGroceryListCommandHandler(IMongoClient mongoClient)
 
 		try
 		{
-			var db = mongoClient.GetDatabase("mealplannerDb");
-			var usersCollection = db.GetCollection<UserDocument>("users");
-			var groceryListsCollection = db.GetCollection<GroceryListDocument>("grocerylists");
-			var sharesCollection = db.GetCollection<GroceryListShareDocument>("grocerylist_shares");
-
 			// Look up the owner to prevent self-share
-			var ownerFilter = Builders<UserDocument>.Filter.Eq(u => u.Auth0UserId, command.OwnerUserId);
-			var owner = await usersCollection.Find(ownerFilter).FirstOrDefaultAsync(cancellationToken);
+			var owner = await db.Users.FirstOrDefaultAsync(u => u.Auth0UserId == command.OwnerUserId, cancellationToken);
 			if (owner is null)
 				return Result<GroceryListShare>.Failure(
 					new Error(ErrorCodes.NotFound, "Owner user not found."));
 
 			// Find recipient by email (case-insensitive)
-			var emailFilter = Builders<UserDocument>.Filter.Regex(
-				u => u.Email,
-				new MongoDB.Bson.BsonRegularExpression(
-					$"^{System.Text.RegularExpressions.Regex.Escape(command.SharedWithEmail)}$", "i"));
-
-			var recipient = await usersCollection.Find(emailFilter).FirstOrDefaultAsync(cancellationToken);
+			var normalizedEmail = command.SharedWithEmail.ToUpper();
+			var recipient = await db.Users
+				.FirstOrDefaultAsync(u => u.Email != null && u.Email.ToUpper() == normalizedEmail, cancellationToken);
 			if (recipient is null)
 				return Result<GroceryListShare>.Failure(
 					new Error(ErrorCodes.NotFound, $"No user found with email '{command.SharedWithEmail}'."));
@@ -66,29 +58,25 @@ public class ShareGroceryListCommandHandler(IMongoClient mongoClient)
 					new Error(ErrorCodes.ValidationFailed, "You cannot share a grocery list with yourself."));
 
 			// Ensure a grocery list exists for this owner/week before sharing
-			var groceryListFilter = Builders<GroceryListDocument>.Filter.And(
-				Builders<GroceryListDocument>.Filter.Eq(g => g.UserId, command.OwnerUserId),
-				Builders<GroceryListDocument>.Filter.Eq(g => g.WeekStart, command.WeekStart));
-			var groceryList =
-				await groceryListsCollection.Find(groceryListFilter).FirstOrDefaultAsync(cancellationToken);
+			var groceryList = await db.GroceryLists
+				.FirstOrDefaultAsync(g => g.UserId == command.OwnerUserId && g.WeekStart == command.WeekStart, cancellationToken);
 			if (groceryList is null)
 				return Result<GroceryListShare>.Failure(
 					new Error(ErrorCodes.NotFound, "No grocery list exists for the specified week."));
 
 			// Check for existing share
-			var existingFilter = Builders<GroceryListShareDocument>.Filter.And(
-				Builders<GroceryListShareDocument>.Filter.Eq(s => s.OwnerUserId, command.OwnerUserId),
-				Builders<GroceryListShareDocument>.Filter.Eq(s => s.SharedWithUserId, recipient.Auth0UserId),
-				Builders<GroceryListShareDocument>.Filter.Eq(s => s.WeekStart, command.WeekStart));
-
-			var existing = await sharesCollection.Find(existingFilter).FirstOrDefaultAsync(cancellationToken);
-			if (existing is not null)
+			var existing = await db.GroceryListShares
+				.AnyAsync(s => s.OwnerUserId == command.OwnerUserId
+					&& s.SharedWithUserId == recipient.Auth0UserId
+					&& s.WeekStart == command.WeekStart, cancellationToken);
+			if (existing)
 				return Result<GroceryListShare>.Failure(
 					new Error(ErrorCodes.ValidationFailed, "This grocery list is already shared with that user."));
 
 			// Create the share
-			var document = new GroceryListShareDocument
+			var entity = new GroceryListShareEntity
 			{
+				Id = Guid.NewGuid(),
 				OwnerUserId = command.OwnerUserId,
 				SharedWithUserId = recipient.Auth0UserId,
 				WeekStart = command.WeekStart,
@@ -97,9 +85,10 @@ public class ShareGroceryListCommandHandler(IMongoClient mongoClient)
 				DismissedByRecipient = false
 			};
 
-			await sharesCollection.InsertOneAsync(document, cancellationToken: cancellationToken);
+			db.GroceryListShares.Add(entity);
+			await db.SaveChangesAsync(cancellationToken);
 
-			var share = document.ToDomain() with
+			var share = GroceryListHelpers.MapShareToDomain(entity) with
 			{
 				SharedWithName = recipient.Name,
 				SharedWithEmail = recipient.Email ?? string.Empty
@@ -107,7 +96,7 @@ public class ShareGroceryListCommandHandler(IMongoClient mongoClient)
 
 			return Result<GroceryListShare>.Success(share);
 		}
-		catch (MongoWriteException ex) when (ex.WriteError?.Category == ServerErrorCategory.DuplicateKey)
+		catch (DbUpdateException)
 		{
 			return Result<GroceryListShare>.Failure(
 				new Error(ErrorCodes.ValidationFailed, "This grocery list is already shared with that user."));

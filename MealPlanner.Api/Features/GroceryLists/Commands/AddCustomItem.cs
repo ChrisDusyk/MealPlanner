@@ -1,7 +1,9 @@
+using MealPlanner.Api.Data;
+using MealPlanner.Api.Data.Entities;
 using MealPlanner.Api.Features.GroceryLists.Models;
 using MealPlanner.Api.Features.MealPlans.Models;
 using MealPlanner.Api.Shared;
-using MongoDB.Driver;
+using Microsoft.EntityFrameworkCore;
 
 namespace MealPlanner.Api.Features.GroceryLists.Commands;
 
@@ -22,7 +24,7 @@ public record AddCustomItemCommand(
 /// Adds a user-provided custom item to the grocery list.
 /// Custom items have quantity 0, no unit, and no source recipes.
 /// </summary>
-public class AddCustomItemCommandHandler(IMongoClient mongoClient)
+public class AddCustomItemCommandHandler(MealPlannerDbContext db)
 	: ICommandHandler<AddCustomItemCommand, GroceryList>
 {
 	public async Task<Result<GroceryList>> HandleAsync(
@@ -38,20 +40,16 @@ public class AddCustomItemCommandHandler(IMongoClient mongoClient)
 			}
 
 			var weekStartStr = GroceryListHelpers.NormalizeToMonday(command.WeekStart).ToString("yyyy-MM-dd");
-			var db = mongoClient.GetDatabase("mealplannerDb");
-			var collection = db.GetCollection<GroceryListDocument>("grocerylists");
 
 			if (!string.IsNullOrEmpty(command.OwnerUserId)
 			    && command.OwnerUserId != command.RequestingUserId)
 			{
-				var sharesCollection = db.GetCollection<GroceryListShareDocument>("grocerylist_shares");
-				var shareFilter = Builders<GroceryListShareDocument>.Filter.And(
-					Builders<GroceryListShareDocument>.Filter.Eq(s => s.OwnerUserId, command.OwnerUserId),
-					Builders<GroceryListShareDocument>.Filter.Eq(s => s.SharedWithUserId, command.RequestingUserId),
-					Builders<GroceryListShareDocument>.Filter.Eq(s => s.WeekStart, weekStartStr),
-					Builders<GroceryListShareDocument>.Filter.Eq(s => s.DismissedByRecipient, false));
-
-				var share = await sharesCollection.Find(shareFilter).FirstOrDefaultAsync(cancellationToken);
+				var share = await db.GroceryListShares.FirstOrDefaultAsync(
+					s => s.OwnerUserId == command.OwnerUserId
+						&& s.SharedWithUserId == command.RequestingUserId
+						&& s.WeekStart == weekStartStr
+						&& !s.DismissedByRecipient,
+					cancellationToken);
 				if (share is null)
 				{
 					return Result<GroceryList>.Failure(
@@ -68,18 +66,17 @@ public class AddCustomItemCommandHandler(IMongoClient mongoClient)
 				}
 			}
 
-			var document = await collection
-				.Find(g => g.UserId == command.EffectiveOwnerUserId && g.WeekStart == weekStartStr)
-				.FirstOrDefaultAsync(cancellationToken);
+			var entity = await db.GroceryLists
+				.FirstOrDefaultAsync(g => g.UserId == command.EffectiveOwnerUserId && g.WeekStart == weekStartStr, cancellationToken);
 
-			if (document is null)
+			if (entity is null)
 			{
 				return Result<GroceryList>.Failure(
 					new Error(ErrorCodes.NotFound,
 						"No grocery list found for the specified week. Generate a list first."));
 			}
 
-			document.Items.Add(new GroceryListItemDocument
+			entity.Items.Add(new GroceryListItemData
 			{
 				Name = command.ItemName.Trim(),
 				Quantity = 0,
@@ -87,13 +84,11 @@ public class AddCustomItemCommandHandler(IMongoClient mongoClient)
 				IsChecked = false,
 				SourceRecipeNames = []
 			});
-			document.UpdatedAt = DateTime.UtcNow;
-
-			var filter = Builders<GroceryListDocument>.Filter.Eq(g => g.Id, document.Id);
-			await collection.ReplaceOneAsync(filter, document, cancellationToken: cancellationToken);
+			entity.UpdatedAt = DateTime.UtcNow;
+			await db.SaveChangesAsync(cancellationToken);
 
 			return Result<GroceryList>.Success(
-				GroceryListHelpers.MapToDomain(document));
+				GroceryListHelpers.MapToDomain(entity));
 		}
 		catch (Exception ex)
 		{

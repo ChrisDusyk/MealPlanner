@@ -1,7 +1,7 @@
+using MealPlanner.Api.Data;
 using MealPlanner.Api.Features.GroceryLists.Models;
-using MealPlanner.Api.Features.Users.Models;
 using MealPlanner.Api.Shared;
-using MongoDB.Driver;
+using Microsoft.EntityFrameworkCore;
 
 namespace MealPlanner.Api.Features.GroceryLists.Queries;
 
@@ -28,7 +28,7 @@ public record SharedGroceryListResult(
 /// Handles fetching grocery lists shared with the recipient for the given week.
 /// Joins in the grocery list data and owner user info.
 /// </summary>
-public class GetGroceryListsSharedWithMeQueryHandler(IMongoClient mongoClient)
+public class GetGroceryListsSharedWithMeQueryHandler(MealPlannerDbContext db)
 	: IQueryHandler<GetGroceryListsSharedWithMeQuery, List<SharedGroceryListResult>>
 {
 	public async Task<Result<List<SharedGroceryListResult>>> HandleAsync(
@@ -37,34 +37,27 @@ public class GetGroceryListsSharedWithMeQueryHandler(IMongoClient mongoClient)
 	{
 		try
 		{
-			var db = mongoClient.GetDatabase("mealplannerDb");
-			var sharesCollection = db.GetCollection<GroceryListShareDocument>("grocerylist_shares");
-			var groceryCollection = db.GetCollection<GroceryListDocument>("grocerylists");
-			var usersCollection = db.GetCollection<UserDocument>("users");
-
 			// Get non-dismissed shares for this recipient and week
-			var shareFilter = Builders<GroceryListShareDocument>.Filter.And(
-				Builders<GroceryListShareDocument>.Filter.Eq(s => s.SharedWithUserId, query.RecipientUserId),
-				Builders<GroceryListShareDocument>.Filter.Eq(s => s.WeekStart, query.WeekStart),
-				Builders<GroceryListShareDocument>.Filter.Eq(s => s.DismissedByRecipient, false));
-
-			var shares = await sharesCollection.Find(shareFilter).ToListAsync(cancellationToken);
+			var shares = await db.GroceryListShares
+				.Where(s => s.SharedWithUserId == query.RecipientUserId
+					&& s.WeekStart == query.WeekStart
+					&& !s.DismissedByRecipient)
+				.ToListAsync(cancellationToken);
 
 			if (shares.Count == 0)
 				return Result<List<SharedGroceryListResult>>.Success([]);
 
 			// Batch-fetch owner users
 			var ownerIds = shares.Select(s => s.OwnerUserId).Distinct().ToList();
-			var usersFilter = Builders<UserDocument>.Filter.In(u => u.Auth0UserId, ownerIds);
-			var owners = await usersCollection.Find(usersFilter).ToListAsync(cancellationToken);
+			var owners = await db.Users
+				.Where(u => ownerIds.Contains(u.Auth0UserId))
+				.ToListAsync(cancellationToken);
 			var ownerLookup = owners.ToDictionary(u => u.Auth0UserId);
 
 			// Batch-fetch grocery lists for the owners and this week
-			var listFilter = Builders<GroceryListDocument>.Filter.And(
-				Builders<GroceryListDocument>.Filter.In(g => g.UserId, ownerIds),
-				Builders<GroceryListDocument>.Filter.Eq(g => g.WeekStart, query.WeekStart));
-
-			var lists = await groceryCollection.Find(listFilter).ToListAsync(cancellationToken);
+			var lists = await db.GroceryLists
+				.Where(g => ownerIds.Contains(g.UserId) && g.WeekStart == query.WeekStart)
+				.ToListAsync(cancellationToken);
 			var listLookup = lists.ToDictionary(g => g.UserId);
 
 			var results = new List<SharedGroceryListResult>();
@@ -77,7 +70,7 @@ public class GetGroceryListsSharedWithMeQueryHandler(IMongoClient mongoClient)
 				ownerLookup.TryGetValue(share.OwnerUserId, out var owner);
 
 				results.Add(new SharedGroceryListResult(
-					Share: share.ToDomain(),
+					Share: GroceryListHelpers.MapShareToDomain(share),
 					GroceryList: GroceryListHelpers.MapToDomain(listDoc),
 					OwnerName: owner?.Name ?? "Unknown",
 					OwnerEmail: owner?.Email ?? ""

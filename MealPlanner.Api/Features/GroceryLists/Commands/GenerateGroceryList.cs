@@ -1,9 +1,9 @@
+using MealPlanner.Api.Data;
+using MealPlanner.Api.Data.Entities;
 using MealPlanner.Api.Features.GroceryLists.Models;
 using MealPlanner.Api.Features.MealPlans.Models;
-using MealPlanner.Api.Features.Recipes.Models;
-using MealPlanner.Api.Features.Users.Models;
 using MealPlanner.Api.Shared;
-using MongoDB.Driver;
+using Microsoft.EntityFrameworkCore;
 
 namespace MealPlanner.Api.Features.GroceryLists.Commands;
 
@@ -17,7 +17,7 @@ public record GenerateGroceryListCommand(string UserId, DateOnly WeekStart) : IC
 /// Free-text items (no RecipeId) are added as uncategorized entries.
 /// If a grocery list already exists for the same user + week, it is replaced (upsert).
 /// </summary>
-public class GenerateGroceryListCommandHandler(IMongoClient mongoClient)
+public class GenerateGroceryListCommandHandler(MealPlannerDbContext db)
 	: ICommandHandler<GenerateGroceryListCommand, GroceryList>
 {
 	public async Task<Result<GroceryList>> HandleAsync(
@@ -26,34 +26,31 @@ public class GenerateGroceryListCommandHandler(IMongoClient mongoClient)
 	{
 		try
 		{
-			var db = mongoClient.GetDatabase("mealplannerDb");
 			var weekStart = GroceryListHelpers.NormalizeToMonday(command.WeekStart);
 			var weekStartStr = weekStart.ToString("yyyy-MM-dd");
 
 			// 1. Fetch the meal plan
-			var mealPlanCollection = db.GetCollection<MealPlanDocument>("mealplans");
-			var mealPlanDoc = await mealPlanCollection
-				.Find(p => p.UserId == command.UserId && p.WeekStart == weekStartStr)
-				.FirstOrDefaultAsync(cancellationToken);
+			var mealPlanEntity = await db.MealPlans
+				.FirstOrDefaultAsync(p => p.UserId == command.UserId && p.WeekStart == weekStartStr, cancellationToken);
 
-			if (mealPlanDoc is null)
+			if (mealPlanEntity is null)
 			{
 				return Result<GroceryList>.Failure(
 					new Error(ErrorCodes.NotFound, "No meal plan found for the specified week."));
 			}
 
 			// 2. Collect all slot items, separating recipe-linked from free-text
-			var recipeIds = new HashSet<string>();
+			var recipeIds = new HashSet<Guid>();
 			var freeTextItems = new List<string>();
 
-			foreach (var day in mealPlanDoc.Days)
+			foreach (var day in mealPlanEntity.Days)
 			{
 				foreach (var slot in day.Slots.Values)
 				{
 					foreach (var item in slot)
 					{
-						if (!string.IsNullOrEmpty(item.RecipeId))
-							recipeIds.Add(item.RecipeId);
+						if (!string.IsNullOrEmpty(item.RecipeId) && Guid.TryParse(item.RecipeId, out var recipeId))
+							recipeIds.Add(recipeId);
 						else
 							freeTextItems.Add(item.Name);
 					}
@@ -61,13 +58,11 @@ public class GenerateGroceryListCommandHandler(IMongoClient mongoClient)
 			}
 
 			// 3. Batch-fetch recipes
-			var recipesCollection = db.GetCollection<RecipeDocument>("recipes");
-			var recipeFilter = Builders<RecipeDocument>.Filter.In(r => r.Id, recipeIds);
-			var recipeDocs = await recipesCollection
-				.Find(recipeFilter)
+			var recipeEntities = await db.Recipes
+				.Where(r => recipeIds.Contains(r.Id))
 				.ToListAsync(cancellationToken);
 
-			var recipeMap = recipeDocs.ToDictionary(r => r.Id!, r => r);
+			var recipeMap = recipeEntities.ToDictionary(r => r.Id, r => r);
 
 			// 4. Aggregate ingredients by (name, unit) — case-insensitive
 			// Key: (lowered name, lowered unit) → (display name, total quantity, display unit, source recipe names)
@@ -79,14 +74,15 @@ public class GenerateGroceryListCommandHandler(IMongoClient mongoClient)
 				new Dictionary<(string, string), (string DisplayName, decimal TotalQuantity, string DisplayUnit,
 					HashSet<string> Sources)>();
 
-			foreach (var day in mealPlanDoc.Days)
+			foreach (var day in mealPlanEntity.Days)
 			{
 				foreach (var slot in day.Slots.Values)
 				{
 					foreach (var item in slot)
 					{
-						if (string.IsNullOrEmpty(item.RecipeId) ||
-						    !recipeMap.TryGetValue(item.RecipeId, out var recipe))
+						if (string.IsNullOrEmpty(item.RecipeId)
+						    || !Guid.TryParse(item.RecipeId, out var recipeId)
+						    || !recipeMap.TryGetValue(recipeId, out var recipe))
 							continue;
 
 						// Scale ingredient quantities by slot servings vs recipe yield
@@ -117,7 +113,7 @@ public class GenerateGroceryListCommandHandler(IMongoClient mongoClient)
 			// 5. Build grocery list items
 			var groceryItems = aggregated
 				.OrderBy(kvp => kvp.Key.Item1)
-				.Select(kvp => new GroceryListItemDocument
+				.Select(kvp => new GroceryListItemData
 				{
 					Name = kvp.Value.DisplayName,
 					Quantity = kvp.Value.TotalQuantity,
@@ -130,7 +126,7 @@ public class GenerateGroceryListCommandHandler(IMongoClient mongoClient)
 			// Build pantry staple items
 			var pantryStapleItems = aggregatedStaples
 				.OrderBy(kvp => kvp.Key.Item1)
-				.Select(kvp => new GroceryListItemDocument
+				.Select(kvp => new GroceryListItemData
 				{
 					Name = kvp.Value.DisplayName,
 					Quantity = kvp.Value.TotalQuantity,
@@ -146,7 +142,7 @@ public class GenerateGroceryListCommandHandler(IMongoClient mongoClient)
 			{
 				if (addedFreeText.Add(name))
 				{
-					groceryItems.Add(new GroceryListItemDocument
+					groceryItems.Add(new GroceryListItemData
 					{
 						Name = name,
 						Quantity = 0,
@@ -157,32 +153,23 @@ public class GenerateGroceryListCommandHandler(IMongoClient mongoClient)
 				}
 			}
 
-			// 6. Upsert the grocery list document
-			var groceryCollection = db.GetCollection<GroceryListDocument>("grocerylists");
+			// 6. Upsert the grocery list entity
 			var now = DateTime.UtcNow;
 
-			var filter = Builders<GroceryListDocument>.Filter.And(
-				Builders<GroceryListDocument>.Filter.Eq(g => g.UserId, command.UserId),
-				Builders<GroceryListDocument>.Filter.Eq(g => g.WeekStart, weekStartStr));
+			var entity = await db.GroceryLists
+				.FirstOrDefaultAsync(g => g.UserId == command.UserId && g.WeekStart == weekStartStr, cancellationToken);
 
-			var existingDoc = await groceryCollection
-				.Find(filter)
-				.FirstOrDefaultAsync(cancellationToken);
-
-			GroceryListDocument document;
-			if (existingDoc is not null)
+			if (entity is not null)
 			{
-				existingDoc.Items = groceryItems;
-				existingDoc.PantryStapleItems = pantryStapleItems;
-				existingDoc.UpdatedAt = now;
-				await groceryCollection.ReplaceOneAsync(
-					filter, existingDoc, cancellationToken: cancellationToken);
-				document = existingDoc;
+				entity.Items = groceryItems;
+				entity.PantryStapleItems = pantryStapleItems;
+				entity.UpdatedAt = now;
 			}
 			else
 			{
-				document = new GroceryListDocument
+				entity = new GroceryListEntity
 				{
+					Id = Guid.NewGuid(),
 					UserId = command.UserId,
 					WeekStart = weekStartStr,
 					Items = groceryItems,
@@ -190,14 +177,16 @@ public class GenerateGroceryListCommandHandler(IMongoClient mongoClient)
 					CreatedAt = now,
 					UpdatedAt = now
 				};
-				await groceryCollection.InsertOneAsync(document, cancellationToken: cancellationToken);
+				db.GroceryLists.Add(entity);
 			}
+
+			await db.SaveChangesAsync(cancellationToken);
 
 			// 7. Auto-share the grocery list with everyone the meal plan is shared with
 			await PropagateSharesFromMealPlanAsync(db, command.UserId, weekStartStr, cancellationToken);
 			await PropagateAutoSharesFromFriendPreferencesAsync(db, command.UserId, weekStartStr, cancellationToken);
 
-			return Result<GroceryList>.Success(GroceryListHelpers.MapToDomain(document));
+			return Result<GroceryList>.Success(GroceryListHelpers.MapToDomain(entity));
 		}
 		catch (Exception ex)
 		{
@@ -211,22 +200,16 @@ public class GenerateGroceryListCommandHandler(IMongoClient mongoClient)
 	/// have a corresponding grocery list share. No-ops if there are no meal plan shares.
 	/// </summary>
 	private static async Task PropagateSharesFromMealPlanAsync(
-		IMongoDatabase db,
+		MealPlannerDbContext db,
 		string ownerUserId,
 		string weekStartStr,
 		CancellationToken cancellationToken)
 	{
-		var mealPlanSharesCollection = db.GetCollection<MealPlanShareDocument>("shares");
-		var groceryListSharesCollection = db.GetCollection<GroceryListShareDocument>("grocerylist_shares");
-
 		// Find all active (non-dismissed) meal plan shares for this owner and week
-		var mealShareFilter = Builders<MealPlanShareDocument>.Filter.And(
-			Builders<MealPlanShareDocument>.Filter.Eq(s => s.OwnerUserId, ownerUserId),
-			Builders<MealPlanShareDocument>.Filter.Eq(s => s.WeekStart, weekStartStr),
-			Builders<MealPlanShareDocument>.Filter.Eq(s => s.DismissedByRecipient, false));
-
-		var mealPlanShares = await mealPlanSharesCollection
-			.Find(mealShareFilter)
+		var mealPlanShares = await db.MealPlanShares
+			.Where(s => s.OwnerUserId == ownerUserId
+				&& s.WeekStart == weekStartStr
+				&& !s.DismissedByRecipient)
 			.ToListAsync(cancellationToken);
 
 		if (mealPlanShares.Count == 0)
@@ -234,13 +217,10 @@ public class GenerateGroceryListCommandHandler(IMongoClient mongoClient)
 
 		// Fetch existing grocery list shares so we do not create duplicates
 		var recipientIds = mealPlanShares.Select(s => s.SharedWithUserId).Distinct().ToList();
-		var existingShareFilter = Builders<GroceryListShareDocument>.Filter.And(
-			Builders<GroceryListShareDocument>.Filter.Eq(s => s.OwnerUserId, ownerUserId),
-			Builders<GroceryListShareDocument>.Filter.Eq(s => s.WeekStart, weekStartStr),
-			Builders<GroceryListShareDocument>.Filter.In(s => s.SharedWithUserId, recipientIds));
-
-		var existingShares = await groceryListSharesCollection
-			.Find(existingShareFilter)
+		var existingShares = await db.GroceryListShares
+			.Where(s => s.OwnerUserId == ownerUserId
+				&& s.WeekStart == weekStartStr
+				&& recipientIds.Contains(s.SharedWithUserId))
 			.ToListAsync(cancellationToken);
 
 		var alreadySharedWith = existingShares
@@ -249,8 +229,9 @@ public class GenerateGroceryListCommandHandler(IMongoClient mongoClient)
 
 		var newShares = mealPlanShares
 			.Where(s => !alreadySharedWith.Contains(s.SharedWithUserId))
-			.Select(s => new GroceryListShareDocument
+			.Select(s => new GroceryListShareEntity
 			{
+				Id = Guid.NewGuid(),
 				OwnerUserId = s.OwnerUserId,
 				SharedWithUserId = s.SharedWithUserId,
 				WeekStart = s.WeekStart,
@@ -262,36 +243,19 @@ public class GenerateGroceryListCommandHandler(IMongoClient mongoClient)
 
 		if (newShares.Count > 0)
 		{
-			try
-			{
-				await groceryListSharesCollection.InsertManyAsync(newShares, cancellationToken: cancellationToken);
-			}
-			catch (MongoBulkWriteException<GroceryListShareDocument> ex)
-			{
-				var hasNonDuplicateErrors = ex.WriteErrors.Any(e =>
-					e.Code is not (11000 or 11001 or 12582));
-
-				if (hasNonDuplicateErrors)
-					throw;
-			}
+			db.GroceryListShares.AddRange(newShares);
+			await db.SaveChangesAsync(cancellationToken);
 		}
 	}
 
 	private static async Task PropagateAutoSharesFromFriendPreferencesAsync(
-		IMongoDatabase db,
+		MealPlannerDbContext db,
 		string ownerUserId,
 		string weekStartStr,
 		CancellationToken cancellationToken)
 	{
-		var preferences = db.GetCollection<FriendAutoSharePreferenceDocument>("friend_auto_share_preferences");
-		var groceryListShares = db.GetCollection<GroceryListShareDocument>("grocerylist_shares");
-		var friendships = db.GetCollection<FriendshipDocument>("friendships");
-
-		if (preferences is null || groceryListShares is null || friendships is null)
-			return;
-
-		var enabledPreferences = await preferences
-			.Find(p => p.UserId == ownerUserId && p.AutoShareGroceryLists)
+		var enabledPreferences = await db.FriendAutoSharePreferences
+			.Where(p => p.UserId == ownerUserId && p.AutoShareGroceryLists)
 			.ToListAsync(cancellationToken);
 
 		if (enabledPreferences.Count == 0)
@@ -306,8 +270,8 @@ public class GenerateGroceryListCommandHandler(IMongoClient mongoClient)
 		if (recipientIds.Count == 0)
 			return;
 
-		var activeFriendships = await friendships
-			.Find(f =>
+		var activeFriendships = await db.Friendships
+			.Where(f =>
 				(f.UserAId == ownerUserId && recipientIds.Contains(f.UserBId)) ||
 				(f.UserBId == ownerUserId && recipientIds.Contains(f.UserAId)))
 			.ToListAsync(cancellationToken);
@@ -321,8 +285,8 @@ public class GenerateGroceryListCommandHandler(IMongoClient mongoClient)
 		if (activeRecipientIds.Count == 0)
 			return;
 
-		var existingShares = await groceryListShares
-			.Find(s =>
+		var existingShares = await db.GroceryListShares
+			.Where(s =>
 				s.OwnerUserId == ownerUserId &&
 				s.WeekStart == weekStartStr &&
 				activeRecipientIds.Contains(s.SharedWithUserId))
@@ -335,8 +299,9 @@ public class GenerateGroceryListCommandHandler(IMongoClient mongoClient)
 		var now = DateTime.UtcNow;
 		var newShares = activeRecipientIds
 			.Where(recipientId => !alreadySharedWith.Contains(recipientId))
-			.Select(recipientId => new GroceryListShareDocument
+			.Select(recipientId => new GroceryListShareEntity
 			{
+				Id = Guid.NewGuid(),
 				OwnerUserId = ownerUserId,
 				SharedWithUserId = recipientId,
 				WeekStart = weekStartStr,
@@ -349,17 +314,7 @@ public class GenerateGroceryListCommandHandler(IMongoClient mongoClient)
 		if (newShares.Count == 0)
 			return;
 
-		try
-		{
-			await groceryListShares.InsertManyAsync(newShares, cancellationToken: cancellationToken);
-		}
-		catch (MongoBulkWriteException<GroceryListShareDocument> ex)
-		{
-			var hasNonDuplicateErrors = ex.WriteErrors.Any(e =>
-				e.Code is not (11000 or 11001 or 12582));
-
-			if (hasNonDuplicateErrors)
-				throw;
-		}
+		db.GroceryListShares.AddRange(newShares);
+		await db.SaveChangesAsync(cancellationToken);
 	}
 }
