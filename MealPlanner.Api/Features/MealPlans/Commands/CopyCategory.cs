@@ -47,12 +47,18 @@ public class CopyCategoryCommandHandler(MealPlannerDbContext db)
 			var sourceDayStr = command.SourceDay.ToString();
 			var categoryStr = command.Category.ToString();
 
-			var sourceDay = entity.Days.FirstOrDefault(d => d.Day == sourceDayStr);
+			var sourceDay = entity.Days.FirstOrDefault(d =>
+				string.Equals(d.Day, sourceDayStr, StringComparison.OrdinalIgnoreCase));
 			if (sourceDay is null)
 				return Result<MealPlan>.Failure(
 					new Error(ErrorCodes.ValidationFailed, $"Source day '{sourceDayStr}' not found."));
 
-			if (!sourceDay.Slots.TryGetValue(categoryStr, out var sourceItems) || sourceItems.Count == 0)
+			var sourceCategoryKey = sourceDay.Slots.Keys
+				.FirstOrDefault(key => string.Equals(key, categoryStr, StringComparison.OrdinalIgnoreCase));
+
+			if (sourceCategoryKey is null
+				|| !sourceDay.Slots.TryGetValue(sourceCategoryKey, out var sourceItems)
+				|| sourceItems.Count == 0)
 				return Result<MealPlan>.Failure(
 					new Error(ErrorCodes.ValidationFailed,
 						$"No items in {categoryStr} on {sourceDayStr} to copy."));
@@ -61,11 +67,16 @@ public class CopyCategoryCommandHandler(MealPlannerDbContext db)
 			foreach (var targetDayOfWeek in command.TargetDays)
 			{
 				var targetDayStr = targetDayOfWeek.ToString();
-				var targetDay = entity.Days.FirstOrDefault(d => d.Day == targetDayStr);
+				var targetDay = entity.Days.FirstOrDefault(d =>
+					string.Equals(d.Day, targetDayStr, StringComparison.OrdinalIgnoreCase));
 
 				if (targetDay is null) continue;
 
-				targetDay.Slots[categoryStr] = sourceItems
+				var targetCategoryKey = targetDay.Slots.Keys
+					.FirstOrDefault(key => string.Equals(key, categoryStr, StringComparison.OrdinalIgnoreCase))
+					?? categoryStr;
+
+				targetDay.Slots[targetCategoryKey] = sourceItems
 					.Select(item => new MealSlotItemData
 					{
 						RecipeId = item.RecipeId,
@@ -74,6 +85,8 @@ public class CopyCategoryCommandHandler(MealPlannerDbContext db)
 					})
 					.ToList();
 			}
+
+			db.Entry(entity).Property(x => x.Days).IsModified = true;
 
 			entity.UpdatedAt = DateTime.UtcNow;
 

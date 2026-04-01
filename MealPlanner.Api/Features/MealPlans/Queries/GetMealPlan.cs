@@ -86,9 +86,9 @@ public class GetMealPlanQueryHandler(MealPlannerDbContext db)
 			UserId: entity.UserId,
 			WeekStart: DateOnly.ParseExact(entity.WeekStart, "yyyy-MM-dd"),
 			Days: entity.Days.Select(d => new DayPlan(
-				Day: Enum.Parse<DayOfWeek>(d.Day),
+				Day: Enum.Parse<DayOfWeek>(d.Day, ignoreCase: true),
 				Slots: d.Slots.ToDictionary(
-					kvp => Enum.Parse<MealCategory>(kvp.Key),
+					kvp => Enum.Parse<MealCategory>(kvp.Key, ignoreCase: true),
 					kvp => kvp.Value.Select(item => new MealSlotItem(
 						RecipeId: Option<string>.From(item.RecipeId),
 						Name: item.Name,

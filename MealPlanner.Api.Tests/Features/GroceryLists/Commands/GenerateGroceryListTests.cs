@@ -33,6 +33,69 @@ public class GenerateGroceryListTests
 			UpdatedAt = DateTime.UtcNow
 		};
 
+	private static MealPlanEntity CreateMealPlanWithRepeatedRecipeServings(string userId = "u1", string weekStart = "2026-02-23") =>
+		new()
+		{
+			Id = Guid.NewGuid(),
+			UserId = userId,
+			WeekStart = weekStart,
+			Days =
+			[
+				new DayPlanData
+				{
+					Day = "Monday",
+					Slots = new Dictionary<string, List<MealSlotItemData>>
+					{
+						["Supper"] =
+						[
+							new MealSlotItemData { RecipeId = Guid.Parse("11111111-1111-1111-1111-111111111111").ToString(), Name = "Pasta", Servings = 2 }
+						]
+					}
+				},
+				new DayPlanData
+				{
+					Day = "Tuesday",
+					Slots = new Dictionary<string, List<MealSlotItemData>>
+					{
+						["Supper"] =
+						[
+							new MealSlotItemData { RecipeId = Guid.Parse("11111111-1111-1111-1111-111111111111").ToString(), Name = "Pasta", Servings = 2 }
+						]
+					}
+				},
+				new DayPlanData
+				{
+					Day = "Wednesday",
+					Slots = new Dictionary<string, List<MealSlotItemData>>
+					{
+						["Supper"] =
+						[
+							new MealSlotItemData { RecipeId = Guid.Parse("11111111-1111-1111-1111-111111111111").ToString(), Name = "Pasta", Servings = 2 }
+						]
+					}
+				}
+			],
+			CreatedAt = DateTime.UtcNow,
+			UpdatedAt = DateTime.UtcNow
+		};
+
+	private static RecipeEntity CreateSixServingRecipe() =>
+		new()
+		{
+			Id = Guid.Parse("11111111-1111-1111-1111-111111111111"),
+			UserId = "u1",
+			Name = "Pasta",
+			Description = string.Empty,
+			Servings = 6,
+			Ingredients =
+			[
+				new IngredientData { Name = "Tomato", Quantity = 3, Unit = "pcs" },
+				new IngredientData { Name = "Garlic", Quantity = 6, Unit = "cloves" }
+			],
+			CreatedAt = DateTime.UtcNow,
+			UpdatedAt = DateTime.UtcNow
+		};
+
 	private static RecipeEntity CreateRecipe() =>
 		new()
 		{
@@ -109,6 +172,32 @@ public class GenerateGroceryListTests
 		Assert.True(result.IsSuccess);
 		Assert.Single(context.GroceryLists);
 		Assert.NotEmpty(context.GroceryLists.Single().Items);
+	}
+
+	[Fact]
+	public async Task HandleAsync_ScalesIngredientQuantities_BySlotServingsAcrossMultipleDays()
+	{
+		var context = TestDbContextFactory.CreateContext(seed: db =>
+		{
+			db.MealPlans.Add(CreateMealPlanWithRepeatedRecipeServings());
+			db.Recipes.Add(CreateSixServingRecipe());
+		});
+
+		var handler = new GenerateGroceryListCommandHandler(context);
+		var result = await handler.HandleAsync(
+			new GenerateGroceryListCommand("u1", new DateOnly(2026, 2, 23)),
+			TestContext.Current.CancellationToken);
+
+		Assert.True(result.IsSuccess);
+		var items = context.GroceryLists.Single().Items;
+		Assert.Contains(items, i =>
+			i.Name == "Tomato"
+			&& i.Unit == "pcs"
+			&& decimal.Abs(i.Quantity - 3m) < 0.000001m);
+		Assert.Contains(items, i =>
+			i.Name == "Garlic"
+			&& i.Unit == "cloves"
+			&& decimal.Abs(i.Quantity - 6m) < 0.000001m);
 	}
 
 	[Fact]

@@ -42,6 +42,40 @@ public class CopyCategoryTests
 		UpdatedAt = DateTime.UtcNow
 	};
 
+	private static MealPlanEntity PlanWithLowerCaseSlotKeys() => new()
+	{
+		Id = Guid.NewGuid(),
+		UserId = "u1",
+		WeekStart = "2026-02-23",
+		Days =
+		[
+			new DayPlanData
+			{
+				Day = "Wednesday",
+				Slots = new Dictionary<string, List<MealSlotItemData>>
+				{
+					["breakfast"] = [],
+					["lunch"] = [new MealSlotItemData { RecipeId = "r2", Name = "Soup", Servings = 1 }],
+					["supper"] = [],
+					["snacks"] = []
+				}
+			},
+			new DayPlanData
+			{
+				Day = "Thursday",
+				Slots = new Dictionary<string, List<MealSlotItemData>>
+				{
+					["breakfast"] = [],
+					["lunch"] = [],
+					["supper"] = [],
+					["snacks"] = []
+				}
+			}
+		],
+		CreatedAt = DateTime.UtcNow,
+		UpdatedAt = DateTime.UtcNow
+	};
+
 	[Fact]
 	public async Task HandleAsync_ReturnsValidationFailure_WhenNoTargets()
 	{
@@ -81,6 +115,23 @@ public class CopyCategoryTests
 		var copiedItems = result.Value.Days.First(d => d.Day == DayOfWeek.Tuesday).Slots[MealCategory.Breakfast];
 		Assert.Single(copiedItems);
 		Assert.Equal(2, copiedItems[0].Servings);
+	}
+
+	[Fact]
+	public async Task HandleAsync_CopiesSourceCategory_WhenStoredSlotKeysUseDifferentCasing()
+	{
+		var context = TestDbContextFactory.CreateContext(seed: db => db.MealPlans.Add(PlanWithLowerCaseSlotKeys()));
+
+		var handler = new CopyCategoryCommandHandler(context);
+		var result = await handler.HandleAsync(
+			new CopyCategoryCommand("u1", new DateOnly(2026, 2, 23), DayOfWeek.Wednesday, MealCategory.Lunch, [DayOfWeek.Thursday]),
+			TestContext.Current.CancellationToken);
+
+		Assert.True(result.IsSuccess);
+		Assert.NotNull(result.Value);
+		var copiedItems = result.Value.Days.First(d => d.Day == DayOfWeek.Thursday).Slots[MealCategory.Lunch];
+		Assert.Single(copiedItems);
+		Assert.Equal("Soup", copiedItems[0].Name);
 	}
 
 	[Fact]

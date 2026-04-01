@@ -74,6 +74,7 @@ public class UpdateDaySlotCommandHandler(MealPlannerDbContext db)
 				Name = item.Name,
 				Servings = item.Servings
 			}).ToList();
+			db.Entry(entity).Property(x => x.Days).IsModified = true;
 
 			entity.UpdatedAt = DateTime.UtcNow;
 
