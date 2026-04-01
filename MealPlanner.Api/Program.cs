@@ -26,7 +26,11 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.AddServiceDefaults();
 
-builder.AddNpgsqlDbContext<MealPlannerDbContext>("mealplannerDb");
+builder.AddNpgsqlDbContext<MealPlannerDbContext>(
+	"mealplannerDb",
+	configureDbContextOptions: options =>
+		options.UseNpgsql(npgsql =>
+			npgsql.ConfigureDataSource(dataSourceBuilder => dataSourceBuilder.EnableDynamicJson())));
 
 // Add services to the container.
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
