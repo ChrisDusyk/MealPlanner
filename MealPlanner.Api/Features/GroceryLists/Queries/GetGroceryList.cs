@@ -11,7 +11,7 @@ namespace MealPlanner.Api.Features.GroceryLists.Queries;
 public record GetGroceryListQuery(string UserId, DateOnly WeekStart) : IQuery<GroceryList>;
 
 /// <summary>
-/// Handles retrieving a grocery list from MongoDB.
+/// Handles retrieving a grocery list from the database.
 /// Returns NotFound if no list has been generated for the specified week.
 /// </summary>
 public class GetGroceryListQueryHandler(MealPlannerDbContext db)
