@@ -6,8 +6,13 @@ var postgres = builder.AddPostgres("postgres")
 	.WithPgWeb();
 var mealPlannerDb = postgres.AddDatabase("mealplannerDb");
 
+var migrationService = builder.AddProject<Projects.MealPlanner_MigrationService>("migration-service")
+	.WithReference(mealPlannerDb)
+	.WaitFor(mealPlannerDb);
+
 var api = builder.AddProject<Projects.MealPlanner_Api>("api")
-	.WithReference(mealPlannerDb).WaitFor(mealPlannerDb)
+	.WithReference(mealPlannerDb)
+	.WaitForCompletion(migrationService)
 	.WithEnvironment("Anthropic__ApiKey",
 		builder.Configuration["Anthropic__ApiKey"] ?? builder.Configuration["Anthropic:ApiKey"]);
 

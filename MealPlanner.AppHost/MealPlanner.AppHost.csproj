@@ -2,6 +2,7 @@
 
     <ItemGroup>
       <ProjectReference Include="..\MealPlanner.Api\MealPlanner.Api.csproj" />
+      <ProjectReference Include="..\MealPlanner.MigrationService\MealPlanner.MigrationService.csproj" />
     </ItemGroup>
 
     <ItemGroup>
