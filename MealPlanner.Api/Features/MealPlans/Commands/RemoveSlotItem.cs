@@ -58,6 +58,7 @@ public class RemoveSlotItemCommandHandler(MealPlannerDbContext db)
 						$"Item index {command.ItemIndex} is out of range."));
 
 			items.RemoveAt(command.ItemIndex);
+			db.Entry(entity).Property(x => x.Days).IsModified = true;
 			entity.UpdatedAt = DateTime.UtcNow;
 
 			await db.SaveChangesAsync(cancellationToken);

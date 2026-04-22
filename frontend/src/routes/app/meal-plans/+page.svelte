@@ -140,6 +140,7 @@
 		generateGroceryListLoading = true;
 
 		try {
+			await pendingSlotUpdate;
 			const params = new SvelteURLSearchParams({ weekStart: mealPlan.weekStart });
 			const res = await fetch(`/app/meal-plans/grocery-list?${params}`, {
 				method: 'POST'

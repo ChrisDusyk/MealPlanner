@@ -146,7 +146,7 @@ public class GetMealPlanQueryHandler(MealPlannerDbContext db)
 			.ToHashSet(StringComparer.Ordinal);
 
 		var activePreferredFriendUserIds = preferredFriendUserIds
-			.Where(id => activeFriendUserIds.Contains(id))
+			.Where(activeFriendUserIds.Contains)
 			.ToList();
 
 		if (activePreferredFriendUserIds.Count == 0)
