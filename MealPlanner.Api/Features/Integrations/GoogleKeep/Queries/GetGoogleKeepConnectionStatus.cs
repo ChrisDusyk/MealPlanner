@@ -1,6 +1,7 @@
+using MealPlanner.Api.Data;
 using MealPlanner.Api.Features.Integrations.GoogleKeep.Models;
 using MealPlanner.Api.Shared;
-using MongoDB.Driver;
+using Microsoft.EntityFrameworkCore;
 
 namespace MealPlanner.Api.Features.Integrations.GoogleKeep.Queries;
 
@@ -13,7 +14,7 @@ public record GoogleKeepConnectionStatus(
 	Option<string> ConnectedEmail,
 	Option<DateTime> ConnectedAtUtc);
 
-public class GetGoogleKeepConnectionStatusQueryHandler(IMongoClient mongoClient)
+public class GetGoogleKeepConnectionStatusQueryHandler(MealPlannerDbContext db)
 	: IQueryHandler<GetGoogleKeepConnectionStatusQuery, GoogleKeepConnectionStatus>
 {
 	public async Task<Result<GoogleKeepConnectionStatus>> HandleAsync(
@@ -29,14 +30,10 @@ public class GetGoogleKeepConnectionStatusQueryHandler(IMongoClient mongoClient)
 
 		try
 		{
-			var collection = mongoClient.GetDatabase("mealplannerDb")
-				.GetCollection<GoogleIntegrationConnectionDocument>(IntegrationCollections.Connections);
-
-			var document = await collection
-				.Find(c => c.UserId == query.UserId
-				           && c.Provider == IntegrationProvider.GoogleKeep.ToString()
-				           && c.DisconnectedAtUtc == null)
-				.FirstOrDefaultAsync(cancellationToken);
+			var document = await db.GoogleIntegrationConnections
+				.FirstOrDefaultAsync(c => c.UserId == query.UserId
+					&& c.Provider == IntegrationProvider.GoogleKeep.ToString()
+					&& c.DisconnectedAtUtc == null, cancellationToken);
 
 			if (document is null)
 			{

@@ -156,12 +156,15 @@ export async function removeFriend(
 	friendUserId: string,
 	fetchFn: typeof fetch = fetch
 ): Promise<FriendActionResponse> {
-	const response = await fetchFn(`${getApiBase()}/api/users/friends/${encodeURIComponent(friendUserId)}`, {
-		method: 'DELETE',
-		headers: {
-			Authorization: `Bearer ${accessToken}`
+	const response = await fetchFn(
+		`${getApiBase()}/api/users/friends/${encodeURIComponent(friendUserId)}`,
+		{
+			method: 'DELETE',
+			headers: {
+				Authorization: `Bearer ${accessToken}`
+			}
 		}
-	});
+	);
 
 	if (!response.ok) {
 		const { message, body } = await parseErrorBody(response);

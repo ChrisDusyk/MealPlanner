@@ -1,6 +1,8 @@
+using MealPlanner.Api.Data;
+using MealPlanner.Api.Data.Entities;
 using MealPlanner.Api.Features.Recipes.Models;
 using MealPlanner.Api.Shared;
-using MongoDB.Driver;
+using Microsoft.EntityFrameworkCore;
 
 namespace MealPlanner.Api.Features.Recipes.Queries;
 
@@ -10,34 +12,33 @@ namespace MealPlanner.Api.Features.Recipes.Queries;
 public record GetRecipeByIdQuery(string Id, string UserId) : IQuery<Recipe>;
 
 /// <summary>
-/// Handles retrieving a single recipe from MongoDB by ID.
+/// Handles retrieving a single recipe by ID.
 /// </summary>
-public class GetRecipeByIdQueryHandler(IMongoClient mongoClient)
+public class GetRecipeByIdQueryHandler(MealPlannerDbContext db)
 	: IQueryHandler<GetRecipeByIdQuery, Recipe>
 {
 	public async Task<Result<Recipe>> HandleAsync(
 		GetRecipeByIdQuery query,
 		CancellationToken cancellationToken = default)
 	{
+		if (!Guid.TryParse(query.Id, out var recipeGuid))
+			return Result<Recipe>.Failure(
+				new Error(ErrorCodes.ValidationFailed, "Recipe ID is invalid."));
+
 		try
 		{
-			var collection = mongoClient
-				.GetDatabase("mealplannerDb")
-				.GetCollection<RecipeDocument>("recipes");
+			var entity = await db.Recipes
+				.FirstOrDefaultAsync(r => r.Id == recipeGuid, cancellationToken);
 
-			var document = await collection
-				.Find(r => r.Id == query.Id)
-				.FirstOrDefaultAsync(cancellationToken);
-
-			if (document is null)
+			if (entity is null)
 				return Result<Recipe>.Failure(
 					new Error(ErrorCodes.NotFound, $"Recipe with ID '{query.Id}' was not found."));
 
-			if (document.UserId != query.UserId)
+			if (entity.UserId != query.UserId)
 				return Result<Recipe>.Failure(
 					new Error(ErrorCodes.Unauthorized, "You do not have permission to view this recipe."));
 
-			return Result<Recipe>.Success(MapToRecipe(document));
+			return Result<Recipe>.Success(MapToRecipe(entity));
 		}
 		catch (Exception ex)
 		{
@@ -46,16 +47,16 @@ public class GetRecipeByIdQueryHandler(IMongoClient mongoClient)
 		}
 	}
 
-	internal static Recipe MapToRecipe(RecipeDocument doc) =>
+	internal static Recipe MapToRecipe(RecipeEntity entity) =>
 		new(
-			Id: doc.Id!,
-			UserId: doc.UserId,
-			Name: doc.Name,
-			Description: doc.Description,
-			Servings: doc.Servings,
-			SourceUrl: Option<string>.From(doc.SourceUrl),
-			Ingredients: doc.Ingredients.Select(i => new Ingredient(i.Name, i.Quantity, i.Unit, i.IsPantryStaple)).ToList(),
-			CreatedAt: doc.CreatedAt,
-			UpdatedAt: doc.UpdatedAt
+			Id: entity.Id.ToString(),
+			UserId: entity.UserId,
+			Name: entity.Name,
+			Description: entity.Description,
+			Servings: entity.Servings,
+			SourceUrl: Option<string>.From(entity.SourceUrl),
+			Ingredients: entity.Ingredients.Select(i => new Ingredient(i.Name, i.Quantity, i.Unit, i.IsPantryStaple)).ToList(),
+			CreatedAt: entity.CreatedAt,
+			UpdatedAt: entity.UpdatedAt
 		);
 }

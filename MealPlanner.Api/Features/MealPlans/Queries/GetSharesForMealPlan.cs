@@ -1,7 +1,7 @@
+using MealPlanner.Api.Data;
 using MealPlanner.Api.Features.MealPlans.Models;
-using MealPlanner.Api.Features.Users.Models;
 using MealPlanner.Api.Shared;
-using MongoDB.Driver;
+using Microsoft.EntityFrameworkCore;
 
 namespace MealPlanner.Api.Features.MealPlans.Queries;
 
@@ -27,7 +27,7 @@ public record ShareWithRecipientInfo(
 /// Handles fetching all shares the owner has created for the specified week,
 /// then joins recipient user info for display.
 /// </summary>
-public class GetSharesForMealPlanQueryHandler(IMongoClient mongoClient)
+public class GetSharesForMealPlanQueryHandler(MealPlannerDbContext db)
 	: IQueryHandler<GetSharesForMealPlanQuery, List<ShareWithRecipientInfo>>
 {
 	public async Task<Result<List<ShareWithRecipientInfo>>> HandleAsync(
@@ -36,30 +36,25 @@ public class GetSharesForMealPlanQueryHandler(IMongoClient mongoClient)
 	{
 		try
 		{
-			var db = mongoClient.GetDatabase("mealplannerDb");
-			var sharesCollection = db.GetCollection<MealPlanShareDocument>("shares");
-			var usersCollection = db.GetCollection<UserDocument>("users");
-
-			var filter = Builders<MealPlanShareDocument>.Filter.And(
-				Builders<MealPlanShareDocument>.Filter.Eq(s => s.OwnerUserId, query.OwnerUserId),
-				Builders<MealPlanShareDocument>.Filter.Eq(s => s.WeekStart, query.WeekStart));
-
-			var shares = await sharesCollection.Find(filter).ToListAsync(cancellationToken);
+			var shares = await db.MealPlanShares
+				.Where(s => s.OwnerUserId == query.OwnerUserId && s.WeekStart == query.WeekStart)
+				.ToListAsync(cancellationToken);
 
 			if (shares.Count == 0)
 				return Result<List<ShareWithRecipientInfo>>.Success([]);
 
 			// Batch-fetch recipient users
 			var recipientIds = shares.Select(s => s.SharedWithUserId).Distinct().ToList();
-			var usersFilter = Builders<UserDocument>.Filter.In(u => u.Auth0UserId, recipientIds);
-			var users = await usersCollection.Find(usersFilter).ToListAsync(cancellationToken);
+			var users = await db.Users
+				.Where(u => recipientIds.Contains(u.Auth0UserId))
+				.ToListAsync(cancellationToken);
 			var userLookup = users.ToDictionary(u => u.Auth0UserId);
 
 			var results = shares.Select(s =>
 			{
 				userLookup.TryGetValue(s.SharedWithUserId, out var user);
 				return new ShareWithRecipientInfo(
-					Share: s.ToDomain(),
+					Share: GetMealPlanQueryHandler.MapShareToDomain(s),
 					RecipientName: user?.Name ?? "Unknown",
 					RecipientEmail: user?.Email ?? ""
 				);

@@ -157,7 +157,9 @@ describe('auth callbacks', () => {
 	it('flags refresh failure when Auth0 refresh fails', async () => {
 		const now = 1_800_000_000_000;
 		vi.spyOn(Date, 'now').mockReturnValue(now);
-		(global.fetch as Mock).mockResolvedValue(new Response('expired refresh token', { status: 401 }));
+		(global.fetch as Mock).mockResolvedValue(
+			new Response('expired refresh token', { status: 401 })
+		);
 		const callbacks = await loadAuthCallbacks();
 
 		const token = await callbacks.jwt({

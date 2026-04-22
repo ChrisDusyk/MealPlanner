@@ -1,7 +1,8 @@
+using MealPlanner.Api.Data;
+using MealPlanner.Api.Data.Entities;
 using MealPlanner.Api.Features.MealPlans.Models;
-using MealPlanner.Api.Features.Users.Models;
 using MealPlanner.Api.Shared;
-using MongoDB.Driver;
+using Microsoft.EntityFrameworkCore;
 
 namespace MealPlanner.Api.Features.MealPlans.Queries;
 
@@ -11,9 +12,9 @@ namespace MealPlanner.Api.Features.MealPlans.Queries;
 public record GetMealPlanQuery(string UserId, DateOnly WeekStart) : IQuery<MealPlan>;
 
 /// <summary>
-/// Handles retrieving (or auto-creating) a weekly meal plan from MongoDB.
+/// Handles retrieving (or auto-creating) a weekly meal plan.
 /// </summary>
-public class GetMealPlanQueryHandler(IMongoClient mongoClient)
+public class GetMealPlanQueryHandler(MealPlannerDbContext db)
 	: IQueryHandler<GetMealPlanQuery, MealPlan>
 {
 	private static readonly MealCategory[] AllCategories =
@@ -32,37 +33,35 @@ public class GetMealPlanQueryHandler(IMongoClient mongoClient)
 			var weekStart = NormalizeToMonday(query.WeekStart);
 			var weekStartStr = weekStart.ToString("yyyy-MM-dd");
 
-			var database = mongoClient.GetDatabase("mealplannerDb");
-			var collection = database.GetCollection<MealPlanDocument>("mealplans");
+			var entity = await db.MealPlans
+				.FirstOrDefaultAsync(p => p.UserId == query.UserId && p.WeekStart == weekStartStr, cancellationToken);
 
-			var document = await collection
-				.Find(p => p.UserId == query.UserId && p.WeekStart == weekStartStr)
-				.FirstOrDefaultAsync(cancellationToken);
-
-			if (document is not null)
-				return Result<MealPlan>.Success(MapToDomain(document));
+			if (entity is not null)
+				return Result<MealPlan>.Success(MapToDomain(entity));
 
 			// Auto-create empty plan for this week
 			var now = DateTime.UtcNow;
-			document = new MealPlanDocument
+			entity = new MealPlanEntity
 			{
+				Id = Guid.NewGuid(),
 				UserId = query.UserId,
 				WeekStart = weekStartStr,
-				Days = WeekDays.Select(day => new DayPlanDocument
+				Days = WeekDays.Select(day => new DayPlanData
 				{
 					Day = day.ToString(),
 					Slots = AllCategories.ToDictionary(
 						c => c.ToString(),
-						_ => new List<MealSlotItemDocument>()
+						_ => new List<MealSlotItemData>()
 					)
 				}).ToList(),
 				CreatedAt = now,
 				UpdatedAt = now
 			};
 
-			await collection.InsertOneAsync(document, cancellationToken: cancellationToken);
-			await PropagateAutoSharesFromFriendPreferencesAsync(database, query.UserId, weekStartStr, cancellationToken);
-			return Result<MealPlan>.Success(MapToDomain(document));
+			db.MealPlans.Add(entity);
+			await db.SaveChangesAsync(cancellationToken);
+			await PropagateAutoSharesFromFriendPreferencesAsync(db, query.UserId, weekStartStr, cancellationToken);
+			return Result<MealPlan>.Success(MapToDomain(entity));
 		}
 		catch (Exception ex)
 		{
@@ -81,15 +80,15 @@ public class GetMealPlanQueryHandler(IMongoClient mongoClient)
 		return date.AddDays(-offset);
 	}
 
-	internal static MealPlan MapToDomain(MealPlanDocument doc) =>
+	internal static MealPlan MapToDomain(MealPlanEntity entity) =>
 		new(
-			Id: doc.Id!,
-			UserId: doc.UserId,
-			WeekStart: DateOnly.ParseExact(doc.WeekStart, "yyyy-MM-dd"),
-			Days: doc.Days.Select(d => new DayPlan(
-				Day: Enum.Parse<DayOfWeek>(d.Day),
+			Id: entity.Id.ToString(),
+			UserId: entity.UserId,
+			WeekStart: DateOnly.ParseExact(entity.WeekStart, "yyyy-MM-dd"),
+			Days: entity.Days.Select(d => new DayPlan(
+				Day: Enum.Parse<DayOfWeek>(d.Day, ignoreCase: true),
 				Slots: d.Slots.ToDictionary(
-					kvp => Enum.Parse<MealCategory>(kvp.Key),
+					kvp => Enum.Parse<MealCategory>(kvp.Key, ignoreCase: true),
 					kvp => kvp.Value.Select(item => new MealSlotItem(
 						RecipeId: Option<string>.From(item.RecipeId),
 						Name: item.Name,
@@ -97,44 +96,48 @@ public class GetMealPlanQueryHandler(IMongoClient mongoClient)
 					)).ToList()
 				)
 			)).ToList(),
-			CreatedAt: doc.CreatedAt,
-			UpdatedAt: doc.UpdatedAt
+			CreatedAt: entity.CreatedAt,
+			UpdatedAt: entity.UpdatedAt
+		);
+
+	internal static MealPlanShare MapShareToDomain(MealPlanShareEntity entity) =>
+		new(
+			Id: entity.Id.ToString(),
+			OwnerUserId: entity.OwnerUserId,
+			SharedWithUserId: entity.SharedWithUserId,
+			WeekStart: entity.WeekStart,
+			Permission: Enum.Parse<SharePermission>(entity.Permission),
+			SharedAt: entity.SharedAt,
+			DismissedByRecipient: entity.DismissedByRecipient
 		);
 
 	private static async Task PropagateAutoSharesFromFriendPreferencesAsync(
-		IMongoDatabase database,
+		MealPlannerDbContext db,
 		string ownerUserId,
 		string weekStart,
 		CancellationToken cancellationToken)
 	{
-		var preferences = database.GetCollection<FriendAutoSharePreferenceDocument>("friend_auto_share_preferences");
-		var shares = database.GetCollection<MealPlanShareDocument>("shares");
-		var friendships = database.GetCollection<FriendshipDocument>("friendships");
-
-		if (preferences is null || shares is null || friendships is null)
-			return;
-
-		var enabledPreferences = await preferences
-			.Find(p => p.UserId == ownerUserId && p.AutoShareMealPlans)
+		var enabledPreferences = await db.FriendAutoSharePreferences
+			.Where(p => p.UserId == ownerUserId && p.AutoShareMealPlans)
 			.ToListAsync(cancellationToken);
 
 		if (enabledPreferences.Count == 0)
 			return;
 
-		var friendUserIds = enabledPreferences
+		var preferredFriendUserIds = enabledPreferences
 			.Select(p => p.FriendUserId)
 			.Where(id => !string.IsNullOrWhiteSpace(id))
 			.Distinct(StringComparer.Ordinal)
 			.ToList();
 
-		if (friendUserIds.Count == 0)
+		if (preferredFriendUserIds.Count == 0)
 			return;
 
 		// Ensure auto-share is only propagated to current friends, not stale preference entries.
-		var activeFriendships = await friendships
-			.Find(f =>
-				(f.UserAId == ownerUserId && friendUserIds.Contains(f.UserBId)) ||
-				(f.UserBId == ownerUserId && friendUserIds.Contains(f.UserAId)))
+		var activeFriendships = await db.Friendships
+			.Where(f =>
+				(f.UserAId == ownerUserId && preferredFriendUserIds.Contains(f.UserBId)) ||
+				(f.UserBId == ownerUserId && preferredFriendUserIds.Contains(f.UserAId)))
 			.ToListAsync(cancellationToken);
 
 		var activeFriendUserIds = activeFriendships
@@ -142,28 +145,29 @@ public class GetMealPlanQueryHandler(IMongoClient mongoClient)
 			.Where(id => !string.IsNullOrWhiteSpace(id))
 			.ToHashSet(StringComparer.Ordinal);
 
-		friendUserIds = friendUserIds
-			.Where(id => activeFriendUserIds.Contains(id))
+		var activePreferredFriendUserIds = preferredFriendUserIds
+			.Where(activeFriendUserIds.Contains)
 			.ToList();
 
-		if (friendUserIds.Count == 0)
+		if (activePreferredFriendUserIds.Count == 0)
 			return;
 
-		var existingShares = await shares
-			.Find(s =>
+		var existingShares = await db.MealPlanShares
+			.Where(s =>
 				s.OwnerUserId == ownerUserId &&
 				s.WeekStart == weekStart &&
-				friendUserIds.Contains(s.SharedWithUserId))
+				activePreferredFriendUserIds.Contains(s.SharedWithUserId))
 			.ToListAsync(cancellationToken);
 
 		var alreadySharedWith = existingShares
 			.Select(s => s.SharedWithUserId)
 			.ToHashSet(StringComparer.Ordinal);
 
-		var newShares = friendUserIds
+		var newShares = activePreferredFriendUserIds
 			.Where(friendUserId => !alreadySharedWith.Contains(friendUserId))
-			.Select(friendUserId => new MealPlanShareDocument
+			.Select(friendUserId => new MealPlanShareEntity
 			{
+				Id = Guid.NewGuid(),
 				OwnerUserId = ownerUserId,
 				SharedWithUserId = friendUserId,
 				WeekStart = weekStart,
@@ -176,15 +180,7 @@ public class GetMealPlanQueryHandler(IMongoClient mongoClient)
 		if (newShares.Count == 0)
 			return;
 
-		try
-		{
-			await shares.InsertManyAsync(newShares, cancellationToken: cancellationToken);
-		}
-		catch (MongoBulkWriteException<MealPlanShareDocument> ex)
-		{
-			var hasNonDuplicateErrors = ex.WriteErrors.Any(e => e.Code is not (11000 or 11001 or 12582));
-			if (hasNonDuplicateErrors)
-				throw;
-		}
+		db.MealPlanShares.AddRange(newShares);
+		await db.SaveChangesAsync(cancellationToken);
 	}
 }

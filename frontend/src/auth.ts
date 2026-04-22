@@ -61,12 +61,18 @@ function getApiBaseUrl(): string {
 	return serviceDiscoveryUrl;
 }
 
-function getStringValue(source: Record<string, unknown> | undefined, key: string): string | undefined {
+function getStringValue(
+	source: Record<string, unknown> | undefined,
+	key: string
+): string | undefined {
 	const value = source?.[key];
 	return typeof value === 'string' && value.trim().length > 0 ? value.trim() : undefined;
 }
 
-function buildSyncUserPayload(token: Record<string, unknown>, profile?: Record<string, unknown>): SyncUserPayload | null {
+function buildSyncUserPayload(
+	token: Record<string, unknown>,
+	profile?: Record<string, unknown>
+): SyncUserPayload | null {
 	const email = getStringValue(profile, 'email') || getStringValue(token, 'email');
 	const name =
 		getStringValue(profile, 'name') ||
@@ -155,7 +161,9 @@ function hasValidAccessToken(token: Record<string, unknown>): boolean {
 	return Date.now() < token.accessTokenExpires - ACCESS_TOKEN_REFRESH_BUFFER_MS;
 }
 
-async function refreshAccessToken(token: Record<string, unknown>): Promise<Record<string, unknown>> {
+async function refreshAccessToken(
+	token: Record<string, unknown>
+): Promise<Record<string, unknown>> {
 	const refreshToken = typeof token.refreshToken === 'string' ? token.refreshToken : '';
 	if (!refreshToken) {
 		console.warn('No refresh token available. User re-authentication is required.');
@@ -254,9 +262,13 @@ export const { handle, signIn, signOut } = SvelteKitAuth({
 			// Persist the access token from the Auth0 provider to the JWT
 			if (account) {
 				tokenRecord.accessToken = account.access_token;
-				tokenRecord.accessTokenExpires = resolveAccessTokenExpiry(account as Record<string, unknown>);
+				tokenRecord.accessTokenExpires = resolveAccessTokenExpiry(
+					account as Record<string, unknown>
+				);
 				tokenRecord.refreshToken =
-					typeof account.refresh_token === 'string' ? account.refresh_token : tokenRecord.refreshToken;
+					typeof account.refresh_token === 'string'
+						? account.refresh_token
+						: tokenRecord.refreshToken;
 				tokenRecord.idToken = account.id_token;
 				tokenRecord.error = undefined;
 				tokenRecord.roles = extractRolesFromAccessToken(
@@ -289,7 +301,8 @@ export const { handle, signIn, signOut } = SvelteKitAuth({
 			// Make the access token available in the session for API calls
 			session.accessToken = typeof token.accessToken === 'string' ? token.accessToken : '';
 			session.roles = extractRolesFromTokenRecord(token as Record<string, unknown>);
-			session.error = token.error === 'RefreshAccessTokenError' ? 'RefreshAccessTokenError' : undefined;
+			session.error =
+				token.error === 'RefreshAccessTokenError' ? 'RefreshAccessTokenError' : undefined;
 			return session;
 		}
 	}

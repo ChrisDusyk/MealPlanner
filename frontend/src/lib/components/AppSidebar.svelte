@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/state';
+	import { resolve } from '$app/paths';
 	import { getContext } from 'svelte';
 	import { signOut } from '@auth/sveltekit/client';
 	import type { Session } from '@auth/sveltekit';
@@ -42,7 +43,7 @@
 			href: '/app/grocery-lists',
 			icon: 'grocery'
 		}
-	];
+	] as const;
 
 	function isActive(href: string): boolean {
 		if (href === '/app') {
@@ -129,7 +130,7 @@
 			{#each navItems as item (item.href)}
 				<li>
 					<a
-						href={item.href}
+						href={resolve(item.href)}
 						onclick={() => (mobileOpen = false)}
 						class="group flex items-center gap-3 rounded-lg px-3 py-2.5 font-display text-sm font-medium transition-all {isActive(
 							item.href

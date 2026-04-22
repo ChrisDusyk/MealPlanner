@@ -13,9 +13,15 @@ describe('/+page.svelte', () => {
 		});
 		await expect.element(heading).toBeInTheDocument();
 
-		await expect.element(page.getByRole('heading', { level: 2, name: /meal planning, simplified/i })).toBeInTheDocument();
-		await expect.element(page.getByRole('heading', { level: 2, name: /how it works/i })).toBeInTheDocument();
-		await expect.element(page.getByRole('heading', { level: 2, name: /loved by home cooks/i })).toBeInTheDocument();
+		await expect
+			.element(page.getByRole('heading', { level: 2, name: /meal planning, simplified/i }))
+			.toBeInTheDocument();
+		await expect
+			.element(page.getByRole('heading', { level: 2, name: /how it works/i }))
+			.toBeInTheDocument();
+		await expect
+			.element(page.getByRole('heading', { level: 2, name: /loved by home cooks/i }))
+			.toBeInTheDocument();
 		await expect.element(page.getByRole('link', { name: /see how it works/i })).toBeInTheDocument();
 	});
 });

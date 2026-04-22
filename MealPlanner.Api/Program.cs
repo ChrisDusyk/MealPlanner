@@ -1,8 +1,9 @@
+using MealPlanner.Api.Data;
+using Microsoft.EntityFrameworkCore;
 using MealPlanner.Api.Features.GroceryLists;
 using MealPlanner.Api.Features.GroceryLists.Realtime;
 using MealPlanner.Api.Features.Admin;
 using MealPlanner.Api.Features.Auth;
-using MealPlanner.Api.Features.Integrations;
 using MealPlanner.Api.Features.Integrations.GoogleKeep;
 using MealPlanner.Api.Features.Integrations.GoogleKeep.Options;
 using MealPlanner.Api.Features.Integrations.GoogleKeep.Services;
@@ -16,15 +17,30 @@ using MealPlanner.Api.Shared;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.SignalR;
-using System.IO;
 using System.Security.Claims;
 using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Railway provides DATABASE_URL in URI format; convert it to the ADO.NET key-value
+// format that Npgsql expects and inject it as the named connection string.
+var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
+if (!string.IsNullOrEmpty(databaseUrl))
+{
+	var uri = new Uri(databaseUrl);
+	var userInfo = uri.UserInfo.Split(':');
+	var connectionString =
+		$"Host={uri.Host};Port={uri.Port};Database={uri.AbsolutePath.TrimStart('/')};Username={userInfo[0]};Password={userInfo[1]}";
+	builder.Configuration["ConnectionStrings:mealplannerDb"] = connectionString;
+}
+
 builder.AddServiceDefaults();
 
-builder.AddMongoDBClient("mealplannerDb");
+builder.AddNpgsqlDbContext<MealPlannerDbContext>(
+	"mealplannerDb",
+	configureDbContextOptions: options =>
+		options.UseNpgsql(npgsql =>
+			npgsql.ConfigureDataSource(dataSourceBuilder => dataSourceBuilder.EnableDynamicJson())));
 
 // Add services to the container.
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
@@ -153,10 +169,6 @@ builder.Services.AddRateLimiter(options =>
 var app = builder.Build();
 
 app.MapDefaultEndpoints();
-
-await app.Services.EnsureUserIndexesAsync();
-await app.Services.EnsureSharingIndexesAsync();
-await app.Services.EnsureIntegrationIndexesAsync();
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())

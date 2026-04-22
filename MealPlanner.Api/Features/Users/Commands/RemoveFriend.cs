@@ -1,6 +1,6 @@
-using MealPlanner.Api.Features.Users.Models;
+using MealPlanner.Api.Data;
 using MealPlanner.Api.Shared;
-using MongoDB.Driver;
+using Microsoft.EntityFrameworkCore;
 
 namespace MealPlanner.Api.Features.Users.Commands;
 
@@ -12,7 +12,7 @@ public record RemoveFriendCommand(
 	string FriendUserId
 ) : ICommand<Unit>;
 
-public class RemoveFriendCommandHandler(IMongoClient mongoClient)
+public class RemoveFriendCommandHandler(MealPlannerDbContext db)
 	: ICommandHandler<RemoveFriendCommand, Unit>
 {
 	public async Task<Result<Unit>> HandleAsync(
@@ -33,23 +33,21 @@ public class RemoveFriendCommandHandler(IMongoClient mongoClient)
 
 		try
 		{
-			var friendships = mongoClient
-				.GetDatabase("mealplannerDb")
-				.GetCollection<FriendshipDocument>("friendships");
-
 			var (userAId, userBId) = SendFriendRequestByEmailCommandHandler.NormalizePair(
 				command.CurrentUserId,
 				command.FriendUserId);
 
-			var deleted = await friendships.DeleteOneAsync(
-				f => f.UserAId == userAId && f.UserBId == userBId,
-				cancellationToken);
+			var friendship = await db.Friendships
+				.FirstOrDefaultAsync(f => f.UserAId == userAId && f.UserBId == userBId, cancellationToken);
 
-			if (deleted.DeletedCount == 0)
+			if (friendship is null)
 			{
 				return Result<Unit>.Failure(
 					new Error(ErrorCodes.NotFound, "Friend relationship was not found."));
 			}
+
+			db.Friendships.Remove(friendship);
+			await db.SaveChangesAsync(cancellationToken);
 
 			return Result<Unit>.Success(Unit.Value);
 		}

@@ -1,6 +1,6 @@
-using MealPlanner.Api.Features.GroceryLists.Models;
+using MealPlanner.Api.Data;
 using MealPlanner.Api.Shared;
-using MongoDB.Driver;
+using Microsoft.EntityFrameworkCore;
 
 namespace MealPlanner.Api.Features.GroceryLists.Commands;
 
@@ -12,7 +12,7 @@ public record DeleteGroceryListCommand(string UserId, DateOnly WeekStart) : ICom
 /// <summary>
 /// Deletes the grocery list document from MongoDB.
 /// </summary>
-public class DeleteGroceryListCommandHandler(IMongoClient mongoClient)
+public class DeleteGroceryListCommandHandler(MealPlannerDbContext db)
 	: ICommandHandler<DeleteGroceryListCommand, Unit>
 {
 	public async Task<Result<Unit>> HandleAsync(
@@ -23,19 +23,17 @@ public class DeleteGroceryListCommandHandler(IMongoClient mongoClient)
 		{
 			var weekStartStr = GroceryListHelpers.NormalizeToMonday(command.WeekStart)
 				.ToString("yyyy-MM-dd");
-			var collection = mongoClient
-				.GetDatabase("mealplannerDb")
-				.GetCollection<GroceryListDocument>("grocerylists");
+			var entity = await db.GroceryLists
+				.FirstOrDefaultAsync(g => g.UserId == command.UserId && g.WeekStart == weekStartStr, cancellationToken);
 
-			var result = await collection.DeleteOneAsync(
-				g => g.UserId == command.UserId && g.WeekStart == weekStartStr,
-				cancellationToken);
-
-			if (result.DeletedCount == 0)
+			if (entity is null)
 			{
 				return Result<Unit>.Failure(
 					new Error(ErrorCodes.NotFound, "No grocery list found for the specified week."));
 			}
+
+			db.GroceryLists.Remove(entity);
+			await db.SaveChangesAsync(cancellationToken);
 
 			return Result<Unit>.Success(new Unit());
 		}

@@ -1,8 +1,7 @@
+using MealPlanner.Api.Data.Entities;
 using MealPlanner.Api.Features.MealPlans.Commands;
-using MealPlanner.Api.Features.MealPlans.Models;
 using MealPlanner.Api.Shared;
-using Moq;
-using MongoDB.Driver;
+using MealPlanner.Api.Tests.TestUtilities;
 
 namespace MealPlanner.Api.Tests.Features.MealPlans.Commands;
 
@@ -11,7 +10,7 @@ public class RevokeMealPlanShareTests
 	[Fact]
 	public async Task HandleAsync_ReturnsValidationFailure_WhenShareIdMissing()
 	{
-		var handler = new RevokeMealPlanShareCommandHandler(new Mock<IMongoClient>().Object);
+		var handler = new RevokeMealPlanShareCommandHandler(TestDbContextFactory.CreateContext());
 		var result = await handler.HandleAsync(new RevokeMealPlanShareCommand("owner1", " "), TestContext.Current.CancellationToken);
 
 		Assert.False(result.IsSuccess);
@@ -21,17 +20,10 @@ public class RevokeMealPlanShareTests
 	[Fact]
 	public async Task HandleAsync_ReturnsNotFound_WhenNothingDeleted()
 	{
-		var deleteResult = new Mock<DeleteResult>();
-		deleteResult.SetupGet(r => r.DeletedCount).Returns(0);
-		var collection = new Mock<IMongoCollection<MealPlanShareDocument>>();
-		collection.Setup(c => c.DeleteOneAsync(It.IsAny<FilterDefinition<MealPlanShareDocument>>(), It.IsAny<CancellationToken>())).ReturnsAsync(deleteResult.Object);
-		var db = new Mock<IMongoDatabase>();
-		db.Setup(d => d.GetCollection<MealPlanShareDocument>("shares", null)).Returns(collection.Object);
-		var client = new Mock<IMongoClient>();
-		client.Setup(c => c.GetDatabase("mealplannerDb", null)).Returns(db.Object);
-
-		var handler = new RevokeMealPlanShareCommandHandler(client.Object);
-		var result = await handler.HandleAsync(new RevokeMealPlanShareCommand("owner1", "s1"), TestContext.Current.CancellationToken);
+		var handler = new RevokeMealPlanShareCommandHandler(TestDbContextFactory.CreateContext());
+		var result = await handler.HandleAsync(
+			new RevokeMealPlanShareCommand("owner1", Guid.NewGuid().ToString()),
+			TestContext.Current.CancellationToken);
 
 		Assert.False(result.IsSuccess);
 		Assert.Equal(ErrorCodes.NotFound, result.Error?.Code);
@@ -40,29 +32,39 @@ public class RevokeMealPlanShareTests
 	[Fact]
 	public async Task HandleAsync_ReturnsSuccess_WhenDeleted()
 	{
-		var deleteResult = new Mock<DeleteResult>();
-		deleteResult.SetupGet(r => r.DeletedCount).Returns(1);
-		var collection = new Mock<IMongoCollection<MealPlanShareDocument>>();
-		collection.Setup(c => c.DeleteOneAsync(It.IsAny<FilterDefinition<MealPlanShareDocument>>(), It.IsAny<CancellationToken>())).ReturnsAsync(deleteResult.Object);
-		var db = new Mock<IMongoDatabase>();
-		db.Setup(d => d.GetCollection<MealPlanShareDocument>("shares", null)).Returns(collection.Object);
-		var client = new Mock<IMongoClient>();
-		client.Setup(c => c.GetDatabase("mealplannerDb", null)).Returns(db.Object);
+		var id = Guid.NewGuid();
+		var context = TestDbContextFactory.CreateContext(seed: db =>
+		{
+			db.MealPlanShares.Add(new MealPlanShareEntity
+			{
+				Id = id,
+				OwnerUserId = "owner1",
+				SharedWithUserId = "recipient1",
+				WeekStart = "2026-02-23",
+				Permission = "ReadOnly",
+				SharedAt = DateTime.UtcNow
+			});
+		});
 
-		var handler = new RevokeMealPlanShareCommandHandler(client.Object);
-		var result = await handler.HandleAsync(new RevokeMealPlanShareCommand("owner1", "s1"), TestContext.Current.CancellationToken);
+		var handler = new RevokeMealPlanShareCommandHandler(context);
+		var result = await handler.HandleAsync(
+			new RevokeMealPlanShareCommand("owner1", id.ToString()),
+			TestContext.Current.CancellationToken);
 
 		Assert.True(result.IsSuccess);
+		Assert.Empty(context.MealPlanShares);
 	}
 
 	[Fact]
-	public async Task HandleAsync_ReturnsDatabaseError_WhenMongoThrows()
+	public async Task HandleAsync_ReturnsDatabaseError_WhenContextDisposed()
 	{
-		var client = new Mock<IMongoClient>();
-		client.Setup(c => c.GetDatabase("mealplannerDb", null)).Throws(new Exception("boom"));
-		var handler = new RevokeMealPlanShareCommandHandler(client.Object);
+		var context = TestDbContextFactory.CreateContext();
+		context.Dispose();
 
-		var result = await handler.HandleAsync(new RevokeMealPlanShareCommand("owner1", "s1"), TestContext.Current.CancellationToken);
+		var handler = new RevokeMealPlanShareCommandHandler(context);
+		var result = await handler.HandleAsync(
+			new RevokeMealPlanShareCommand("owner1", Guid.NewGuid().ToString()),
+			TestContext.Current.CancellationToken);
 
 		Assert.False(result.IsSuccess);
 		Assert.Equal(ErrorCodes.DatabaseError, result.Error?.Code);

@@ -2,5 +2,6 @@
   <Project Path="MealPlanner.Api.Tests/MealPlanner.Api.Tests.csproj" />
   <Project Path="MealPlanner.Api/MealPlanner.Api.csproj" />
   <Project Path="MealPlanner.AppHost/MealPlanner.AppHost.csproj" />
+  <Project Path="MealPlanner.MigrationService/MealPlanner.MigrationService.csproj" />
   <Project Path="MealPlanner.ServiceDefaults/MealPlanner.ServiceDefaults.csproj" />
 </Solution>

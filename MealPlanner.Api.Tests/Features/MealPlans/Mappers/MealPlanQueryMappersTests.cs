@@ -1,3 +1,4 @@
+using MealPlanner.Api.Data.Entities;
 using MealPlanner.Api.Features.MealPlans.Models;
 using MealPlanner.Api.Features.MealPlans.Queries;
 
@@ -18,22 +19,22 @@ public class MealPlanQueryMappersTests
 	[Fact]
 	public void MapToDomain_MapsNestedSlotsAndOptionRecipeId()
 	{
-		var doc = new MealPlanDocument
+		var entity = new MealPlanEntity
 		{
-			Id = "mp1",
+			Id = Guid.Parse("33333333-3333-3333-3333-333333333333"),
 			UserId = "u1",
 			WeekStart = "2026-02-23",
 			Days =
 			[
-				new DayPlanDocument
+				new DayPlanData
 				{
 					Day = "Monday",
-					Slots = new Dictionary<string, List<MealSlotItemDocument>>
+					Slots = new Dictionary<string, List<MealSlotItemData>>
 					{
 						["Breakfast"] =
 						[
-							new MealSlotItemDocument { RecipeId = "r1", Name = "Oats", Servings = 3 },
-							new MealSlotItemDocument { RecipeId = null, Name = "Coffee" }
+							new MealSlotItemData { RecipeId = "r1", Name = "Oats", Servings = 3 },
+							new MealSlotItemData { RecipeId = null, Name = "Coffee" }
 						],
 						["Lunch"] = [],
 						["Supper"] = [],
@@ -45,9 +46,9 @@ public class MealPlanQueryMappersTests
 			UpdatedAt = new DateTime(2026, 2, 21, 0, 0, 0, DateTimeKind.Utc)
 		};
 
-		var domain = GetMealPlanQueryHandler.MapToDomain(doc);
+		var domain = GetMealPlanQueryHandler.MapToDomain(entity);
 
-		Assert.Equal("mp1", domain.Id);
+		Assert.Equal("33333333-3333-3333-3333-333333333333", domain.Id);
 		Assert.Equal(new DateOnly(2026, 2, 23), domain.WeekStart);
 		Assert.Equal(DayOfWeek.Monday, domain.Days[0].Day);
 		Assert.True(domain.Days[0].Slots[MealCategory.Breakfast][0].RecipeId.HasValue);

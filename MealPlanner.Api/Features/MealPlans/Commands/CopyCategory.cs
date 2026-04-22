@@ -1,7 +1,9 @@
+using MealPlanner.Api.Data;
+using MealPlanner.Api.Data.Entities;
 using MealPlanner.Api.Features.MealPlans.Models;
 using MealPlanner.Api.Features.MealPlans.Queries;
 using MealPlanner.Api.Shared;
-using MongoDB.Driver;
+using Microsoft.EntityFrameworkCore;
 
 namespace MealPlanner.Api.Features.MealPlans.Commands;
 
@@ -19,7 +21,7 @@ public record CopyCategoryCommand(
 /// <summary>
 /// Handles cloning a meal category's items from a source day into multiple target days.
 /// </summary>
-public class CopyCategoryCommandHandler(IMongoClient mongoClient)
+public class CopyCategoryCommandHandler(MealPlannerDbContext db)
 	: ICommandHandler<CopyCategoryCommand, MealPlan>
 {
 	public async Task<Result<MealPlan>> HandleAsync(
@@ -35,27 +37,28 @@ public class CopyCategoryCommandHandler(IMongoClient mongoClient)
 			var weekStart = GetMealPlanQueryHandler.NormalizeToMonday(command.WeekStart);
 			var weekStartStr = weekStart.ToString("yyyy-MM-dd");
 
-			var collection = mongoClient
-				.GetDatabase("mealplannerDb")
-				.GetCollection<MealPlanDocument>("mealplans");
+			var entity = await db.MealPlans
+				.FirstOrDefaultAsync(p => p.UserId == command.UserId && p.WeekStart == weekStartStr, cancellationToken);
 
-			var document = await collection
-				.Find(p => p.UserId == command.UserId && p.WeekStart == weekStartStr)
-				.FirstOrDefaultAsync(cancellationToken);
-
-			if (document is null)
+			if (entity is null)
 				return Result<MealPlan>.Failure(
 					new Error(ErrorCodes.NotFound, "Meal plan not found for the specified week."));
 
 			var sourceDayStr = command.SourceDay.ToString();
 			var categoryStr = command.Category.ToString();
 
-			var sourceDay = document.Days.FirstOrDefault(d => d.Day == sourceDayStr);
+			var sourceDay = entity.Days.FirstOrDefault(d =>
+				string.Equals(d.Day, sourceDayStr, StringComparison.OrdinalIgnoreCase));
 			if (sourceDay is null)
 				return Result<MealPlan>.Failure(
 					new Error(ErrorCodes.ValidationFailed, $"Source day '{sourceDayStr}' not found."));
 
-			if (!sourceDay.Slots.TryGetValue(categoryStr, out var sourceItems) || sourceItems.Count == 0)
+			var sourceCategoryKey = sourceDay.Slots.Keys
+				.FirstOrDefault(key => string.Equals(key, categoryStr, StringComparison.OrdinalIgnoreCase));
+
+			if (sourceCategoryKey is null
+				|| !sourceDay.Slots.TryGetValue(sourceCategoryKey, out var sourceItems)
+				|| sourceItems.Count == 0)
 				return Result<MealPlan>.Failure(
 					new Error(ErrorCodes.ValidationFailed,
 						$"No items in {categoryStr} on {sourceDayStr} to copy."));
@@ -64,12 +67,17 @@ public class CopyCategoryCommandHandler(IMongoClient mongoClient)
 			foreach (var targetDayOfWeek in command.TargetDays)
 			{
 				var targetDayStr = targetDayOfWeek.ToString();
-				var targetDay = document.Days.FirstOrDefault(d => d.Day == targetDayStr);
+				var targetDay = entity.Days.FirstOrDefault(d =>
+					string.Equals(d.Day, targetDayStr, StringComparison.OrdinalIgnoreCase));
 
 				if (targetDay is null) continue;
 
-				targetDay.Slots[categoryStr] = sourceItems
-					.Select(item => new MealSlotItemDocument
+				var targetCategoryKey = targetDay.Slots.Keys
+					.FirstOrDefault(key => string.Equals(key, categoryStr, StringComparison.OrdinalIgnoreCase))
+					?? categoryStr;
+
+				targetDay.Slots[targetCategoryKey] = sourceItems
+					.Select(item => new MealSlotItemData
 					{
 						RecipeId = item.RecipeId,
 						Name = item.Name,
@@ -78,14 +86,13 @@ public class CopyCategoryCommandHandler(IMongoClient mongoClient)
 					.ToList();
 			}
 
-			document.UpdatedAt = DateTime.UtcNow;
+			db.Entry(entity).Property(x => x.Days).IsModified = true;
 
-			await collection.ReplaceOneAsync(
-				p => p.Id == document.Id,
-				document,
-				cancellationToken: cancellationToken);
+			entity.UpdatedAt = DateTime.UtcNow;
 
-			return Result<MealPlan>.Success(GetMealPlanQueryHandler.MapToDomain(document));
+			await db.SaveChangesAsync(cancellationToken);
+
+			return Result<MealPlan>.Success(GetMealPlanQueryHandler.MapToDomain(entity));
 		}
 		catch (Exception ex)
 		{

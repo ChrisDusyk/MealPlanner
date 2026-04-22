@@ -149,7 +149,10 @@ export const PATCH: RequestHandler = async ({ request, locals, fetch }) => {
 		return json({ error: 'friendUserId is required' }, { status: 400 });
 	}
 
-	if (typeof body.autoShareMealPlans !== 'boolean' || typeof body.autoShareGroceryLists !== 'boolean') {
+	if (
+		typeof body.autoShareMealPlans !== 'boolean' ||
+		typeof body.autoShareGroceryLists !== 'boolean'
+	) {
 		return json(
 			{ error: 'autoShareMealPlans and autoShareGroceryLists are required booleans' },
 			{ status: 400 }

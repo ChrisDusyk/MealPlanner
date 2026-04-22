@@ -5,8 +5,7 @@ import {
 	getFriends,
 	getIncomingFriendRequests,
 	getOutgoingFriendRequests
-}
-from '$lib/api/friendsApi';
+} from '$lib/api/friendsApi';
 import { updateCurrentUser } from '$lib/api/userApi';
 
 vi.mock('$lib/api/userApi', () => ({

@@ -1,11 +1,10 @@
+using MealPlanner.Api.Data.Entities;
 using MealPlanner.Api.Features.MealPlans.Models;
 using MealPlanner.Api.Features.MealPlans.Realtime;
 using MealPlanner.Api.Shared;
 using MealPlanner.Api.Tests.TestUtilities;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
-using Moq;
-using MongoDB.Driver;
 
 namespace MealPlanner.Api.Tests.Features.MealPlans.Realtime;
 
@@ -14,39 +13,30 @@ public class MealPlanRealtimeNotifierTests
 	[Fact]
 	public async Task PublishMealPlanUpdatedAsync_SendsUpdateToOwnerAndActiveRecipients()
 	{
-		var shares = new List<MealPlanShareDocument>
+		var context = TestDbContextFactory.CreateContext(seed: db =>
 		{
-			new()
-			{
-				OwnerUserId = "owner-1",
-				SharedWithUserId = "guest-1",
-				WeekStart = "2026-02-23",
-				DismissedByRecipient = false
-			},
-			new()
-			{
-				OwnerUserId = "owner-1",
-				SharedWithUserId = "guest-2",
-				WeekStart = "2026-02-23",
-				DismissedByRecipient = false
-			}
-		};
-
-		var sharesCursor = MongoTestHelpers.CreateCursor((IReadOnlyCollection<MealPlanShareDocument>)shares);
-		var sharesCollection = new Mock<IMongoCollection<MealPlanShareDocument>>();
-		sharesCollection
-			.Setup(c => c.FindAsync(
-				It.IsAny<FilterDefinition<MealPlanShareDocument>>(),
-				It.IsAny<FindOptions<MealPlanShareDocument, MealPlanShareDocument>>(),
-				It.IsAny<CancellationToken>()))
-			.ReturnsAsync(sharesCursor.Object);
-
-		var db = new Mock<IMongoDatabase>();
-		db.Setup(d => d.GetCollection<MealPlanShareDocument>("shares", null))
-			.Returns(sharesCollection.Object);
-
-		var mongoClient = new Mock<IMongoClient>();
-		mongoClient.Setup(c => c.GetDatabase("mealplannerDb", null)).Returns(db.Object);
+			db.MealPlanShares.AddRange(
+				new MealPlanShareEntity
+				{
+					Id = Guid.NewGuid(),
+					OwnerUserId = "owner-1",
+					SharedWithUserId = "guest-1",
+					WeekStart = "2026-02-23",
+					Permission = "ReadWrite",
+					DismissedByRecipient = false,
+					SharedAt = DateTime.UtcNow
+				},
+				new MealPlanShareEntity
+				{
+					Id = Guid.NewGuid(),
+					OwnerUserId = "owner-1",
+					SharedWithUserId = "guest-2",
+					WeekStart = "2026-02-23",
+					Permission = "ReadWrite",
+					DismissedByRecipient = false,
+					SharedAt = DateTime.UtcNow
+				});
+		});
 
 		var clientProxy = new Mock<IClientProxy>();
 		IReadOnlyList<string>? recipientIds = null;
@@ -61,7 +51,7 @@ public class MealPlanRealtimeNotifierTests
 		hubContext.SetupGet(h => h.Clients).Returns(hubClients.Object);
 
 		var logger = new Mock<ILogger<MealPlanRealtimeNotifier>>();
-		var notifier = new MealPlanRealtimeNotifier(mongoClient.Object, hubContext.Object, logger.Object);
+		var notifier = new MealPlanRealtimeNotifier(context, hubContext.Object, logger.Object);
 
 		var updatedPlan = new MealPlan(
 			Id: "plan-1",

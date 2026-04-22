@@ -1,6 +1,7 @@
+using MealPlanner.Api.Data;
 using MealPlanner.Api.Features.GroceryLists.Models;
 using MealPlanner.Api.Shared;
-using MongoDB.Driver;
+using Microsoft.EntityFrameworkCore;
 
 namespace MealPlanner.Api.Features.GroceryLists.Commands;
 
@@ -17,7 +18,7 @@ public record PromotePantryStapleItemCommand(
 /// <summary>
 /// Moves a pantry staple item from the review section into the main grocery list.
 /// </summary>
-public class PromotePantryStapleItemCommandHandler(IMongoClient mongoClient)
+public class PromotePantryStapleItemCommandHandler(MealPlannerDbContext db)
 	: ICommandHandler<PromotePantryStapleItemCommand, GroceryList>
 {
 	public async Task<Result<GroceryList>> HandleAsync(
@@ -28,40 +29,34 @@ public class PromotePantryStapleItemCommandHandler(IMongoClient mongoClient)
 		{
 			var weekStartStr = GroceryListHelpers.NormalizeToMonday(command.WeekStart)
 				.ToString("yyyy-MM-dd");
-			var db = mongoClient.GetDatabase("mealplannerDb");
-			var collection = db.GetCollection<GroceryListDocument>("grocerylists");
+			var entity = await db.GroceryLists
+				.FirstOrDefaultAsync(g => g.UserId == command.UserId && g.WeekStart == weekStartStr, cancellationToken);
 
-			var document = await collection
-				.Find(g => g.UserId == command.UserId && g.WeekStart == weekStartStr)
-				.FirstOrDefaultAsync(cancellationToken);
-
-			if (document is null)
+			if (entity is null)
 			{
 				return Result<GroceryList>.Failure(
 					new Error(ErrorCodes.NotFound, "No grocery list found for the specified week."));
 			}
 
-			if (command.ItemIndex < 0 || command.ItemIndex >= document.PantryStapleItems.Count)
+			if (command.ItemIndex < 0 || command.ItemIndex >= entity.PantryStapleItems.Count)
 			{
-				var errorMessage = document.PantryStapleItems.Count == 0
+				var errorMessage = entity.PantryStapleItems.Count == 0
 					? "No pantry staple items are available to promote."
-					: $"Item index {command.ItemIndex} is out of range (0–{document.PantryStapleItems.Count - 1}).";
+					: $"Item index {command.ItemIndex} is out of range (0–{entity.PantryStapleItems.Count - 1}).";
 
 				return Result<GroceryList>.Failure(
 					new Error(ErrorCodes.ValidationFailed, errorMessage));
 			}
 
 			// Move the item from pantry staples to the main list
-			var item = document.PantryStapleItems[command.ItemIndex];
+			var item = entity.PantryStapleItems[command.ItemIndex];
 			item.IsChecked = false;
-			document.PantryStapleItems.RemoveAt(command.ItemIndex);
-			document.Items.Add(item);
-			document.UpdatedAt = DateTime.UtcNow;
+			entity.PantryStapleItems.RemoveAt(command.ItemIndex);
+			entity.Items.Add(item);
+			entity.UpdatedAt = DateTime.UtcNow;
+			await db.SaveChangesAsync(cancellationToken);
 
-			var filter = Builders<GroceryListDocument>.Filter.Eq(g => g.Id, document.Id);
-			await collection.ReplaceOneAsync(filter, document, cancellationToken: cancellationToken);
-
-			return Result<GroceryList>.Success(GroceryListHelpers.MapToDomain(document));
+			return Result<GroceryList>.Success(GroceryListHelpers.MapToDomain(entity));
 		}
 		catch (Exception ex)
 		{

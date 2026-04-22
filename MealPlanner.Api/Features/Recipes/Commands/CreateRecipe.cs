@@ -1,6 +1,7 @@
+using MealPlanner.Api.Data;
+using MealPlanner.Api.Data.Entities;
 using MealPlanner.Api.Features.Recipes.Models;
 using MealPlanner.Api.Shared;
-using MongoDB.Driver;
 
 namespace MealPlanner.Api.Features.Recipes.Commands;
 
@@ -17,9 +18,9 @@ public record CreateRecipeCommand(
 ) : ICommand<Recipe>;
 
 /// <summary>
-/// Handles creating a new recipe in MongoDB.
+/// Handles creating a new recipe.
 /// </summary>
-public class CreateRecipeCommandHandler(IMongoClient mongoClient)
+public class CreateRecipeCommandHandler(MealPlannerDbContext db)
 	: ICommandHandler<CreateRecipeCommand, Recipe>
 {
 	public async Task<Result<Recipe>> HandleAsync(
@@ -37,15 +38,16 @@ public class CreateRecipeCommandHandler(IMongoClient mongoClient)
 		try
 		{
 			var now = DateTime.UtcNow;
-			var document = new RecipeDocument
+			var entity = new RecipeEntity
 			{
+				Id = Guid.NewGuid(),
 				UserId = command.UserId,
 				Name = command.Name,
 				Description = command.Description,
 				Servings = command.Servings,
 				SourceUrl = command.SourceUrl.GetValueOrNull(),
 				Ingredients = command.Ingredients
-					.Select(i => new IngredientDocument
+					.Select(i => new IngredientData
 					{
 						Name = i.Name,
 						Quantity = i.Quantity,
@@ -57,13 +59,10 @@ public class CreateRecipeCommandHandler(IMongoClient mongoClient)
 				UpdatedAt = now
 			};
 
-			var collection = mongoClient
-				.GetDatabase("mealplannerDb")
-				.GetCollection<RecipeDocument>("recipes");
+			db.Recipes.Add(entity);
+			await db.SaveChangesAsync(cancellationToken);
 
-			await collection.InsertOneAsync(document, cancellationToken: cancellationToken);
-
-			return Result<Recipe>.Success(MapToRecipe(document));
+			return Result<Recipe>.Success(MapToRecipe(entity));
 		}
 		catch (Exception ex)
 		{
@@ -72,16 +71,16 @@ public class CreateRecipeCommandHandler(IMongoClient mongoClient)
 		}
 	}
 
-	internal static Recipe MapToRecipe(RecipeDocument doc) =>
+	internal static Recipe MapToRecipe(RecipeEntity entity) =>
 		new(
-			Id: doc.Id!,
-			UserId: doc.UserId,
-			Name: doc.Name,
-			Description: doc.Description,
-			Servings: doc.Servings,
-			SourceUrl: Option<string>.From(doc.SourceUrl),
-			Ingredients: doc.Ingredients.Select(i => new Ingredient(i.Name, i.Quantity, i.Unit, i.IsPantryStaple)).ToList(),
-			CreatedAt: doc.CreatedAt,
-			UpdatedAt: doc.UpdatedAt
+			Id: entity.Id.ToString(),
+			UserId: entity.UserId,
+			Name: entity.Name,
+			Description: entity.Description,
+			Servings: entity.Servings,
+			SourceUrl: Option<string>.From(entity.SourceUrl),
+			Ingredients: entity.Ingredients.Select(i => new Ingredient(i.Name, i.Quantity, i.Unit, i.IsPantryStaple)).ToList(),
+			CreatedAt: entity.CreatedAt,
+			UpdatedAt: entity.UpdatedAt
 		);
 }

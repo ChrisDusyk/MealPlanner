@@ -54,7 +54,7 @@
 				<!-- Day header -->
 				<div class="mb-1 text-center">
 					<p
-						class="font-display text-xs font-bold uppercase tracking-wider {isToday(dayIndex)
+						class="font-display text-xs font-bold tracking-wider uppercase {isToday(dayIndex)
 							? 'text-green-700'
 							: 'text-charcoal/50'}"
 					>

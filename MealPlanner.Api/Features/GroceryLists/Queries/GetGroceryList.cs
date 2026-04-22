@@ -1,6 +1,7 @@
+using MealPlanner.Api.Data;
 using MealPlanner.Api.Features.GroceryLists.Models;
 using MealPlanner.Api.Shared;
-using MongoDB.Driver;
+using Microsoft.EntityFrameworkCore;
 
 namespace MealPlanner.Api.Features.GroceryLists.Queries;
 
@@ -13,7 +14,7 @@ public record GetGroceryListQuery(string UserId, DateOnly WeekStart) : IQuery<Gr
 /// Handles retrieving a grocery list from MongoDB.
 /// Returns NotFound if no list has been generated for the specified week.
 /// </summary>
-public class GetGroceryListQueryHandler(IMongoClient mongoClient)
+public class GetGroceryListQueryHandler(MealPlannerDbContext db)
 	: IQueryHandler<GetGroceryListQuery, GroceryList>
 {
 	public async Task<Result<GroceryList>> HandleAsync(
@@ -23,22 +24,17 @@ public class GetGroceryListQueryHandler(IMongoClient mongoClient)
 		try
 		{
 			var weekStartStr = GroceryListHelpers.NormalizeToMonday(query.WeekStart).ToString("yyyy-MM-dd");
-			var collection = mongoClient
-				.GetDatabase("mealplannerDb")
-				.GetCollection<GroceryListDocument>("grocerylists");
+			var entity = await db.GroceryLists
+				.FirstOrDefaultAsync(g => g.UserId == query.UserId && g.WeekStart == weekStartStr, cancellationToken);
 
-			var document = await collection
-				.Find(g => g.UserId == query.UserId && g.WeekStart == weekStartStr)
-				.FirstOrDefaultAsync(cancellationToken);
-
-			if (document is null)
+			if (entity is null)
 			{
 				return Result<GroceryList>.Failure(
 					new Error(ErrorCodes.NotFound, "No grocery list found for the specified week."));
 			}
 
 			return Result<GroceryList>.Success(
-				GroceryListHelpers.MapToDomain(document));
+				GroceryListHelpers.MapToDomain(entity));
 		}
 		catch (Exception ex)
 		{

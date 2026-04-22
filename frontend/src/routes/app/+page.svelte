@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { resolve } from '$app/paths';
 	import RecipeCard from '$lib/components/RecipeCard.svelte';
 	import type { PageData } from './$types';
 
@@ -12,7 +13,9 @@
 <div class="mx-auto max-w-7xl">
 	<!-- Welcome header -->
 	<div class="mb-8">
-		<h1 class="font-display text-2xl font-bold text-charcoal sm:text-3xl">Welcome to Simple Meal Planner</h1>
+		<h1 class="font-display text-2xl font-bold text-charcoal sm:text-3xl">
+			Welcome to Simple Meal Planner
+		</h1>
 		<p class="mt-1 text-charcoal/60">
 			Plan your meals, organize your recipes, and simplify your cooking routine.
 		</p>
@@ -21,7 +24,7 @@
 	<!-- Quick actions -->
 	<div class="mb-8 flex flex-wrap gap-3">
 		<a
-			href="/app/recipes"
+			href={resolve('/app/recipes')}
 			class="flex items-center gap-2 rounded-lg bg-green-600 px-5 py-2.5 font-display text-sm font-semibold text-white shadow-md shadow-green-900/30 transition-all hover:bg-green-700 hover:shadow-lg hover:shadow-green-900/40"
 		>
 			<svg
@@ -37,7 +40,7 @@
 			Add Recipe
 		</a>
 		<a
-			href="/app/meal-plans"
+			href={resolve('/app/meal-plans')}
 			class="flex items-center gap-2 rounded-lg border border-green-200/50 bg-white px-5 py-2.5 font-display text-sm font-semibold text-charcoal shadow-sm transition-all hover:border-green-300 hover:bg-green-50 hover:shadow-md"
 		>
 			<svg
@@ -94,7 +97,7 @@
 
 		<!-- Meal Plans -->
 		<a
-			href="/app/meal-plans"
+			href={resolve('/app/meal-plans')}
 			class="group overflow-hidden rounded-xl border border-green-200/30 bg-gradient-to-br from-white to-green-50/20 transition-all hover:border-green-300 hover:shadow-md"
 		>
 			<div class="p-6">
@@ -161,7 +164,7 @@
 		<div class="mb-6 flex items-center justify-between">
 			<h2 class="font-display text-2xl font-bold text-charcoal">Recent Recipes</h2>
 			<a
-				href="/app/recipes"
+				href={resolve('/app/recipes')}
 				class="font-display text-sm font-medium text-green-600 transition-colors hover:text-green-700"
 			>
 				View All →
@@ -196,7 +199,7 @@
 					Get started by adding your first recipe to build your personalized meal collection!
 				</p>
 				<a
-					href="/app/recipes"
+					href={resolve('/app/recipes')}
 					class="mt-6 rounded-lg bg-green-600 px-5 py-2.5 font-display text-sm font-semibold text-white shadow-md shadow-green-900/30 transition-all hover:bg-green-700 hover:shadow-lg hover:shadow-green-900/40"
 				>
 					Add Your First Recipe

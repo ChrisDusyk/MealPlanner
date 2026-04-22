@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { resolve } from '$app/paths';
 	import RecipeCard from '$lib/components/RecipeCard.svelte';
 
 	let { data } = $props();
@@ -18,7 +19,7 @@
 			</p>
 		</div>
 		<a
-			href="/app/recipes/new"
+			href={resolve('/app/recipes/new')}
 			class="flex w-fit items-center gap-2 rounded-lg bg-green-600 px-5 py-2.5 font-display text-sm font-semibold text-white shadow-md shadow-green-900/20 transition-all hover:bg-green-700 hover:shadow-lg"
 		>
 			<svg

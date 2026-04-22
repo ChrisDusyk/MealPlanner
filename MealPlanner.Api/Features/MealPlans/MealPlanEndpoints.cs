@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using MealPlanner.Api.Data;
 using MealPlanner.Api.Features.Auth;
 using MealPlanner.Api.Features.MealPlans.Commands;
 using MealPlanner.Api.Features.MealPlans.Dtos;
@@ -6,7 +7,7 @@ using MealPlanner.Api.Features.MealPlans.Models;
 using MealPlanner.Api.Features.MealPlans.Queries;
 using MealPlanner.Api.Features.MealPlans.Realtime;
 using MealPlanner.Api.Shared;
-using MongoDB.Driver;
+using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
 
 namespace MealPlanner.Api.Features.MealPlans;
@@ -88,27 +89,23 @@ public static class MealPlanEndpoints
 		string callerId,
 		string weekStart,
 		string? onBehalfOf,
-		IMongoClient mongoClient)
+		MealPlannerDbContext db,
+		CancellationToken cancellationToken)
 	{
 		if (string.IsNullOrWhiteSpace(onBehalfOf))
 			return (callerId, null);
 
-		// Caller is trying to edit someone else's plan — verify ReadWrite share
-		var sharesCollection = mongoClient
-			.GetDatabase("mealplannerDb")
-			.GetCollection<MealPlanShareDocument>("shares");
+		var hasReadWriteShare = await db.MealPlanShares
+			.AsNoTracking()
+			.AnyAsync(
+				s => s.OwnerUserId == onBehalfOf
+				     && s.SharedWithUserId == callerId
+				     && s.WeekStart == weekStart
+				     && s.Permission == nameof(SharePermission.ReadWrite)
+				     && !s.DismissedByRecipient,
+				cancellationToken);
 
-		var filter = MongoDB.Driver.Builders<MealPlanShareDocument>.Filter.And(
-			MongoDB.Driver.Builders<MealPlanShareDocument>.Filter.Eq(s => s.OwnerUserId, onBehalfOf),
-			MongoDB.Driver.Builders<MealPlanShareDocument>.Filter.Eq(s => s.SharedWithUserId, callerId),
-			MongoDB.Driver.Builders<MealPlanShareDocument>.Filter.Eq(s => s.WeekStart, weekStart),
-			MongoDB.Driver.Builders<MealPlanShareDocument>.Filter.Eq(s => s.Permission,
-				nameof(SharePermission.ReadWrite)),
-			MongoDB.Driver.Builders<MealPlanShareDocument>.Filter.Eq(s => s.DismissedByRecipient, false));
-
-		var share = await sharesCollection.Find(filter).FirstOrDefaultAsync();
-
-		if (share is null)
+		if (!hasReadWriteShare)
 			return (null, Results.Forbid());
 
 		return (onBehalfOf, null);
@@ -139,7 +136,7 @@ public static class MealPlanEndpoints
 		UpdateDaySlotRequest request,
 		ICommandHandler<UpdateDaySlotCommand, MealPlan> handler,
 		IMealPlanRealtimeNotifier realtimeNotifier,
-		IMongoClient mongoClient,
+		MealPlannerDbContext db,
 		CancellationToken cancellationToken,
 		string weekStart,
 		string day,
@@ -154,7 +151,7 @@ public static class MealPlanEndpoints
 		if (userId is null)
 			return Results.Unauthorized();
 
-		var (effectiveUserId, accessError) = await ResolveEffectiveOwner(userId, weekStart, onBehalfOf, mongoClient);
+		var (effectiveUserId, accessError) = await ResolveEffectiveOwner(userId, weekStart, onBehalfOf, db, cancellationToken);
 		if (accessError is not null) return accessError;
 
 		if (!Enum.TryParse<DayOfWeek>(day, true, out var dayOfWeek))
@@ -199,7 +196,7 @@ public static class MealPlanEndpoints
 		CopyCategoryRequest request,
 		ICommandHandler<CopyCategoryCommand, MealPlan> handler,
 		IMealPlanRealtimeNotifier realtimeNotifier,
-		IMongoClient mongoClient,
+		MealPlannerDbContext db,
 		CancellationToken cancellationToken,
 		string weekStart,
 		string? onBehalfOf = null)
@@ -208,7 +205,7 @@ public static class MealPlanEndpoints
 		if (userId is null)
 			return Results.Unauthorized();
 
-		var (effectiveUserId, accessError) = await ResolveEffectiveOwner(userId, weekStart, onBehalfOf, mongoClient);
+		var (effectiveUserId, accessError) = await ResolveEffectiveOwner(userId, weekStart, onBehalfOf, db, cancellationToken);
 		if (accessError is not null) return accessError;
 
 		if (!Enum.TryParse<DayOfWeek>(request.SourceDay, true, out var sourceDay))
@@ -261,7 +258,7 @@ public static class MealPlanEndpoints
 		HttpContext httpContext,
 		ICommandHandler<RemoveSlotItemCommand, MealPlan> handler,
 		IMealPlanRealtimeNotifier realtimeNotifier,
-		IMongoClient mongoClient,
+		MealPlannerDbContext db,
 		CancellationToken cancellationToken,
 		string weekStart,
 		string day,
@@ -272,7 +269,7 @@ public static class MealPlanEndpoints
 		if (userId is null)
 			return Results.Unauthorized();
 
-		var (effectiveUserId, accessError) = await ResolveEffectiveOwner(userId, weekStart, onBehalfOf, mongoClient);
+		var (effectiveUserId, accessError) = await ResolveEffectiveOwner(userId, weekStart, onBehalfOf, db, cancellationToken);
 		if (accessError is not null) return accessError;
 
 		if (!Enum.TryParse<DayOfWeek>(day, true, out var dayOfWeek))

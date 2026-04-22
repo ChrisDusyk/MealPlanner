@@ -1,6 +1,8 @@
+using MealPlanner.Api.Data;
+using MealPlanner.Api.Data.Entities;
 using MealPlanner.Api.Features.Recipes.Models;
 using MealPlanner.Api.Shared;
-using MongoDB.Driver;
+using Microsoft.EntityFrameworkCore;
 
 namespace MealPlanner.Api.Features.Recipes.Commands;
 
@@ -18,9 +20,9 @@ public record UpdateRecipeCommand(
 ) : ICommand<Recipe>;
 
 /// <summary>
-/// Handles updating an existing recipe in MongoDB.
+/// Handles updating an existing recipe.
 /// </summary>
-public class UpdateRecipeCommandHandler(IMongoClient mongoClient)
+public class UpdateRecipeCommandHandler(MealPlannerDbContext db)
 	: ICommandHandler<UpdateRecipeCommand, Recipe>
 {
 	public async Task<Result<Recipe>> HandleAsync(
@@ -35,51 +37,41 @@ public class UpdateRecipeCommandHandler(IMongoClient mongoClient)
 			return Result<Recipe>.Failure(
 				new Error(ErrorCodes.ValidationFailed, "Recipe servings must be at least 1."));
 
+		if (!Guid.TryParse(command.Id, out var recipeGuid))
+			return Result<Recipe>.Failure(
+				new Error(ErrorCodes.ValidationFailed, "Recipe ID is invalid."));
+
 		try
 		{
-			var collection = mongoClient
-				.GetDatabase("mealplannerDb")
-				.GetCollection<RecipeDocument>("recipes");
+			var entity = await db.Recipes
+				.FirstOrDefaultAsync(r => r.Id == recipeGuid, cancellationToken);
 
-			var existing = await collection
-				.Find(r => r.Id == command.Id)
-				.FirstOrDefaultAsync(cancellationToken);
-
-			if (existing is null)
+			if (entity is null)
 				return Result<Recipe>.Failure(
 					new Error(ErrorCodes.NotFound, $"Recipe with ID '{command.Id}' was not found."));
 
-			if (existing.UserId != command.UserId)
+			if (entity.UserId != command.UserId)
 				return Result<Recipe>.Failure(
 					new Error(ErrorCodes.Unauthorized, "You do not have permission to update this recipe."));
 
-			var updatedDocument = new RecipeDocument
-			{
-				Id = existing.Id,
-				UserId = existing.UserId,
-				Name = command.Name,
-				Description = command.Description,
-				Servings = command.Servings,
-				SourceUrl = command.SourceUrl.GetValueOrNull(),
-				Ingredients = command.Ingredients
-					.Select(i => new IngredientDocument
-					{
-						Name = i.Name,
-						Quantity = i.Quantity,
-						Unit = i.Unit,
-						IsPantryStaple = i.IsPantryStaple
-					})
-					.ToList(),
-				CreatedAt = existing.CreatedAt,
-				UpdatedAt = DateTime.UtcNow
-			};
+			entity.Name = command.Name;
+			entity.Description = command.Description;
+			entity.Servings = command.Servings;
+			entity.SourceUrl = command.SourceUrl.GetValueOrNull();
+			entity.Ingredients = command.Ingredients
+				.Select(i => new IngredientData
+				{
+					Name = i.Name,
+					Quantity = i.Quantity,
+					Unit = i.Unit,
+					IsPantryStaple = i.IsPantryStaple
+				})
+				.ToList();
+			entity.UpdatedAt = DateTime.UtcNow;
 
-			await collection.ReplaceOneAsync(
-				r => r.Id == command.Id,
-				updatedDocument,
-				cancellationToken: cancellationToken);
+			await db.SaveChangesAsync(cancellationToken);
 
-			return Result<Recipe>.Success(MapToRecipe(updatedDocument));
+			return Result<Recipe>.Success(MapToRecipe(entity));
 		}
 		catch (Exception ex)
 		{
@@ -88,16 +80,16 @@ public class UpdateRecipeCommandHandler(IMongoClient mongoClient)
 		}
 	}
 
-	internal static Recipe MapToRecipe(RecipeDocument doc) =>
+	internal static Recipe MapToRecipe(RecipeEntity entity) =>
 		new(
-			Id: doc.Id!,
-			UserId: doc.UserId,
-			Name: doc.Name,
-			Description: doc.Description,
-			Servings: doc.Servings,
-			SourceUrl: Option<string>.From(doc.SourceUrl),
-			Ingredients: doc.Ingredients.Select(i => new Ingredient(i.Name, i.Quantity, i.Unit, i.IsPantryStaple)).ToList(),
-			CreatedAt: doc.CreatedAt,
-			UpdatedAt: doc.UpdatedAt
+			Id: entity.Id.ToString(),
+			UserId: entity.UserId,
+			Name: entity.Name,
+			Description: entity.Description,
+			Servings: entity.Servings,
+			SourceUrl: Option<string>.From(entity.SourceUrl),
+			Ingredients: entity.Ingredients.Select(i => new Ingredient(i.Name, i.Quantity, i.Unit, i.IsPantryStaple)).ToList(),
+			CreatedAt: entity.CreatedAt,
+			UpdatedAt: entity.UpdatedAt
 		);
 }

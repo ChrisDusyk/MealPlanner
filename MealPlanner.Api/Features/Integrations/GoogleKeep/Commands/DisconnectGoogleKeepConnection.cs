@@ -1,14 +1,15 @@
+using MealPlanner.Api.Data;
 using MealPlanner.Api.Features.Integrations.GoogleKeep.Models;
 using MealPlanner.Api.Features.Integrations.GoogleKeep.Services;
 using MealPlanner.Api.Shared;
-using MongoDB.Driver;
+using Microsoft.EntityFrameworkCore;
 
 namespace MealPlanner.Api.Features.Integrations.GoogleKeep.Commands;
 
 public record DisconnectGoogleKeepConnectionCommand(string UserId) : ICommand<Unit>;
 
 public class DisconnectGoogleKeepConnectionCommandHandler(
-	IMongoClient mongoClient,
+	MealPlannerDbContext db,
 	IGoogleOAuthService googleOAuthService,
 	IIntegrationTokenProtector tokenProtector)
 	: ICommandHandler<DisconnectGoogleKeepConnectionCommand, Unit>
@@ -22,13 +23,10 @@ public class DisconnectGoogleKeepConnectionCommandHandler(
 
 		try
 		{
-			var collection = mongoClient.GetDatabase("mealplannerDb")
-				.GetCollection<GoogleIntegrationConnectionDocument>(IntegrationCollections.Connections);
-
-			var current = await collection.Find(c =>
+			var current = await db.GoogleIntegrationConnections.FirstOrDefaultAsync(c =>
 				c.UserId == command.UserId
 				&& c.Provider == IntegrationProvider.GoogleKeep.ToString()
-				&& c.DisconnectedAtUtc == null).FirstOrDefaultAsync(cancellationToken);
+				&& c.DisconnectedAtUtc == null, cancellationToken);
 
 			if (current is null)
 				return Result<Unit>.Success(Unit.Value);
@@ -46,18 +44,14 @@ public class DisconnectGoogleKeepConnectionCommandHandler(
 					_ = await googleOAuthService.RevokeTokenAsync(accessToken.Value!, cancellationToken);
 			}
 
-			var update = Builders<GoogleIntegrationConnectionDocument>.Update
-				.Set(x => x.EncryptedAccessToken, string.Empty)
-				.Set(x => x.EncryptedRefreshToken, null)
-				.Set(x => x.AccessTokenExpiresAtUtc, null)
-				.Set(x => x.DisconnectedAtUtc, DateTime.UtcNow)
-				.Set(x => x.UpdatedAt, DateTime.UtcNow)
-				.Set(x => x.Capability, IntegrationCapability.Unknown.ToString());
+			current.EncryptedAccessToken = string.Empty;
+			current.EncryptedRefreshToken = null;
+			current.AccessTokenExpiresAtUtc = null;
+			current.DisconnectedAtUtc = DateTime.UtcNow;
+			current.UpdatedAt = DateTime.UtcNow;
+			current.Capability = IntegrationCapability.Unknown.ToString();
 
-			await collection.UpdateOneAsync(
-				x => x.Id == current.Id,
-				update,
-				cancellationToken: cancellationToken);
+			await db.SaveChangesAsync(cancellationToken);
 
 			return Result<Unit>.Success(Unit.Value);
 		}

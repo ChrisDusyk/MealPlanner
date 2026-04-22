@@ -10,7 +10,7 @@ public class GetGoogleKeepConnectionStatusTests
 	[Fact]
 	public async Task HandleAsync_ReturnsValidationFailure_WhenUserIdMissing()
 	{
-		var handler = new GetGoogleKeepConnectionStatusQueryHandler(new Mock<IMongoClient>().Object);
+		var handler = new GetGoogleKeepConnectionStatusQueryHandler(TestDbContextFactory.CreateContext());
 		var result = await handler.HandleAsync(new GetGoogleKeepConnectionStatusQuery(" "), TestContext.Current.CancellationToken);
 
 		Assert.False(result.IsSuccess);

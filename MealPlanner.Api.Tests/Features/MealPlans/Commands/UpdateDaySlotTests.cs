@@ -1,20 +1,33 @@
+using MealPlanner.Api.Data.Entities;
 using MealPlanner.Api.Features.MealPlans.Commands;
 using MealPlanner.Api.Features.MealPlans.Models;
 using MealPlanner.Api.Shared;
 using MealPlanner.Api.Tests.TestUtilities;
-using Moq;
-using MongoDB.Driver;
+using Microsoft.EntityFrameworkCore;
 
 namespace MealPlanner.Api.Tests.Features.MealPlans.Commands;
 
 public class UpdateDaySlotTests
 {
-	private static MealPlanDocument ExistingDoc() => new()
+	private static MealPlanEntity ExistingPlan() => new()
 	{
-		Id = "mp1",
+		Id = Guid.NewGuid(),
 		UserId = "u1",
 		WeekStart = "2026-02-23",
-		Days = [new DayPlanDocument { Day = "Monday", Slots = new Dictionary<string, List<MealSlotItemDocument>> { ["Breakfast"] = [], ["Lunch"] = [], ["Supper"] = [], ["Snacks"] = [] } }],
+		Days =
+		[
+			new DayPlanData
+			{
+				Day = "Monday",
+				Slots = new Dictionary<string, List<MealSlotItemData>>
+				{
+					["Breakfast"] = [],
+					["Lunch"] = [],
+					["Supper"] = [],
+					["Snacks"] = []
+				}
+			}
+		],
 		CreatedAt = DateTime.UtcNow,
 		UpdatedAt = DateTime.UtcNow
 	};
@@ -22,49 +35,68 @@ public class UpdateDaySlotTests
 	[Fact]
 	public async Task HandleAsync_UpdatesSlot_WhenPlanAndDayExist()
 	{
-		var doc = ExistingDoc();
-		MealPlanDocument? replaced = null;
-		var cursor = MongoTestHelpers.CreateCursor((IReadOnlyCollection<MealPlanDocument>)new List<MealPlanDocument> { doc });
-		var collection = new Mock<IMongoCollection<MealPlanDocument>>();
-		collection.Setup(c => c.FindAsync(It.IsAny<FilterDefinition<MealPlanDocument>>(), It.IsAny<FindOptions<MealPlanDocument, MealPlanDocument>>(), It.IsAny<CancellationToken>())).ReturnsAsync(cursor.Object);
-		collection.Setup(c => c.FindSync(It.IsAny<FilterDefinition<MealPlanDocument>>(), It.IsAny<FindOptions<MealPlanDocument, MealPlanDocument>>(), It.IsAny<CancellationToken>())).Returns(cursor.Object);
-		collection.Setup(c => c.ReplaceOneAsync(It.IsAny<FilterDefinition<MealPlanDocument>>(), It.IsAny<MealPlanDocument>(), It.IsAny<ReplaceOptions>(), It.IsAny<CancellationToken>()))
-			.Callback<FilterDefinition<MealPlanDocument>, MealPlanDocument, ReplaceOptions, CancellationToken>((_, d, _, _) => replaced = d)
-			.ReturnsAsync(Mock.Of<ReplaceOneResult>());
+		var context = TestDbContextFactory.CreateContext(seed: db => db.MealPlans.Add(ExistingPlan()));
 
-		var db = new Mock<IMongoDatabase>();
-		db.Setup(d => d.GetCollection<MealPlanDocument>("mealplans", null)).Returns(collection.Object);
-		var client = new Mock<IMongoClient>();
-		client.Setup(c => c.GetDatabase("mealplannerDb", null)).Returns(db.Object);
-
-		var handler = new UpdateDaySlotCommandHandler(client.Object);
+		var handler = new UpdateDaySlotCommandHandler(context);
 		var result = await handler.HandleAsync(
-			new UpdateDaySlotCommand("u1", new DateOnly(2026, 2, 23), DayOfWeek.Monday, MealCategory.Breakfast, [new MealSlotItem(Option<string>.Some("r1"), "Oats", 4)]),
+			new UpdateDaySlotCommand(
+				"u1",
+				new DateOnly(2026, 2, 23),
+				DayOfWeek.Monday,
+				MealCategory.Breakfast,
+				[new MealSlotItem(Option<string>.Some("r1"), "Oats", 4)]),
 			TestContext.Current.CancellationToken);
 
 		Assert.True(result.IsSuccess);
-		Assert.NotNull(replaced);
-		Assert.Single(replaced.Days[0].Slots["Breakfast"]);
-		Assert.Equal("r1", replaced.Days[0].Slots["Breakfast"][0].RecipeId);
-		Assert.Equal(4, replaced.Days[0].Slots["Breakfast"][0].Servings);
+		Assert.NotNull(result.Value);
+		Assert.Single(result.Value.Days[0].Slots[MealCategory.Breakfast]);
+		Assert.Equal("r1", result.Value.Days[0].Slots[MealCategory.Breakfast][0].RecipeId.GetValueOrNull());
+		Assert.Equal(4, result.Value.Days[0].Slots[MealCategory.Breakfast][0].Servings);
+	}
+
+	[Fact]
+	public async Task HandleAsync_PersistsUpdatedSlot_WhenReloadedFromDatabase()
+	{
+		const string databaseName = "update-day-slot-persists-updates";
+		TestDbContextFactory.CreateContext(seed: db => db.MealPlans.Add(ExistingPlan()), databaseName: databaseName).Dispose();
+
+		using (var updateContext = TestDbContextFactory.CreateContext(databaseName: databaseName))
+		{
+			var handler = new UpdateDaySlotCommandHandler(updateContext);
+			var result = await handler.HandleAsync(
+				new UpdateDaySlotCommand(
+					"u1",
+					new DateOnly(2026, 2, 23),
+					DayOfWeek.Monday,
+					MealCategory.Breakfast,
+					[new MealSlotItem(Option<string>.Some("recipe-123"), "Avocado Toast", 2)]),
+				TestContext.Current.CancellationToken);
+
+			Assert.True(result.IsSuccess);
+		}
+
+		using var reloadContext = TestDbContextFactory.CreateContext(databaseName: databaseName);
+		var reloadedPlan = await reloadContext.MealPlans.FirstAsync(
+			p => p.UserId == "u1" && p.WeekStart == "2026-02-23",
+			TestContext.Current.CancellationToken);
+
+		var monday = reloadedPlan.Days.First(d => d.Day == "Monday");
+		Assert.Contains("Breakfast", monday.Slots.Keys);
+		var items = monday.Slots["Breakfast"];
+		Assert.Single(items);
+		Assert.Equal("recipe-123", items[0].RecipeId);
+		Assert.Equal("Avocado Toast", items[0].Name);
+		Assert.Equal(2, items[0].Servings);
 	}
 
 	[Fact]
 	public async Task HandleAsync_ReturnsValidationFailure_WhenDayMissing()
 	{
-		var doc = ExistingDoc();
-		doc.Days.Clear();
-		var cursor = MongoTestHelpers.CreateCursor((IReadOnlyCollection<MealPlanDocument>)new List<MealPlanDocument> { doc });
-		var collection = new Mock<IMongoCollection<MealPlanDocument>>();
-		collection.Setup(c => c.FindAsync(It.IsAny<FilterDefinition<MealPlanDocument>>(), It.IsAny<FindOptions<MealPlanDocument, MealPlanDocument>>(), It.IsAny<CancellationToken>())).ReturnsAsync(cursor.Object);
-		collection.Setup(c => c.FindSync(It.IsAny<FilterDefinition<MealPlanDocument>>(), It.IsAny<FindOptions<MealPlanDocument, MealPlanDocument>>(), It.IsAny<CancellationToken>())).Returns(cursor.Object);
+		var plan = ExistingPlan();
+		plan.Days = [];
+		var context = TestDbContextFactory.CreateContext(seed: db => db.MealPlans.Add(plan));
 
-		var db = new Mock<IMongoDatabase>();
-		db.Setup(d => d.GetCollection<MealPlanDocument>("mealplans", null)).Returns(collection.Object);
-		var client = new Mock<IMongoClient>();
-		client.Setup(c => c.GetDatabase("mealplannerDb", null)).Returns(db.Object);
-
-		var handler = new UpdateDaySlotCommandHandler(client.Object);
+		var handler = new UpdateDaySlotCommandHandler(context);
 		var result = await handler.HandleAsync(
 			new UpdateDaySlotCommand("u1", new DateOnly(2026, 2, 23), DayOfWeek.Monday, MealCategory.Breakfast, []),
 			TestContext.Current.CancellationToken);
@@ -76,7 +108,7 @@ public class UpdateDaySlotTests
 	[Fact]
 	public async Task HandleAsync_ReturnsValidationFailure_WhenAnyItemServingsIsLessThanOne()
 	{
-		var handler = new UpdateDaySlotCommandHandler(new Mock<IMongoClient>().Object);
+		var handler = new UpdateDaySlotCommandHandler(TestDbContextFactory.CreateContext());
 		var result = await handler.HandleAsync(
 			new UpdateDaySlotCommand(
 				"u1",
@@ -91,13 +123,15 @@ public class UpdateDaySlotTests
 	}
 
 	[Fact]
-	public async Task HandleAsync_ReturnsDatabaseError_WhenMongoThrows()
+	public async Task HandleAsync_ReturnsDatabaseError_WhenContextDisposed()
 	{
-		var client = new Mock<IMongoClient>();
-		client.Setup(c => c.GetDatabase("mealplannerDb", null)).Throws(new Exception("boom"));
+		var context = TestDbContextFactory.CreateContext();
+		context.Dispose();
 
-		var handler = new UpdateDaySlotCommandHandler(client.Object);
-		var result = await handler.HandleAsync(new UpdateDaySlotCommand("u1", new DateOnly(2026, 2, 23), DayOfWeek.Monday, MealCategory.Breakfast, []), TestContext.Current.CancellationToken);
+		var handler = new UpdateDaySlotCommandHandler(context);
+		var result = await handler.HandleAsync(
+			new UpdateDaySlotCommand("u1", new DateOnly(2026, 2, 23), DayOfWeek.Monday, MealCategory.Breakfast, []),
+			TestContext.Current.CancellationToken);
 
 		Assert.False(result.IsSuccess);
 		Assert.Equal(ErrorCodes.DatabaseError, result.Error?.Code);

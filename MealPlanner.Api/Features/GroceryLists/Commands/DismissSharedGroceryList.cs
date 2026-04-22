@@ -1,6 +1,6 @@
-using MealPlanner.Api.Features.GroceryLists.Models;
+using MealPlanner.Api.Data;
 using MealPlanner.Api.Shared;
-using MongoDB.Driver;
+using Microsoft.EntityFrameworkCore;
 
 namespace MealPlanner.Api.Features.GroceryLists.Commands;
 
@@ -16,7 +16,7 @@ public record DismissSharedGroceryListCommand(
 /// Handles dismissing a shared grocery list by setting DismissedByRecipient = true.
 /// Only the recipient can dismiss.
 /// </summary>
-public class DismissSharedGroceryListCommandHandler(IMongoClient mongoClient)
+public class DismissSharedGroceryListCommandHandler(MealPlannerDbContext db)
 	: ICommandHandler<DismissSharedGroceryListCommand, Unit>
 {
 	public async Task<Result<Unit>> HandleAsync(
@@ -27,24 +27,21 @@ public class DismissSharedGroceryListCommandHandler(IMongoClient mongoClient)
 			return Result<Unit>.Failure(
 				new Error(ErrorCodes.ValidationFailed, "Share ID is required."));
 
+		if (!Guid.TryParse(command.ShareId, out var shareGuid))
+			return Result<Unit>.Failure(
+				new Error(ErrorCodes.ValidationFailed, "Share ID is invalid."));
+
 		try
 		{
-			var collection = mongoClient
-				.GetDatabase("mealplannerDb")
-				.GetCollection<GroceryListShareDocument>("grocerylist_shares");
+			var share = await db.GroceryListShares
+				.FirstOrDefaultAsync(s => s.Id == shareGuid && s.SharedWithUserId == command.RecipientUserId, cancellationToken);
 
-			var filter = Builders<GroceryListShareDocument>.Filter.And(
-				Builders<GroceryListShareDocument>.Filter.Eq(s => s.Id, command.ShareId),
-				Builders<GroceryListShareDocument>.Filter.Eq(s => s.SharedWithUserId, command.RecipientUserId));
-
-			var update = Builders<GroceryListShareDocument>.Update
-				.Set(s => s.DismissedByRecipient, true);
-
-			var result = await collection.UpdateOneAsync(filter, update, cancellationToken: cancellationToken);
-
-			if (result.MatchedCount == 0)
+			if (share is null)
 				return Result<Unit>.Failure(
 					new Error(ErrorCodes.NotFound, "Share not found or you are not the recipient."));
+
+			share.DismissedByRecipient = true;
+			await db.SaveChangesAsync(cancellationToken);
 
 			return Result<Unit>.Success(Unit.Value);
 		}

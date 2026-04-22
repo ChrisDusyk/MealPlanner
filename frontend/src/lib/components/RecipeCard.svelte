@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { resolve } from '$app/paths';
 	import type { Recipe } from '$lib/api/recipeApi';
 	import { formatDate } from '$lib/utils/date';
 	import { sanitizeUrl } from '$lib/utils/url';
@@ -13,7 +14,7 @@
 >
 	<!-- Clickable overlay link to recipe detail -->
 	<a
-		href="/app/recipes/{recipe.id}"
+		href={resolve('/app/recipes/[id]', { id: recipe.id })}
 		class="absolute inset-0 z-0"
 		aria-label="View {recipe.name}"
 	></a>
@@ -21,7 +22,7 @@
 	<div class="p-5">
 		<!-- Title -->
 		<h3
-			class="font-display text-lg font-semibold leading-tight text-charcoal group-hover:text-green-700"
+			class="font-display text-lg leading-tight font-semibold text-charcoal group-hover:text-green-700"
 		>
 			{recipe.name}
 		</h3>
@@ -65,10 +66,9 @@
 	>
 		<div class="relative z-10 flex items-center gap-3">
 			{#if safeSourceUrl}
-				<a
-					href={safeSourceUrl}
-					target="_blank"
-					rel="noopener noreferrer"
+				<button
+					type="button"
+					onclick={() => window.open(safeSourceUrl, '_blank', 'noopener,noreferrer')}
 					class="flex items-center gap-1 text-xs font-medium text-green-600 transition-colors hover:text-green-700"
 				>
 					<svg
@@ -86,10 +86,10 @@
 						/>
 					</svg>
 					Source
-				</a>
+				</button>
 			{/if}
 			<a
-				href="/app/recipes/{recipe.id}/edit"
+				href={resolve('/app/recipes/[id]/edit', { id: recipe.id })}
 				class="flex items-center gap-1 text-xs font-medium text-green-600 transition-colors hover:text-green-700"
 			>
 				<svg

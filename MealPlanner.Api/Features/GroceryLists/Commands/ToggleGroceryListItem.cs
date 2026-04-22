@@ -1,7 +1,8 @@
+using MealPlanner.Api.Data;
 using MealPlanner.Api.Features.GroceryLists.Models;
 using MealPlanner.Api.Features.MealPlans.Models;
 using MealPlanner.Api.Shared;
-using MongoDB.Driver;
+using Microsoft.EntityFrameworkCore;
 
 namespace MealPlanner.Api.Features.GroceryLists.Commands;
 
@@ -25,7 +26,7 @@ public record ToggleGroceryListItemCommand(
 /// Toggles a single item's checked state in the grocery list.
 /// Supports both owned lists and shared ReadWrite lists.
 /// </summary>
-public class ToggleGroceryListItemCommandHandler(IMongoClient mongoClient)
+public class ToggleGroceryListItemCommandHandler(MealPlannerDbContext db)
 	: ICommandHandler<ToggleGroceryListItemCommand, GroceryList>
 {
 	public async Task<Result<GroceryList>> HandleAsync(
@@ -36,21 +37,17 @@ public class ToggleGroceryListItemCommandHandler(IMongoClient mongoClient)
 		{
 			var weekStartStr = GroceryListHelpers.NormalizeToMonday(command.WeekStart)
 				.ToString("yyyy-MM-dd");
-			var db = mongoClient.GetDatabase("mealplannerDb");
-			var collection = db.GetCollection<GroceryListDocument>("grocerylists");
 
 			// If a different owner is specified, validate the requesting user has ReadWrite access
 			if (!string.IsNullOrEmpty(command.OwnerUserId)
 			    && command.OwnerUserId != command.RequestingUserId)
 			{
-				var sharesCollection = db.GetCollection<GroceryListShareDocument>("grocerylist_shares");
-				var shareFilter = Builders<GroceryListShareDocument>.Filter.And(
-					Builders<GroceryListShareDocument>.Filter.Eq(s => s.OwnerUserId, command.OwnerUserId),
-					Builders<GroceryListShareDocument>.Filter.Eq(s => s.SharedWithUserId, command.RequestingUserId),
-					Builders<GroceryListShareDocument>.Filter.Eq(s => s.WeekStart, weekStartStr),
-					Builders<GroceryListShareDocument>.Filter.Eq(s => s.DismissedByRecipient, false));
-
-				var share = await sharesCollection.Find(shareFilter).FirstOrDefaultAsync(cancellationToken);
+				var share = await db.GroceryListShares.FirstOrDefaultAsync(
+					s => s.OwnerUserId == command.OwnerUserId
+						&& s.SharedWithUserId == command.RequestingUserId
+						&& s.WeekStart == weekStartStr
+						&& !s.DismissedByRecipient,
+					cancellationToken);
 
 				if (share is null)
 				{
@@ -59,7 +56,7 @@ public class ToggleGroceryListItemCommandHandler(IMongoClient mongoClient)
 							"You do not have access to this grocery list."));
 				}
 
-				if (!Enum.TryParse<SharePermission>(share.Permission, out var permission)
+				if (!Enum.TryParse<SharePermission>(share.Permission, true, out var permission)
 				    || permission != SharePermission.ReadWrite)
 				{
 					return Result<GroceryList>.Failure(
@@ -68,31 +65,28 @@ public class ToggleGroceryListItemCommandHandler(IMongoClient mongoClient)
 				}
 			}
 
-			var document = await collection
-				.Find(g => g.UserId == command.EffectiveOwnerUserId && g.WeekStart == weekStartStr)
-				.FirstOrDefaultAsync(cancellationToken);
+			var entity = await db.GroceryLists
+				.FirstOrDefaultAsync(g => g.UserId == command.EffectiveOwnerUserId && g.WeekStart == weekStartStr, cancellationToken);
 
-			if (document is null)
+			if (entity is null)
 			{
 				return Result<GroceryList>.Failure(
 					new Error(ErrorCodes.NotFound, "No grocery list found for the specified week."));
 			}
 
-			if (command.ItemIndex < 0 || command.ItemIndex >= document.Items.Count)
+			if (command.ItemIndex < 0 || command.ItemIndex >= entity.Items.Count)
 			{
 				return Result<GroceryList>.Failure(
 					new Error(ErrorCodes.ValidationFailed,
-						$"Item index {command.ItemIndex} is out of range (0–{document.Items.Count - 1})."));
+						$"Item index {command.ItemIndex} is out of range (0–{entity.Items.Count - 1})."));
 			}
 
 			// Toggle the checked state
-			document.Items[command.ItemIndex].IsChecked = !document.Items[command.ItemIndex].IsChecked;
-			document.UpdatedAt = DateTime.UtcNow;
+			entity.Items[command.ItemIndex].IsChecked = !entity.Items[command.ItemIndex].IsChecked;
+			entity.UpdatedAt = DateTime.UtcNow;
+			await db.SaveChangesAsync(cancellationToken);
 
-			var filter = Builders<GroceryListDocument>.Filter.Eq(g => g.Id, document.Id);
-			await collection.ReplaceOneAsync(filter, document, cancellationToken: cancellationToken);
-
-			return Result<GroceryList>.Success(GroceryListHelpers.MapToDomain(document));
+			return Result<GroceryList>.Success(GroceryListHelpers.MapToDomain(entity));
 		}
 		catch (Exception ex)
 		{

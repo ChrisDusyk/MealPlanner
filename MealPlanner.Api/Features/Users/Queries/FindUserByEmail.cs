@@ -1,6 +1,8 @@
+using MealPlanner.Api.Data;
+using MealPlanner.Api.Data.Entities;
 using MealPlanner.Api.Features.Users.Models;
 using MealPlanner.Api.Shared;
-using MongoDB.Driver;
+using Microsoft.EntityFrameworkCore;
 
 namespace MealPlanner.Api.Features.Users.Queries;
 
@@ -10,9 +12,9 @@ namespace MealPlanner.Api.Features.Users.Queries;
 public record FindUserByEmailQuery(string Email) : IQuery<User>;
 
 /// <summary>
-/// Handles looking up a user by email in MongoDB.
+/// Handles looking up a user by email.
 /// </summary>
-public class FindUserByEmailQueryHandler(IMongoClient mongoClient)
+public class FindUserByEmailQueryHandler(MealPlannerDbContext db)
 	: IQueryHandler<FindUserByEmailQuery, User>
 {
 	public async Task<Result<User>> HandleAsync(
@@ -25,24 +27,16 @@ public class FindUserByEmailQueryHandler(IMongoClient mongoClient)
 
 		try
 		{
-			var collection = mongoClient
-				.GetDatabase("mealplannerDb")
-				.GetCollection<UserDocument>("users");
-
 			// Case-insensitive email search
-			var filter = Builders<UserDocument>.Filter.Regex(
-				u => u.Email,
-				new MongoDB.Bson.BsonRegularExpression($"^{System.Text.RegularExpressions.Regex.Escape(query.Email)}$", "i"));
+			var normalizedEmail = query.Email.Trim().ToUpperInvariant();
+			var entity = await db.Users
+				.FirstOrDefaultAsync(u => u.Email != null && u.Email.ToUpper() == normalizedEmail, cancellationToken);
 
-			var document = await collection
-				.Find(filter)
-				.FirstOrDefaultAsync(cancellationToken);
-
-			if (document is null)
+			if (entity is null)
 				return Result<User>.Failure(
 					new Error(ErrorCodes.NotFound, $"No user found with email '{query.Email}'."));
 
-			return Result<User>.Success(MapToDomain(document));
+			return Result<User>.Success(MapToDomain(entity));
 		}
 		catch (Exception ex)
 		{
@@ -51,13 +45,13 @@ public class FindUserByEmailQueryHandler(IMongoClient mongoClient)
 		}
 	}
 
-	internal static User MapToDomain(UserDocument document) =>
+	internal static User MapToDomain(UserEntity entity) =>
 		new(
-			Id: document.Id ?? string.Empty,
-			Auth0UserId: document.Auth0UserId,
-			Name: document.Name,
-			Email: Option<string>.From(document.Email),
-			CreatedAt: document.CreatedAt,
-			UpdatedAt: document.UpdatedAt
+			Id: entity.Id.ToString(),
+			Auth0UserId: entity.Auth0UserId,
+			Name: entity.Name,
+			Email: Option<string>.From(entity.Email),
+			CreatedAt: entity.CreatedAt,
+			UpdatedAt: entity.UpdatedAt
 		);
 }

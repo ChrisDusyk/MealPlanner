@@ -36,13 +36,14 @@
 </script>
 
 <div
+	title={`${day} ${dateLabel} ${category}`}
 	class="group/slot rounded-lg border border-green-200/40 bg-white p-2.5 transition-all hover:border-green-300/60 hover:shadow-sm {hasItems
 		? ''
 		: 'border-dashed'}"
 >
 	<!-- Slot header -->
 	<div class="mb-1.5 flex items-center justify-between">
-		<span class="font-display text-[11px] font-semibold uppercase tracking-wider text-charcoal/40">
+		<span class="font-display text-[11px] font-semibold tracking-wider text-charcoal/40 uppercase">
 			{category}
 		</span>
 		<div
@@ -136,7 +137,7 @@
 							<button
 								type="button"
 								onclick={() => (editingIndex = index)}
-								class="shrink-0 rounded bg-green-100 px-1 text-[10px] font-medium text-green-700 transition-colors hover:bg-green-200 cursor-pointer"
+								class="shrink-0 cursor-pointer rounded bg-green-100 px-1 text-[10px] font-medium text-green-700 transition-colors hover:bg-green-200"
 								title="Click to change servings"
 								aria-label="{item.servings} servings — click to edit"
 							>
@@ -148,11 +149,11 @@
 							class="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-charcoal/20"
 							aria-hidden="true"
 						></span>
-						<span class="flex-1 truncate text-xs italic text-charcoal/50">{item.name}</span>
+						<span class="flex-1 truncate text-xs text-charcoal/50 italic">{item.name}</span>
 					{/if}
 					<button
 						onclick={() => onRemove(day, category, index)}
-						class="flex h-5 w-5 shrink-0 items-center justify-center rounded text-charcoal/20 opacity-100 md:opacity-0 md:transition-all hover:bg-red-50 hover:text-red-400 md:group-hover/item:opacity-100"
+						class="flex h-5 w-5 shrink-0 items-center justify-center rounded text-charcoal/20 opacity-100 hover:bg-red-50 hover:text-red-400 md:opacity-0 md:transition-all md:group-hover/item:opacity-100"
 						aria-label="Remove {item.name}"
 					>
 						<svg
@@ -163,11 +164,7 @@
 							stroke="currentColor"
 							stroke-width="2.5"
 						>
-							<path
-								stroke-linecap="round"
-								stroke-linejoin="round"
-								d="M6 18L18 6M6 6l12 12"
-							/>
+							<path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
 						</svg>
 					</button>
 				</li>

@@ -1,6 +1,6 @@
-using MealPlanner.Api.Features.Users.Models;
+using MealPlanner.Api.Data;
 using MealPlanner.Api.Shared;
-using MongoDB.Driver;
+using Microsoft.EntityFrameworkCore;
 
 namespace MealPlanner.Api.Features.Users.Queries;
 
@@ -9,7 +9,7 @@ namespace MealPlanner.Api.Features.Users.Queries;
 /// </summary>
 public record GetOutgoingFriendRequestsQuery(string RequesterUserId) : IQuery<IReadOnlyList<FriendRequestSummary>>;
 
-public class GetOutgoingFriendRequestsQueryHandler(IMongoClient mongoClient)
+public class GetOutgoingFriendRequestsQueryHandler(MealPlannerDbContext db)
 	: IQueryHandler<GetOutgoingFriendRequestsQuery, IReadOnlyList<FriendRequestSummary>>
 {
 	public async Task<Result<IReadOnlyList<FriendRequestSummary>>> HandleAsync(
@@ -22,13 +22,9 @@ public class GetOutgoingFriendRequestsQueryHandler(IMongoClient mongoClient)
 
 		try
 		{
-			var database = mongoClient.GetDatabase("mealplannerDb");
-			var requests = database.GetCollection<FriendRequestDocument>("friend_requests");
-			var users = database.GetCollection<UserDocument>("users");
-
-			var outgoing = await requests
-				.Find(r => r.RequesterUserId == query.RequesterUserId)
-				.SortByDescending(r => r.CreatedAt)
+			var outgoing = await db.FriendRequests
+				.Where(r => r.RequesterUserId == query.RequesterUserId)
+				.OrderByDescending(r => r.CreatedAt)
 				.ToListAsync(cancellationToken);
 
 			if (outgoing.Count == 0)
@@ -41,18 +37,18 @@ public class GetOutgoingFriendRequestsQueryHandler(IMongoClient mongoClient)
 				.Distinct(StringComparer.Ordinal)
 				.ToList();
 
-			var recipientDocs = await users
-				.Find(u => recipientIds.Contains(u.Auth0UserId))
+			var recipientEntities = await db.Users
+				.Where(u => recipientIds.Contains(u.Auth0UserId))
 				.ToListAsync(cancellationToken);
-			var recipientById = recipientDocs.ToDictionary(u => u.Auth0UserId, StringComparer.Ordinal);
+			var recipientById = recipientEntities.ToDictionary(u => u.Auth0UserId, StringComparer.Ordinal);
 
 			var summaries = outgoing
-				.Where(r => r.Id is not null && recipientById.ContainsKey(r.RecipientUserId))
+				.Where(r => recipientById.ContainsKey(r.RecipientUserId))
 				.Select(r =>
 				{
 					var recipient = recipientById[r.RecipientUserId];
 					return new FriendRequestSummary(
-						r.Id!,
+						r.Id.ToString(),
 						recipient.Auth0UserId,
 						recipient.Name,
 						recipient.Email,

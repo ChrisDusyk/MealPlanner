@@ -25,9 +25,7 @@ export const load: PageServerLoad = async ({ parent, fetch, url }) => {
 			getSharedWithMe(session.accessToken, resolvedWeek, fetch).catch(
 				(): SharedMealPlanResponse[] => []
 			),
-			getMyShares(session.accessToken, resolvedWeek, fetch).catch(
-				(): MealPlanShareResponse[] => []
-			)
+			getMyShares(session.accessToken, resolvedWeek, fetch).catch((): MealPlanShareResponse[] => [])
 		]);
 
 		return {

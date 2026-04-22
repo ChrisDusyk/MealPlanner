@@ -1,6 +1,7 @@
-using MealPlanner.Api.Features.Users.Models;
+using MealPlanner.Api.Data;
+using MealPlanner.Api.Data.Entities;
 using MealPlanner.Api.Shared;
-using MongoDB.Driver;
+using Microsoft.EntityFrameworkCore;
 
 namespace MealPlanner.Api.Features.Users.Queries;
 
@@ -17,7 +18,7 @@ public record FriendSummary(
 /// </summary>
 public record GetFriendsForUserQuery(string UserId) : IQuery<IReadOnlyList<FriendSummary>>;
 
-public class GetFriendsForUserQueryHandler(IMongoClient mongoClient)
+public class GetFriendsForUserQueryHandler(MealPlannerDbContext db)
 	: IQueryHandler<GetFriendsForUserQuery, IReadOnlyList<FriendSummary>>
 {
 	public async Task<Result<IReadOnlyList<FriendSummary>>> HandleAsync(
@@ -30,16 +31,11 @@ public class GetFriendsForUserQueryHandler(IMongoClient mongoClient)
 
 		try
 		{
-			var database = mongoClient.GetDatabase("mealplannerDb");
-			var friendships = database.GetCollection<FriendshipDocument>("friendships");
-			var users = database.GetCollection<UserDocument>("users");
-			var preferences = database.GetCollection<FriendAutoSharePreferenceDocument>("friend_auto_share_preferences");
-
-			var friendshipDocs = await friendships
-				.Find(f => f.UserAId == query.UserId || f.UserBId == query.UserId)
+			var friendshipEntities = await db.Friendships
+				.Where(f => f.UserAId == query.UserId || f.UserBId == query.UserId)
 				.ToListAsync(cancellationToken);
 
-			var friendUserIds = friendshipDocs
+			var friendUserIds = friendshipEntities
 				.Select(f => f.UserAId == query.UserId ? f.UserBId : f.UserAId)
 				.Where(id => !string.IsNullOrWhiteSpace(id))
 				.Distinct(StringComparer.Ordinal)
@@ -50,19 +46,19 @@ public class GetFriendsForUserQueryHandler(IMongoClient mongoClient)
 				return Result<IReadOnlyList<FriendSummary>>.Success(Array.Empty<FriendSummary>());
 			}
 
-			var friendDocs = await users
-				.Find(u => friendUserIds.Contains(u.Auth0UserId))
+			var friendEntities = await db.Users
+				.Where(u => friendUserIds.Contains(u.Auth0UserId))
 				.ToListAsync(cancellationToken);
 
-			var preferenceDocs = await preferences
-				.Find(p => p.UserId == query.UserId && friendUserIds.Contains(p.FriendUserId))
+			var preferenceEntities = await db.FriendAutoSharePreferences
+				.Where(p => p.UserId == query.UserId && friendUserIds.Contains(p.FriendUserId))
 				.ToListAsync(cancellationToken);
 
-			var preferencesByFriendId = preferenceDocs.ToDictionary(
+			var preferencesByFriendId = preferenceEntities.ToDictionary(
 				p => p.FriendUserId,
 				StringComparer.Ordinal);
 
-			var byId = friendDocs.ToDictionary(u => u.Auth0UserId, StringComparer.Ordinal);
+			var byId = friendEntities.ToDictionary(u => u.Auth0UserId, StringComparer.Ordinal);
 			var ordered = friendUserIds
 				.Where(byId.ContainsKey)
 				.Select(id => MapToSummary(byId[id], preferencesByFriendId.GetValueOrDefault(id)))
@@ -77,7 +73,7 @@ public class GetFriendsForUserQueryHandler(IMongoClient mongoClient)
 		}
 	}
 
-	internal static FriendSummary MapToSummary(UserDocument user, FriendAutoSharePreferenceDocument? preference) =>
+	internal static FriendSummary MapToSummary(UserEntity user, FriendAutoSharePreferenceEntity? preference) =>
 		new(
 			user.Auth0UserId,
 			user.Name,
