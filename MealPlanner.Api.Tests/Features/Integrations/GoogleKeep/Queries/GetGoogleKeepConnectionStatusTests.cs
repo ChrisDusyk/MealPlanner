@@ -1,7 +1,5 @@
 using MealPlanner.Api.Features.Integrations.GoogleKeep.Queries;
 using MealPlanner.Api.Shared;
-using Moq;
-using MongoDB.Driver;
 
 namespace MealPlanner.Api.Tests.Features.Integrations.GoogleKeep.Queries;
 
