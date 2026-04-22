@@ -1,8 +1,9 @@
 <script lang="ts">
 	import { goto, invalidateAll } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import { enhance } from '$app/forms';
 	import { onMount } from 'svelte';
-	import type { GroceryListResponse, GroceryListItem } from '$lib/api/groceryListApi';
+	import type { GroceryListResponse } from '$lib/api/groceryListApi';
 	import type { GroceryListShareResponse, SharedGroceryListResponse } from '$lib/api/sharingApi';
 	import {
 		GroceryListRealtimeClient,
@@ -114,7 +115,8 @@
 	// ── Navigation ──
 
 	function handleNavigate(newWeekStart: string) {
-		goto(`/app/grocery-lists?weekStart=${newWeekStart}`);
+		// @ts-expect-error resolve() with query string is valid at runtime
+		goto(resolve(`/app/grocery-lists?weekStart=${newWeekStart}`));
 	}
 
 	function formatQuantity(quantity: number) {
@@ -556,12 +558,27 @@
 		{#if groceryList.pantryStapleItems.length > 0}
 			<div class="mb-6 rounded-xl border border-amber-200 bg-amber-50/60 p-4">
 				<h3 class="mb-3 flex items-center gap-2 font-display text-sm font-semibold text-amber-800">
-					<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-						<path stroke-linecap="round" stroke-linejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
+					<svg
+						xmlns="http://www.w3.org/2000/svg"
+						class="h-4 w-4"
+						fill="none"
+						viewBox="0 0 24 24"
+						stroke="currentColor"
+						stroke-width="2"
+					>
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z"
+						/>
 					</svg>
 					Pantry Staples
-					<span class="rounded-full bg-amber-200 px-2 py-0.5 text-[10px] font-medium text-amber-800">
-						{groceryList.pantryStapleItems.length} item{groceryList.pantryStapleItems.length !== 1 ? 's' : ''}
+					<span
+						class="rounded-full bg-amber-200 px-2 py-0.5 text-[10px] font-medium text-amber-800"
+					>
+						{groceryList.pantryStapleItems.length} item{groceryList.pantryStapleItems.length !== 1
+							? 's'
+							: ''}
 					</span>
 				</h3>
 				<p class="mb-3 text-xs text-amber-700/70">
@@ -569,20 +586,25 @@
 				</p>
 				<ul class="flex flex-col gap-1.5" role="list" aria-label="Pantry staple items">
 					{#each groceryList.pantryStapleItems as staple, stapleIndex (stapleIndex)}
-						<li class="flex items-center gap-3 rounded-lg border border-amber-200/60 bg-white px-3 py-2">
+						<li
+							class="flex items-center gap-3 rounded-lg border border-amber-200/60 bg-white px-3 py-2"
+						>
 							<div class="min-w-0 flex-1">
 								<span class="block font-display text-sm font-medium text-charcoal">
 									{staple.name}
 								</span>
 								{#if staple.quantity > 0}
 									<span class="mt-0.5 block text-xs text-charcoal/60">
-										{formatQuantity(staple.quantity)} {staple.unit}
+										{formatQuantity(staple.quantity)}
+										{staple.unit}
 									</span>
 								{/if}
 								{#if staple.sourceRecipeNames.length > 0}
 									<div class="mt-1 flex flex-wrap gap-1">
-										{#each staple.sourceRecipeNames as recipeName}
-											<span class="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-medium text-amber-700">
+										{#each staple.sourceRecipeNames as recipeName, recipeNameIndex (`${recipeName}-${recipeNameIndex}`)}
+											<span
+												class="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-medium text-amber-700"
+											>
 												{recipeName}
 											</span>
 										{/each}
@@ -621,8 +643,19 @@
 									aria-label={`Add ${staple.name} to grocery list`}
 									class="flex items-center gap-1 rounded-lg bg-amber-100 px-2.5 py-1.5 text-xs font-medium text-amber-800 transition-colors hover:bg-amber-200"
 								>
-									<svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-										<path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+									<svg
+										xmlns="http://www.w3.org/2000/svg"
+										class="h-3.5 w-3.5"
+										fill="none"
+										viewBox="0 0 24 24"
+										stroke="currentColor"
+										stroke-width="2"
+									>
+										<path
+											stroke-linecap="round"
+											stroke-linejoin="round"
+											d="M12 4.5v15m7.5-7.5h-15"
+										/>
 									</svg>
 									Add to list
 								</button>
@@ -703,7 +736,7 @@
 						{/if}
 						{#if item.sourceRecipeNames.length > 0}
 							<div class="mt-1 flex flex-wrap gap-1">
-								{#each item.sourceRecipeNames as recipeName}
+								{#each item.sourceRecipeNames as recipeName, recipeNameIndex (`${recipeName}-${recipeNameIndex}`)}
 									<span
 										class="rounded-full px-2 py-0.5 text-[10px] font-medium {item.isChecked
 											? 'bg-green-100/50 text-green-600/40'
@@ -907,7 +940,9 @@
 												: 'text-charcoal'}">{item.name}</span
 										>
 										{#if item.quantity > 0}
-											<span class="text-xs text-charcoal/50">{formatQuantity(item.quantity)} {item.unit}</span>
+											<span class="text-xs text-charcoal/50"
+												>{formatQuantity(item.quantity)} {item.unit}</span
+											>
 										{/if}
 									</div>
 								</li>

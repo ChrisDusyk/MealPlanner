@@ -62,7 +62,9 @@ describe('PUT /app/grocery-lists/toggle-shared', () => {
 
 	it('passes through API error status and message', async () => {
 		vi.mocked(toggleGroceryListItem).mockRejectedValue(
-			new ApiError(403, 'You only have read-only access to this grocery list.', { code: 'forbidden' })
+			new ApiError(403, 'You only have read-only access to this grocery list.', {
+				code: 'forbidden'
+			})
 		);
 
 		const event = createEvent(

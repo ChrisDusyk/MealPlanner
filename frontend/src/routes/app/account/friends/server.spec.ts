@@ -79,7 +79,10 @@ describe('GET /app/account/friends', () => {
 		vi.mocked(getIncomingFriendRequests).mockResolvedValue([]);
 		vi.mocked(getOutgoingFriendRequests).mockResolvedValue([]);
 
-		const event = createEvent({ url: 'http://localhost/app/account/friends', accessToken: 'token' });
+		const event = createEvent({
+			url: 'http://localhost/app/account/friends',
+			accessToken: 'token'
+		});
 		const response = await GET(event);
 
 		expect(response.status).toBe(200);
@@ -120,7 +123,9 @@ describe('POST /app/account/friends', () => {
 	});
 
 	it('passes through API error status', async () => {
-		vi.mocked(sendFriendRequestByEmail).mockRejectedValue(new ApiError(400, 'No user exists with that email address.'));
+		vi.mocked(sendFriendRequestByEmail).mockRejectedValue(
+			new ApiError(400, 'No user exists with that email address.')
+		);
 		const event = createEvent({
 			url: 'http://localhost/app/account/friends',
 			accessToken: 'token',

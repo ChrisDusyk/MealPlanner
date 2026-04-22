@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { resolve } from '$app/paths';
 	import { formatDate } from '$lib/utils/date';
 	import { sanitizeUrl } from '$lib/utils/url';
 
@@ -16,7 +17,7 @@
 	<!-- Page header -->
 	<div class="mb-8">
 		<a
-			href="/app/recipes"
+			href={resolve('/app/recipes')}
 			class="mb-4 inline-flex items-center gap-1.5 py-2 font-display text-sm font-medium text-green-600 transition-colors hover:text-green-700"
 		>
 			<svg
@@ -41,7 +42,7 @@
 				</div>
 			</div>
 			<a
-				href="/app/recipes/{recipe.id}/edit"
+				href={resolve('/app/recipes/[id]/edit', { id: recipe.id })}
 				class="flex w-fit shrink-0 items-center gap-2 rounded-lg bg-green-600 px-5 py-2.5 font-display text-sm font-semibold text-white shadow-md shadow-green-900/20 transition-all hover:bg-green-700 hover:shadow-lg"
 			>
 				<svg
@@ -70,14 +71,18 @@
 				<h2 class="font-display text-lg font-semibold text-charcoal">Description</h2>
 			</div>
 			<div class="p-6">
-				<p class="whitespace-pre-line text-sm leading-relaxed text-charcoal/70">{recipe.description}</p>
+				<p class="text-sm leading-relaxed whitespace-pre-line text-charcoal/70">
+					{recipe.description}
+				</p>
 			</div>
 		</section>
 	{/if}
 
 	<!-- Servings -->
 	{#if recipe.servings > 1}
-		<div class="mb-6 flex items-center gap-2 rounded-lg border border-green-200/50 bg-white px-5 py-3 shadow-sm">
+		<div
+			class="mb-6 flex items-center gap-2 rounded-lg border border-green-200/50 bg-white px-5 py-3 shadow-sm"
+		>
 			<span class="text-sm font-medium text-charcoal/70">Servings:</span>
 			<span class="text-sm font-semibold text-charcoal">{recipe.servings}</span>
 		</div>
@@ -101,14 +106,13 @@
 						d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"
 					/>
 				</svg>
-				<a
-					href={safeSourceUrl}
-					target="_blank"
-					rel="noopener noreferrer"
+				<button
+					type="button"
+					onclick={() => window.open(safeSourceUrl, '_blank', 'noopener,noreferrer')}
 					class="block truncate text-sm font-medium text-green-600 transition-colors hover:text-green-700 hover:underline"
 				>
 					{safeSourceUrl}
-				</a>
+				</button>
 			</div>
 		</section>
 	{/if}
@@ -125,15 +129,21 @@
 		</div>
 		<div class="p-6">
 			{#if recipe.ingredients.length === 0}
-				<div class="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-green-200/40 py-12">
+				<div
+					class="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-green-200/40 py-12"
+				>
 					<p class="font-display text-sm font-medium text-charcoal/50">No ingredients listed</p>
-					<p class="mt-0.5 text-xs text-charcoal/30">This recipe doesn't have any ingredients yet.</p>
+					<p class="mt-0.5 text-xs text-charcoal/30">
+						This recipe doesn't have any ingredients yet.
+					</p>
 				</div>
 			{:else}
 				<ul class="divide-y divide-green-100/60">
-					{#each recipe.ingredients as ingredient}
+					{#each recipe.ingredients as ingredient, ingredientIndex (`${ingredient.name}-${ingredientIndex}`)}
 						<li class="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
-							<div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-green-100 text-green-600">
+							<div
+								class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-green-100 text-green-600"
+							>
 								<svg
 									xmlns="http://www.w3.org/2000/svg"
 									class="h-4 w-4"

@@ -28,8 +28,7 @@
 	}
 
 	function navigateWeek(offset: number) {
-		const d = new Date(monday);
-		d.setDate(d.getDate() + offset * 7);
+		const d = new Date(monday.getTime() + offset * 7 * 24 * 60 * 60 * 1000);
 		onNavigate(d.toISOString().slice(0, 10));
 	}
 
@@ -37,8 +36,16 @@
 		const now = new Date();
 		const day = now.getDay();
 		const diff = day === 0 ? 6 : day - 1;
-		now.setDate(now.getDate() - diff);
-		onNavigate(now.toISOString().slice(0, 10));
+		const mondayDate = new Date(
+			now.getFullYear(),
+			now.getMonth(),
+			now.getDate() - diff,
+			0,
+			0,
+			0,
+			0
+		);
+		onNavigate(mondayDate.toISOString().slice(0, 10));
 	}
 </script>
 
@@ -61,7 +68,9 @@
 			</svg>
 		</button>
 
-		<h2 class="min-w-0 text-center font-display text-base font-bold text-charcoal sm:min-w-[200px] sm:text-xl">
+		<h2
+			class="min-w-0 text-center font-display text-base font-bold text-charcoal sm:min-w-[200px] sm:text-xl"
+		>
 			{weekLabel}
 		</h2>
 

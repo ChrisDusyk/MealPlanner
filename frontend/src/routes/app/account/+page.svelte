@@ -121,10 +121,12 @@
 				return;
 			}
 
-			friendActionSuccess = action === 'accept' ? 'Friend request accepted.' : 'Friend request rejected.';
+			friendActionSuccess =
+				action === 'accept' ? 'Friend request accepted.' : 'Friend request rejected.';
 			await refreshFriends();
 		} catch (error) {
-			friendActionError = error instanceof Error ? error.message : 'Failed to update friend request.';
+			friendActionError =
+				error instanceof Error ? error.message : 'Failed to update friend request.';
 		} finally {
 			processingRequestId = '';
 		}
@@ -187,15 +189,16 @@
 			friends = friends.map((item) =>
 				item.userId === friend.userId
 					? {
-						...item,
-						autoShareMealPlans: body.autoShareMealPlans,
-						autoShareGroceryLists: body.autoShareGroceryLists
-					}
+							...item,
+							autoShareMealPlans: body.autoShareMealPlans,
+							autoShareGroceryLists: body.autoShareGroceryLists
+						}
 					: item
 			);
 			friendActionSuccess = 'Sharing preferences updated.';
 		} catch (error) {
-			friendActionError = error instanceof Error ? error.message : 'Failed to update sharing preferences.';
+			friendActionError =
+				error instanceof Error ? error.message : 'Failed to update sharing preferences.';
 		} finally {
 			savingFriendPreferenceUserId = '';
 		}
@@ -232,7 +235,10 @@
 		<p class="mt-1 text-charcoal/70">Manage your profile settings for Simple Meal Planner.</p>
 	</div>
 
-	<section class="rounded-2xl border border-green-200/60 bg-white p-6 shadow-sm" aria-labelledby="profile-section-heading">
+	<section
+		class="rounded-2xl border border-green-200/60 bg-white p-6 shadow-sm"
+		aria-labelledby="profile-section-heading"
+	>
 		<div class="mb-5">
 			<h2 id="profile-section-heading" class="font-display text-lg font-semibold text-charcoal">
 				Profile
@@ -255,13 +261,19 @@
 			</div>
 
 			{#if form?.error}
-				<p class="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700" role="alert">
+				<p
+					class="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"
+					role="alert"
+				>
 					{form.error}
 				</p>
 			{/if}
 
 			{#if successMessage}
-				<p class="rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700" role="status">
+				<p
+					class="rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700"
+					role="status"
+				>
 					{successMessage}
 				</p>
 			{/if}
@@ -278,7 +290,10 @@
 		</form>
 	</section>
 
-	<section class="mt-6 rounded-2xl border border-green-200/60 bg-white p-6 shadow-sm" aria-labelledby="friends-section-heading">
+	<section
+		class="mt-6 rounded-2xl border border-green-200/60 bg-white p-6 shadow-sm"
+		aria-labelledby="friends-section-heading"
+	>
 		<div class="mb-5">
 			<h2 id="friends-section-heading" class="font-display text-lg font-semibold text-charcoal">
 				Friends
@@ -308,13 +323,19 @@
 		</form>
 
 		{#if friendActionError}
-			<p class="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700" role="alert">
+			<p
+				class="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"
+				role="alert"
+			>
 				{friendActionError}
 			</p>
 		{/if}
 
 		{#if friendActionSuccess}
-			<p class="mb-4 rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700" role="status">
+			<p
+				class="mb-4 rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700"
+				role="status"
+			>
 				{friendActionSuccess}
 			</p>
 		{/if}
@@ -353,7 +374,8 @@
 													disabled={savingFriendPreferenceUserId === friend.userId}
 													onchange={(event) =>
 														updateFriendPreference(friend, {
-															autoShareGroceryLists: (event.currentTarget as HTMLInputElement).checked
+															autoShareGroceryLists: (event.currentTarget as HTMLInputElement)
+																.checked
 														})}
 													class="h-4 w-4 rounded border-green-300 text-green-600 focus:ring-green-500"
 												/>

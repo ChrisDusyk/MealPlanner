@@ -16,7 +16,10 @@ export async function PUT({ locals, fetch, url }: RequestEvent): Promise<Respons
 	const itemIndexRaw = url.searchParams.get('itemIndex')?.trim() ?? '';
 
 	if (!/^\d{4}-\d{2}-\d{2}$/.test(weekStart)) {
-		return json({ error: 'weekStart is required and must be in yyyy-MM-dd format.' }, { status: 400 });
+		return json(
+			{ error: 'weekStart is required and must be in yyyy-MM-dd format.' },
+			{ status: 400 }
+		);
 	}
 
 	if (!ownerUserId) {

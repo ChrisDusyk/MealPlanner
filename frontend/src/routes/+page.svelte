@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { resolve } from '$app/paths';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -33,11 +34,14 @@
 {#if data.sessionExpired}
 	<div class="bg-amber-50 px-6 py-3 text-amber-900" role="status" aria-live="polite">
 		<div class="mx-auto flex max-w-7xl items-start gap-3">
-			<span class="mt-0.5 inline-flex h-5 w-5 items-center justify-center rounded-full bg-amber-200 text-xs font-bold">
+			<span
+				class="mt-0.5 inline-flex h-5 w-5 items-center justify-center rounded-full bg-amber-200 text-xs font-bold"
+			>
 				!
 			</span>
 			<p class="text-sm leading-6">
-				Your session expired while you were away. Please sign in again to continue where you left off.
+				Your session expired while you were away. Please sign in again to continue where you left
+				off.
 			</p>
 		</div>
 	</div>
@@ -75,7 +79,7 @@
 			</p>
 			<div class="flex flex-wrap gap-4">
 				<a
-					href="/signup"
+					href={resolve('/auth')}
 					class="rounded-xl bg-green-500 px-7 py-3.5 font-display text-sm font-bold text-white shadow-lg shadow-green-900/40 transition-all hover:-translate-y-0.5 hover:bg-green-400 hover:shadow-xl hover:shadow-green-900/50"
 				>
 					Start Free →
@@ -209,8 +213,8 @@
 				Meal planning, simplified
 			</h2>
 			<p class="text-lg text-charcoal/70">
-				Stop juggling spreadsheets and sticky notes. Simple Meal Planner brings your recipes, calendar, and
-				shopping list together.
+				Stop juggling spreadsheets and sticky notes. Simple Meal Planner brings your recipes,
+				calendar, and shopping list together.
 			</p>
 		</div>
 
@@ -385,7 +389,7 @@
 				>
 					<!-- Stars -->
 					<div class="mb-4 flex gap-1">
-						{#each Array(testimonial.stars) as _, index (index)}
+						{#each Array.from({ length: testimonial.stars }, (_, index) => index) as starIndex (starIndex)}
 							<svg
 								xmlns="http://www.w3.org/2000/svg"
 								class="h-4 w-4 text-yellow-400"
@@ -430,7 +434,7 @@
 			Join thousands of home cooks who plan smarter, shop faster, and eat better — starting tonight.
 		</p>
 		<a
-			href="/signup"
+			href={resolve('/auth')}
 			class="inline-block rounded-xl bg-white px-8 py-4 font-display text-sm font-bold text-green-800 shadow-lg shadow-green-900/30 transition-all hover:-translate-y-0.5 hover:shadow-xl"
 		>
 			Start Planning — It's Free
@@ -494,8 +498,9 @@
 						>
 					</li>
 					<li>
-						<a href="/pricing" class="text-sm text-green-200/70 transition-colors hover:text-white"
-							>Pricing</a
+						<a
+							href="https://example.com/pricing"
+							class="text-sm text-green-200/70 transition-colors hover:text-white">Pricing</a
 						>
 					</li>
 				</ul>
@@ -509,18 +514,21 @@
 				</h4>
 				<ul class="space-y-2.5">
 					<li>
-						<a href="/about" class="text-sm text-green-200/70 transition-colors hover:text-white"
-							>About</a
+						<a
+							href="https://example.com/about"
+							class="text-sm text-green-200/70 transition-colors hover:text-white">About</a
 						>
 					</li>
 					<li>
-						<a href="/blog" class="text-sm text-green-200/70 transition-colors hover:text-white"
-							>Blog</a
+						<a
+							href="https://example.com/blog"
+							class="text-sm text-green-200/70 transition-colors hover:text-white">Blog</a
 						>
 					</li>
 					<li>
-						<a href="/contact" class="text-sm text-green-200/70 transition-colors hover:text-white"
-							>Contact</a
+						<a
+							href="https://example.com/contact"
+							class="text-sm text-green-200/70 transition-colors hover:text-white">Contact</a
 						>
 					</li>
 				</ul>
@@ -534,12 +542,15 @@
 				</h4>
 				<ul class="space-y-2.5">
 					<li>
-						<a href="/privacy" class="text-sm text-green-200/70 transition-colors hover:text-white"
-							>Privacy Policy</a
+						<a
+							href="https://example.com/privacy"
+							class="text-sm text-green-200/70 transition-colors hover:text-white">Privacy Policy</a
 						>
 					</li>
 					<li>
-						<a href="/terms" class="text-sm text-green-200/70 transition-colors hover:text-white"
+						<a
+							href="https://example.com/terms"
+							class="text-sm text-green-200/70 transition-colors hover:text-white"
 							>Terms of Service</a
 						>
 					</li>

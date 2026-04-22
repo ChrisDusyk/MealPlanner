@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { getContext } from 'svelte';
+	import { resolve } from '$app/paths';
 	import { signIn, signOut } from '@auth/sveltekit/client';
 	import type { Session } from '@auth/sveltekit';
 	import { APP_USER_CONTEXT_KEY, type AppUserContextValue } from '$lib/context/appUserContext';
@@ -65,7 +66,7 @@
 		<!-- Logo + Nav Links -->
 		<div class="flex items-center gap-10">
 			<!-- Logo -->
-			<a href="/" class="group flex items-center gap-2.5">
+			<a href={resolve('/')} class="group flex items-center gap-2.5">
 				<div
 					class="flex h-9 w-9 items-center justify-center rounded-xl bg-green-500 transition-transform duration-300 group-hover:scale-110"
 				>
@@ -149,7 +150,7 @@
 							<ul class="py-1">
 								<li>
 									<a
-										href="/app"
+										href={resolve('/app')}
 										onclick={closeDropdown}
 										class="flex items-center gap-3 px-4 py-2.5 font-display text-sm font-medium text-green-200/80 transition-colors hover:bg-green-800/50 hover:text-white"
 									>
@@ -172,7 +173,7 @@
 								</li>
 								<li>
 									<a
-										href="/app/account"
+										href={resolve('/app/account')}
 										onclick={closeDropdown}
 										class="flex items-center gap-3 px-4 py-2.5 font-display text-sm font-medium text-green-200/80 transition-colors hover:bg-green-800/50 hover:text-white"
 									>
@@ -196,7 +197,7 @@
 								{#if isAdmin}
 									<li>
 										<a
-											href="/app/admin"
+											href={resolve('/app/admin')}
 											onclick={closeDropdown}
 											class="flex items-center gap-3 px-4 py-2.5 font-display text-sm font-medium text-green-200/80 transition-colors hover:bg-green-800/50 hover:text-white"
 										>
@@ -342,7 +343,7 @@
 						{displayName}
 					</span>
 					<a
-						href="/app"
+						href={resolve('/app')}
 						onclick={() => (mobileOpen = false)}
 						class="flex items-center gap-3 rounded-lg px-3 py-2.5 font-display text-sm font-medium text-green-200/90 transition-colors hover:bg-green-800/50 hover:text-white"
 					>
@@ -363,7 +364,7 @@
 						Dashboard
 					</a>
 					<a
-						href="/app/account"
+						href={resolve('/app/account')}
 						onclick={() => (mobileOpen = false)}
 						class="flex items-center gap-3 rounded-lg px-3 py-2.5 font-display text-sm font-medium text-green-200/90 transition-colors hover:bg-green-800/50 hover:text-white"
 					>
@@ -385,7 +386,7 @@
 					</a>
 					{#if isAdmin}
 						<a
-							href="/app/admin"
+							href={resolve('/app/admin')}
 							onclick={() => (mobileOpen = false)}
 							class="flex items-center gap-3 rounded-lg px-3 py-2.5 font-display text-sm font-medium text-green-200/90 transition-colors hover:bg-green-800/50 hover:text-white"
 						>

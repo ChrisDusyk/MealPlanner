@@ -4,7 +4,6 @@ using MealPlanner.Api.Features.GroceryLists;
 using MealPlanner.Api.Features.GroceryLists.Realtime;
 using MealPlanner.Api.Features.Admin;
 using MealPlanner.Api.Features.Auth;
-using MealPlanner.Api.Features.Integrations;
 using MealPlanner.Api.Features.Integrations.GoogleKeep;
 using MealPlanner.Api.Features.Integrations.GoogleKeep.Options;
 using MealPlanner.Api.Features.Integrations.GoogleKeep.Services;
@@ -18,7 +17,6 @@ using MealPlanner.Api.Shared;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.SignalR;
-using System.IO;
 using System.Security.Claims;
 using System.Threading.RateLimiting;
 

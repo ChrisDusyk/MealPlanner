@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { resolve } from '$app/paths';
 	import { slide, fly, fade } from 'svelte/transition';
 	import { flip } from 'svelte/animate';
 	import { quintOut } from 'svelte/easing';
@@ -74,7 +75,10 @@
 	];
 
 	function addIngredient() {
-		ingredients = [...ingredients, { _id: nextId++, name: '', quantity: 0, unit: '', isPantryStaple: false }];
+		ingredients = [
+			...ingredients,
+			{ _id: nextId++, name: '', quantity: 0, unit: '', isPantryStaple: false }
+		];
 	}
 
 	function removeIngredient(id: number) {
@@ -191,7 +195,8 @@
 		}
 
 		if (validationErrors.sourceUrl) {
-			const { sourceUrl: _ignored, ...remaining } = validationErrors;
+			const remaining = { ...validationErrors };
+			delete remaining.sourceUrl;
 			validationErrors = remaining;
 		}
 
@@ -249,7 +254,9 @@
 
 			const importedIngredients: Ingredient[] = rawIngredients
 				.filter(
-					(item): item is { name: string; quantity: number; unit: string; isPantryStaple?: boolean } =>
+					(
+						item
+					): item is { name: string; quantity: number; unit: string; isPantryStaple?: boolean } =>
 						typeof item === 'object' &&
 						item !== null &&
 						typeof (item as { name?: unknown }).name === 'string' &&
@@ -264,10 +271,10 @@
 				}))
 				.filter((item) => item.name.length > 0);
 
-			const rawWarnings = Array.isArray(payload?.warnings)
-				? (payload.warnings as unknown[])
-				: [];
-			importWarnings = rawWarnings.filter((warning): warning is string => typeof warning === 'string');
+			const rawWarnings = Array.isArray(payload?.warnings) ? (payload.warnings as unknown[]) : [];
+			importWarnings = rawWarnings.filter(
+				(warning): warning is string => typeof warning === 'string'
+			);
 
 			replaceIngredientRows(importedIngredients);
 
@@ -555,10 +562,12 @@
 
 		<div class="p-6">
 			{#if importWarnings.length > 0}
-				<div class="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800">
+				<div
+					class="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800"
+				>
 					<p class="font-semibold">Import warnings</p>
 					<ul class="mt-1 list-disc space-y-1 pl-5">
-						{#each importWarnings as warning}
+						{#each importWarnings as warning, index (`${warning}-${index}`)}
 							<li>{warning}</li>
 						{/each}
 					</ul>
@@ -685,7 +694,7 @@
 										aria-label="Unit"
 										class="w-full appearance-none rounded-md border border-green-200/50 bg-white px-3 py-2 text-sm text-charcoal transition-colors focus:border-green-400 focus:ring-2 focus:ring-green-500/30 focus:outline-none"
 									>
-										{#each units as u}
+										{#each units as u (u)}
 											<option value={u}>{u || '—'}</option>
 										{/each}
 									</select>
@@ -693,7 +702,9 @@
 
 								<!-- Pantry staple toggle -->
 								<div class="flex flex-col items-center sm:flex-initial">
-									<span class="mb-1 block text-xs font-medium text-charcoal/60 sm:hidden">Staple</span>
+									<span class="mb-1 block text-xs font-medium text-charcoal/60 sm:hidden"
+										>Staple</span
+									>
 									<label
 										class="relative mt-0.5 inline-flex cursor-pointer items-center"
 										aria-label="Mark as pantry staple"
@@ -705,7 +716,7 @@
 											class="peer sr-only"
 										/>
 										<div
-											class="h-5 w-9 rounded-full bg-charcoal/15 transition-colors after:absolute after:top-[2px] after:left-[2px] after:h-4 after:w-4 after:rounded-full after:bg-white after:shadow-sm after:transition-transform peer-checked:bg-amber-500 peer-checked:after:translate-x-full peer-focus-visible:ring-2 peer-focus-visible:ring-green-500/30"
+											class="h-5 w-9 rounded-full bg-charcoal/15 transition-colors peer-checked:bg-amber-500 peer-focus-visible:ring-2 peer-focus-visible:ring-green-500/30 after:absolute after:top-[2px] after:left-[2px] after:h-4 after:w-4 after:rounded-full after:bg-white after:shadow-sm after:transition-transform peer-checked:after:translate-x-full"
 										></div>
 									</label>
 								</div>
@@ -762,7 +773,7 @@
 	<!-- Submit area -->
 	<div class="flex items-center justify-end gap-3 pb-8">
 		<a
-			href="/app/recipes"
+			href={resolve('/app/recipes')}
 			class="rounded-lg border border-green-200/60 px-6 py-2.5 font-display text-sm font-medium text-charcoal/70 transition-all hover:border-green-300 hover:bg-green-50"
 		>
 			Cancel

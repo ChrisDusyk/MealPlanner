@@ -222,7 +222,12 @@
 											min="1"
 											step="1"
 											value={recipeServings[recipe.id] ?? 1}
-											oninput={(e) => { recipeServings[recipe.id] = Math.max(1, parseInt((e.target as HTMLInputElement).value) || 1); }}
+											oninput={(e) => {
+												recipeServings[recipe.id] = Math.max(
+													1,
+													parseInt((e.target as HTMLInputElement).value) || 1
+												);
+											}}
 											onclick={(e) => e.stopPropagation()}
 											class="w-12 shrink-0 rounded border border-green-200/60 px-1.5 py-1 text-center text-xs text-charcoal focus:border-green-400 focus:ring-1 focus:ring-green-400/30 focus:outline-none"
 											title="Servings"
@@ -277,7 +282,7 @@
 
 						<!-- Quick suggestions -->
 						<div class="flex flex-wrap gap-1.5">
-							{#each ['Leftovers', 'Eat out', 'Skip', 'Smoothie', 'Snack bar'] as suggestion}
+							{#each ['Leftovers', 'Eat out', 'Skip', 'Smoothie', 'Snack bar'] as suggestion (suggestion)}
 								<button
 									type="button"
 									onclick={() => {

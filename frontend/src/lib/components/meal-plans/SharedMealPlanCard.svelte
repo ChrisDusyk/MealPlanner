@@ -5,7 +5,6 @@
 
 	let {
 		shareId,
-		ownerUserId,
 		ownerName,
 		ownerEmail,
 		permission,
@@ -17,7 +16,6 @@
 		onUpdateServings
 	}: {
 		shareId: string;
-		ownerUserId: string;
 		ownerName: string;
 		ownerEmail: string;
 		permission: string;
@@ -30,7 +28,9 @@
 	} = $props();
 
 	let expanded = $state(false);
-	let canEdit = $derived(permission === 'ReadWrite' && !!onAdd && !!onRemove && !!onCopy && !!onUpdateServings);
+	let canEdit = $derived(
+		permission === 'ReadWrite' && !!onAdd && !!onRemove && !!onCopy && !!onUpdateServings
+	);
 
 	function getItems(dayName: string, category: string): MealSlotItem[] {
 		const dayPlan = mealPlan.days.find((d) => d.day === dayName);
@@ -62,7 +62,7 @@
 				<p class="font-display text-sm font-semibold text-charcoal">
 					{ownerName}
 					<span
-						class="ml-1.5 inline-block rounded-full px-1.5 py-0.5 align-middle text-[10px] font-semibold leading-none {permission ===
+						class="ml-1.5 inline-block rounded-full px-1.5 py-0.5 align-middle text-[10px] leading-none font-semibold {permission ===
 						'ReadWrite'
 							? 'bg-amber-100 text-amber-700'
 							: 'bg-blue-100 text-blue-600'}"
@@ -76,7 +76,8 @@
 
 		<div class="flex items-center gap-2">
 			<span class="text-xs text-charcoal/40">
-				{totalItems} {totalItems === 1 ? 'item' : 'items'}
+				{totalItems}
+				{totalItems === 1 ? 'item' : 'items'}
 			</span>
 			<svg
 				xmlns="http://www.w3.org/2000/svg"
@@ -92,7 +93,7 @@
 	</button>
 
 	{#if expanded}
-		<div class="border-t border-blue-100/60 px-4 pb-4 pt-3">
+		<div class="border-t border-blue-100/60 px-4 pt-3 pb-4">
 			<!-- Dismiss button -->
 			<div class="mb-3 flex justify-end">
 				<button
@@ -120,7 +121,7 @@
 						{#each WEEK_DAYS as dayName (dayName)}
 							<div class="flex flex-col gap-1">
 								<p
-									class="mb-0.5 text-center font-display text-[10px] font-bold uppercase tracking-wider text-charcoal/40"
+									class="mb-0.5 text-center font-display text-[10px] font-bold tracking-wider text-charcoal/40 uppercase"
 								>
 									{dayName.slice(0, 3)}
 								</p>

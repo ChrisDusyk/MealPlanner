@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import RecipeForm from '$lib/components/RecipeForm.svelte';
 	import type { CreateRecipeRequest } from '$lib/api/recipeApi';
 
@@ -44,8 +45,8 @@
 				return;
 			}
 
-			await goto(`/app/recipes/${recipe.id}`);
-		} catch (err) {
+			await goto(resolve('/app/recipes/[id]', { id: recipe.id }));
+		} catch {
 			errorMessage = 'An unexpected error occurred. Please try again.';
 		} finally {
 			submitting = false;
@@ -61,7 +62,7 @@
 	<!-- Page header -->
 	<div class="mb-8">
 		<a
-			href="/app/recipes/{recipe.id}"
+			href={resolve('/app/recipes/[id]', { id: recipe.id })}
 			class="mb-4 inline-flex items-center gap-1.5 py-2 font-display text-sm font-medium text-green-600 transition-colors hover:text-green-700"
 		>
 			<svg

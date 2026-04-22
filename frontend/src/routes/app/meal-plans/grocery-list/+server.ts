@@ -11,7 +11,10 @@ export const POST: RequestHandler = async ({ locals, fetch, url }) => {
 
 	const weekStart = url.searchParams.get('weekStart')?.trim() ?? '';
 	if (!/^\d{4}-\d{2}-\d{2}$/.test(weekStart)) {
-		return json({ error: 'weekStart is required and must be in yyyy-MM-dd format.' }, { status: 400 });
+		return json(
+			{ error: 'weekStart is required and must be in yyyy-MM-dd format.' },
+			{ status: 400 }
+		);
 	}
 
 	try {

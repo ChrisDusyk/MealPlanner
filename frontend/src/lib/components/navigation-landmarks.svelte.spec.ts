@@ -36,7 +36,9 @@ describe('navigation landmark structure', () => {
 			}
 		});
 
-		const trigger = container.querySelector('button[aria-controls="user-menu"]') as HTMLButtonElement;
+		const trigger = container.querySelector(
+			'button[aria-controls="user-menu"]'
+		) as HTMLButtonElement;
 		expect(trigger).toBeTruthy();
 
 		trigger.click();

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import RecipeForm from '$lib/components/RecipeForm.svelte';
 	import type { CreateRecipeRequest } from '$lib/api/recipeApi';
 
@@ -32,8 +33,8 @@
 				return;
 			}
 
-			await goto('/app/recipes');
-		} catch (err) {
+			await goto(resolve('/app/recipes'));
+		} catch {
 			errorMessage = 'An unexpected error occurred. Please try again.';
 		} finally {
 			submitting = false;
@@ -49,7 +50,7 @@
 	<!-- Page header -->
 	<div class="mb-8">
 		<a
-			href="/app/recipes"
+			href={resolve('/app/recipes')}
 			class="mb-4 inline-flex items-center gap-1.5 py-2 font-display text-sm font-medium text-green-600 transition-colors hover:text-green-700"
 		>
 			<svg
@@ -68,10 +69,5 @@
 		<p class="mt-1 text-charcoal/60">Add a new recipe to your collection.</p>
 	</div>
 
-	<RecipeForm
-		submitLabel="Save Recipe"
-		{submitting}
-		{errorMessage}
-		onsubmit={handleSubmit}
-	/>
+	<RecipeForm submitLabel="Save Recipe" {submitting} {errorMessage} onsubmit={handleSubmit} />
 </div>
