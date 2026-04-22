@@ -117,6 +117,10 @@
 		goto(`/app/grocery-lists?weekStart=${newWeekStart}`);
 	}
 
+	function formatQuantity(quantity: number) {
+		return new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 }).format(quantity);
+	}
+
 	// ── Sorted items ──
 
 	let sortedItems = $derived.by(() => {
@@ -572,7 +576,7 @@
 								</span>
 								{#if staple.quantity > 0}
 									<span class="mt-0.5 block text-xs text-charcoal/60">
-										{staple.quantity} {staple.unit}
+										{formatQuantity(staple.quantity)} {staple.unit}
 									</span>
 								{/if}
 								{#if staple.sourceRecipeNames.length > 0}
@@ -693,7 +697,7 @@
 									? 'text-charcoal/30'
 									: 'text-charcoal/60'}"
 							>
-								{item.quantity}
+								{formatQuantity(item.quantity)}
 								{item.unit}
 							</span>
 						{/if}
@@ -903,7 +907,7 @@
 												: 'text-charcoal'}">{item.name}</span
 										>
 										{#if item.quantity > 0}
-											<span class="text-xs text-charcoal/50">{item.quantity} {item.unit}</span>
+											<span class="text-xs text-charcoal/50">{formatQuantity(item.quantity)} {item.unit}</span>
 										{/if}
 									</div>
 								</li>
