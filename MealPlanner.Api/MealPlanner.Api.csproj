@@ -8,7 +8,6 @@
 
   <ItemGroup>
     <PackageReference Include="Anthropic.SDK" />
-    <PackageReference Include="Aspire.MongoDB.Driver.v3" />
     <PackageReference Include="Aspire.Npgsql.EntityFrameworkCore.PostgreSQL" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
       <PrivateAssets>all</PrivateAssets>
