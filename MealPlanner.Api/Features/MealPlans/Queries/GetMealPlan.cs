@@ -124,20 +124,20 @@ public class GetMealPlanQueryHandler(MealPlannerDbContext db)
 		if (enabledPreferences.Count == 0)
 			return;
 
-		var friendUserIds = enabledPreferences
+		var preferredFriendUserIds = enabledPreferences
 			.Select(p => p.FriendUserId)
 			.Where(id => !string.IsNullOrWhiteSpace(id))
 			.Distinct(StringComparer.Ordinal)
 			.ToList();
 
-		if (friendUserIds.Count == 0)
+		if (preferredFriendUserIds.Count == 0)
 			return;
 
 		// Ensure auto-share is only propagated to current friends, not stale preference entries.
 		var activeFriendships = await db.Friendships
 			.Where(f =>
-				(f.UserAId == ownerUserId && friendUserIds.Contains(f.UserBId)) ||
-				(f.UserBId == ownerUserId && friendUserIds.Contains(f.UserAId)))
+				(f.UserAId == ownerUserId && preferredFriendUserIds.Contains(f.UserBId)) ||
+				(f.UserBId == ownerUserId && preferredFriendUserIds.Contains(f.UserAId)))
 			.ToListAsync(cancellationToken);
 
 		var activeFriendUserIds = activeFriendships
@@ -145,25 +145,25 @@ public class GetMealPlanQueryHandler(MealPlannerDbContext db)
 			.Where(id => !string.IsNullOrWhiteSpace(id))
 			.ToHashSet(StringComparer.Ordinal);
 
-		friendUserIds = friendUserIds
+		var activePreferredFriendUserIds = preferredFriendUserIds
 			.Where(id => activeFriendUserIds.Contains(id))
 			.ToList();
 
-		if (friendUserIds.Count == 0)
+		if (activePreferredFriendUserIds.Count == 0)
 			return;
 
 		var existingShares = await db.MealPlanShares
 			.Where(s =>
 				s.OwnerUserId == ownerUserId &&
 				s.WeekStart == weekStart &&
-				friendUserIds.Contains(s.SharedWithUserId))
+				activePreferredFriendUserIds.Contains(s.SharedWithUserId))
 			.ToListAsync(cancellationToken);
 
 		var alreadySharedWith = existingShares
 			.Select(s => s.SharedWithUserId)
 			.ToHashSet(StringComparer.Ordinal);
 
-		var newShares = friendUserIds
+		var newShares = activePreferredFriendUserIds
 			.Where(friendUserId => !alreadySharedWith.Contains(friendUserId))
 			.Select(friendUserId => new MealPlanShareEntity
 			{
