@@ -5,6 +5,7 @@
 		day,
 		category,
 		items,
+		dateLabel,
 		onAdd,
 		onRemove,
 		onCopy,
@@ -13,6 +14,7 @@
 		day: string;
 		category: string;
 		items: MealSlotItem[];
+		dateLabel: string;
 		onAdd: (day: string, category: string) => void;
 		onRemove: (day: string, category: string, index: number) => void;
 		onCopy: (day: string, category: string) => void;
@@ -34,6 +36,7 @@
 </script>
 
 <div
+	title={`${day} ${dateLabel} ${category}`}
 	class="group/slot rounded-lg border border-green-200/40 bg-white p-2.5 transition-all hover:border-green-300/60 hover:shadow-sm {hasItems
 		? ''
 		: 'border-dashed'}"

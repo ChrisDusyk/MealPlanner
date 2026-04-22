@@ -5,6 +5,7 @@
 
 	let {
 		shareId,
+		ownerUserId,
 		ownerName,
 		ownerEmail,
 		permission,
@@ -16,6 +17,7 @@
 		onUpdateServings
 	}: {
 		shareId: string;
+		ownerUserId: string;
 		ownerName: string;
 		ownerEmail: string;
 		permission: string;
@@ -45,7 +47,7 @@
 	);
 </script>
 
-<div class="rounded-xl border border-blue-200/50 bg-blue-50/20">
+<div class="rounded-xl border border-blue-200/50 bg-blue-50/20" title={`Shared by ${ownerUserId}`}>
 	<!-- Card header — always visible -->
 	<button
 		onclick={() => (expanded = !expanded)}
