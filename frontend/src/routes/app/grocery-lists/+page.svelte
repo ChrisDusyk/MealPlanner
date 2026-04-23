@@ -115,7 +115,6 @@
 	// ── Navigation ──
 
 	function handleNavigate(newWeekStart: string) {
-		// @ts-expect-error resolve() with query string is valid at runtime
 		goto(resolve(`/app/grocery-lists?weekStart=${newWeekStart}`));
 	}
 
