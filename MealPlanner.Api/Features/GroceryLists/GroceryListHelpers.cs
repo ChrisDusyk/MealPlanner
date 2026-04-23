@@ -9,32 +9,6 @@ namespace MealPlanner.Api.Features.GroceryLists;
 /// </summary>
 internal static class GroceryListHelpers
 {
-	/// <summary>
-	/// Maps a persistence document to the domain model.
-	/// </summary>
-	internal static GroceryList MapToDomain(GroceryListDocument doc) =>
-		new(
-			Id: doc.Id!,
-			UserId: doc.UserId,
-			WeekStart: DateOnly.ParseExact(doc.WeekStart, "yyyy-MM-dd"),
-			Items: doc.Items.Select(i => new GroceryListItem(
-				Name: i.Name,
-				Quantity: i.Quantity,
-				Unit: i.Unit,
-				IsChecked: i.IsChecked,
-				SourceRecipeNames: i.SourceRecipeNames
-			)).ToList(),
-			PantryStapleItems: doc.PantryStapleItems.Select(i => new GroceryListItem(
-				Name: i.Name,
-				Quantity: i.Quantity,
-				Unit: i.Unit,
-				IsChecked: i.IsChecked,
-				SourceRecipeNames: i.SourceRecipeNames
-			)).ToList(),
-			CreatedAt: doc.CreatedAt,
-			UpdatedAt: doc.UpdatedAt
-		);
-
 	internal static GroceryList MapToDomain(GroceryListEntity entity) =>
 		new(
 			Id: entity.Id.ToString(),
@@ -76,7 +50,7 @@ internal static class GroceryListHelpers
 
 	/// <summary>
 	/// Returns the Monday of the week containing <paramref name="date"/>.
-	/// Consistent with how meal plan documents are keyed.
+	/// Consistent with how meal plans are keyed.
 	/// </summary>
 	internal static DateOnly NormalizeToMonday(DateOnly date)
 	{

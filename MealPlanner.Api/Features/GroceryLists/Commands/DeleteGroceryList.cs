@@ -10,7 +10,7 @@ namespace MealPlanner.Api.Features.GroceryLists.Commands;
 public record DeleteGroceryListCommand(string UserId, DateOnly WeekStart) : ICommand<Unit>;
 
 /// <summary>
-/// Deletes the grocery list document from MongoDB.
+/// Deletes the grocery list for the specified user and week.
 /// </summary>
 public class DeleteGroceryListCommandHandler(MealPlannerDbContext db)
 	: ICommandHandler<DeleteGroceryListCommand, Unit>

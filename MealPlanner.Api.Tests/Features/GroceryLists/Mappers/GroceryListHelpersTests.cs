@@ -1,5 +1,5 @@
+using MealPlanner.Api.Data.Entities;
 using MealPlanner.Api.Features.GroceryLists;
-using MealPlanner.Api.Features.GroceryLists.Models;
 
 namespace MealPlanner.Api.Tests.Features.GroceryLists.Mappers;
 
@@ -8,20 +8,20 @@ public class GroceryListHelpersTests
 	[Fact]
 	public void MapToDomain_MapsAllFields()
 	{
-		var doc = new GroceryListDocument
+		var entity = new GroceryListEntity
 		{
-			Id = "g1",
+			Id = Guid.Parse("11111111-1111-1111-1111-111111111111"),
 			UserId = "u1",
 			WeekStart = "2026-02-23",
-			Items = [new GroceryListItemDocument { Name = "Rice", Quantity = 1.5m, Unit = "kg", IsChecked = true, SourceRecipeNames = ["Pilaf"] }],
-			PantryStapleItems = [new GroceryListItemDocument { Name = "Salt", Quantity = 1m, Unit = "tsp", IsChecked = false, SourceRecipeNames = ["Pasta"] }],
+			Items = [new GroceryListItemData { Name = "Rice", Quantity = 1.5m, Unit = "kg", IsChecked = true, SourceRecipeNames = ["Pilaf"] }],
+			PantryStapleItems = [new GroceryListItemData { Name = "Salt", Quantity = 1m, Unit = "tsp", IsChecked = false, SourceRecipeNames = ["Pasta"] }],
 			CreatedAt = new DateTime(2026, 2, 20, 0, 0, 0, DateTimeKind.Utc),
 			UpdatedAt = new DateTime(2026, 2, 21, 0, 0, 0, DateTimeKind.Utc)
 		};
 
-		var domain = GroceryListHelpers.MapToDomain(doc);
+		var domain = GroceryListHelpers.MapToDomain(entity);
 
-		Assert.Equal("g1", domain.Id);
+		Assert.Equal("11111111-1111-1111-1111-111111111111", domain.Id);
 		Assert.Equal("u1", domain.UserId);
 		Assert.Equal(new DateOnly(2026, 2, 23), domain.WeekStart);
 		Assert.Single(domain.Items);
