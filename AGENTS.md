@@ -335,47 +335,70 @@ MealPlanner.Api.Tests/
 
 ---
 
-# Authentication (Auth0)
+# Authentication (Better Auth)
 
-The application uses Auth0 as the identity provider.
+The application uses [Better Auth](https://www.better-auth.com/) as its
+identity provider. Better Auth is embedded inside the SvelteKit frontend
+and issues RS256-signed JWTs to the .NET API via its JWT plugin. See
+[`docs/auth-rbac.md`](./docs/auth-rbac.md) for the full RBAC walkthrough
+and migration notes.
 
 ## Architecture
 
-- **Frontend** handles OIDC login/logout server-side using `@auth/sveltekit` with the Auth0 provider.
-- **API** validates JWT bearer tokens with ASP.NET Core `AddJwtBearer` using `Authentication:Authority` and `Authentication:Audience` configuration.
+- **Frontend** hosts Better Auth directly at `/api/auth/*` through a
+  SvelteKit catch-all endpoint (`src/routes/api/auth/[...all]/+server.ts`).
+  Sign-in and sign-up flows use the `authClient` helper from
+  `$lib/auth/client`.
+- **API** validates JWT bearer tokens with ASP.NET Core `AddJwtBearer`,
+  pointing at Better Auth's JWKS document via the custom
+  `BetterAuthJwksConfigurationRetriever`.
 
 ## API Authentication
 
 The API authentication setup in `MealPlanner.Api/Program.cs` uses:
 
-- `AddJwtBearer` with `options.Authority = Authentication:Authority`
-- `options.Audience = Authentication:Audience`
-- `options.TokenValidationParameters.ValidateAudience = true`
+- `options.Authority = Authentication:Authority` (Better Auth base URL)
+- `options.Audience = Authentication:Audience` (defaults to `mealplanner-api`)
+- A custom `ConfigurationManager` that fetches `{Authority}/api/auth/jwks`
+  because Better Auth does not ship a full OIDC discovery document
 - `options.RequireHttpsMetadata = false` in development
 
-Protected endpoints use `.RequireAuthorization()` on the route group.
+Protected endpoints opt in via
+`.RequireAuthorization(RbacAuthorization.RequireUserRolePolicy)` or
+`RequireAdminRolePolicy`. `RbacAuthorization.ExtractRoles` reads the
+native Better Auth `role` claim as well as the legacy namespaced
+`https://mealplanner/roles` claim for backwards compatibility.
 
 ## Frontend Authentication
 
-Auth.js (`@auth/sveltekit`) handles OIDC flows:
+Better Auth's SvelteKit integration is wired via `src/hooks.server.ts`:
 
-- **`src/auth.ts`**: Configures `SvelteKitAuth` with the Auth0 provider and JWT callbacks that persist the access token in the session
-- **`src/hooks.server.ts`**: Re-exports the Auth.js handle function
-- **`src/routes/+layout.server.ts`**: Loads the session and passes it to all pages
-- **`src/app.d.ts`**: Extends Auth.js types with `accessToken` on the session
+- **`src/lib/server/auth.ts`** — SvelteKit-specific Better Auth instance
+  (includes the `sveltekitCookies` plugin)
+- **`src/lib/server/auth-options.ts`** — framework-agnostic Better Auth
+  configuration so migration scripts can reuse the same plugins
+- **`src/lib/server/session.ts`** — resolves the request into the
+  `AppSession` shape (user, roles, access token) consumed by pages
+- **`src/routes/api/auth/[...all]/+server.ts`** — delegates all HTTP
+  traffic under `/api/auth` to Better Auth
+- **`src/lib/auth/client.ts`** — browser client built with
+  `createAuthClient` and the admin / additional-fields plugins
 
 ### Environment Variables (frontend `.env`)
 
-- `AUTH_SECRET` — Cookie signing secret (required, change in production)
-- `AUTH_AUTH0_ID` — Auth0 client ID
-- `AUTH_AUTH0_SECRET` — Auth0 client secret
-- `AUTH_AUTH0_ISSUER` — Auth0 issuer URL
-- `AUTH_API_AUDIENCE` — API audience passed during Auth0 authorization
+- `BETTER_AUTH_SECRET` — cookie/token signing secret (required)
+- `BETTER_AUTH_URL` — base URL the frontend is served from
+- `BETTER_AUTH_JWT_AUDIENCE` — API audience claim (default
+  `mealplanner-api`)
+- `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` — optional, enables the
+  "Continue with Google" social login button
 
 ### Auth UI
 
-- The `Navbar` component accepts a `session` prop and shows Login/Logout buttons accordingly
-- Login triggers `signIn('auth0')`, Logout triggers `signOut()` from `@auth/sveltekit/client`
+- The `Navbar` component receives an `AppSession | null` prop and shows
+  Log In / Sign Up / Log Out buttons accordingly
+- Log In navigates to `/auth/signin`, Sign Up navigates to `/auth/signup`,
+  and Log Out calls `authClient.signOut()` from `$lib/auth/client`
 
 ---
 
