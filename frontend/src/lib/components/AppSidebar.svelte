@@ -1,12 +1,13 @@
 <script lang="ts">
 	import { page } from '$app/state';
+	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { getContext } from 'svelte';
-	import { signOut } from '@auth/sveltekit/client';
-	import type { Session } from '@auth/sveltekit';
+	import { authClient } from '$lib/auth/client';
+	import type { AppSession } from '$lib/auth/session';
 	import { APP_USER_CONTEXT_KEY, type AppUserContextValue } from '$lib/context/appUserContext';
 
-	let { session }: { session: Session | null } = $props();
+	let { session }: { session: AppSession | null } = $props();
 	const appUserContext = getContext<AppUserContextValue | undefined>(APP_USER_CONTEXT_KEY);
 
 	let displayName = $derived(
@@ -52,8 +53,9 @@
 		return page.url.pathname.startsWith(href);
 	}
 
-	function handleLogout() {
-		signOut({ redirectTo: '/auth/logout-auth0' });
+	async function handleLogout() {
+		await authClient.signOut();
+		await goto(resolve('/'));
 	}
 </script>
 

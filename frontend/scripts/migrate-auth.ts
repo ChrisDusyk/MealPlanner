@@ -76,12 +76,13 @@ async function main(): Promise<void> {
 	// Dynamic imports so the script only touches Better Auth after the schema exists.
 	// Import the framework-neutral options module (not `auth.ts`) so this script
 	// can run outside a SvelteKit request context.
-	const [{ getMigrations }, { createBaseAuthOptions }] = await Promise.all([
+	const [{ getMigrations }, { createAuth }] = await Promise.all([
 		import('better-auth/db/migration'),
 		import('../src/lib/server/auth-options.ts')
 	]);
 
-	const { runMigrations, toBeCreated, toBeAdded } = await getMigrations(createBaseAuthOptions());
+	const migrationAuth = createAuth();
+	const { runMigrations, toBeCreated, toBeAdded } = await getMigrations(migrationAuth.options);
 	if (toBeCreated.length === 0 && toBeAdded.length === 0) {
 		console.info('[migrate-auth] Schema already up to date.');
 		return;

@@ -2,10 +2,11 @@
  * Framework-agnostic Better Auth configuration.
  *
  * Split out from `./auth.ts` so the migration script (`scripts/migrate-auth.ts`)
- * can import these options without pulling in SvelteKit's `$app/server` helpers.
+ * can construct a Better Auth instance without pulling in SvelteKit's
+ * `$app/server` helpers.
  */
 
-import type { BetterAuthOptions } from 'better-auth';
+import { betterAuth, type BetterAuthPlugin } from 'better-auth';
 import { admin, jwt } from 'better-auth/plugins';
 import { Pool } from 'pg';
 
@@ -75,15 +76,19 @@ export function buildAuthPool(): Pool {
 }
 
 /**
- * Build the base Better Auth configuration shared by the runtime auth instance
- * and the migration script. Framework-specific plugins (e.g. `sveltekitCookies`)
- * are layered on top in `./auth.ts`.
+ * Build a Better Auth instance. Callers may supply additional plugins
+ * (e.g. the SvelteKit `sveltekitCookies` plugin) that depend on their host
+ * framework without affecting the shared configuration shape used by the
+ * migration script.
+ *
+ * Returning `betterAuth(...)` directly (rather than an options bag) preserves
+ * full TypeScript inference of the resulting `auth.api` surface.
  */
-export function createBaseAuthOptions(): BetterAuthOptions {
+export function createAuth(extraPlugins: BetterAuthPlugin[] = []) {
 	const issuer = process.env.BETTER_AUTH_URL?.trim() || DEFAULT_ISSUER;
 	const audience = process.env.BETTER_AUTH_JWT_AUDIENCE?.trim() || DEFAULT_AUDIENCE;
 
-	return {
+	return betterAuth({
 		baseURL: process.env.BETTER_AUTH_URL,
 		secret: process.env.BETTER_AUTH_SECRET,
 		database: buildAuthPool(),
@@ -131,7 +136,10 @@ export function createBaseAuthOptions(): BetterAuthOptions {
 						};
 					}
 				}
-			})
+			}),
+			// Framework-specific plugins (e.g. `sveltekitCookies`) are appended last
+			// per the Better Auth plugin ordering guidance.
+			...extraPlugins
 		]
-	};
+	});
 }
