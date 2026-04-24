@@ -1,0 +1,101 @@
+#!/usr/bin/env tsx
+/**
+ * Idempotent Better Auth migration runner.
+ *
+ * 1. Ensures the dedicated `auth` schema exists in the shared Postgres database.
+ * 2. Invokes Better Auth's programmatic migrator so all configured plugin tables
+ *    (user, session, account, verification, jwks, ...) exist under that schema.
+ *
+ * Runs before `vite dev` / the production Node entrypoint so the schema stays
+ * in sync without coupling it to the .NET MigrationService.
+ */
+
+import { Pool } from 'pg';
+
+const AUTH_SCHEMA = 'auth';
+
+function resolveNpgsqlStyleConnection(connection: string): string {
+	if (/^postgres(ql)?:\/\//i.test(connection)) return connection;
+
+	const parts = connection
+		.split(';')
+		.map((entry) => entry.trim())
+		.filter(Boolean);
+
+	const lookup = new Map<string, string>();
+	for (const entry of parts) {
+		const idx = entry.indexOf('=');
+		if (idx === -1) continue;
+		lookup.set(entry.slice(0, idx).trim().toLowerCase(), entry.slice(idx + 1).trim());
+	}
+
+	const host = lookup.get('host') ?? lookup.get('server') ?? 'localhost';
+	const port = lookup.get('port') ?? '5432';
+	const database = lookup.get('database') ?? lookup.get('db') ?? 'postgres';
+	const user = lookup.get('username') ?? lookup.get('user id') ?? lookup.get('user') ?? 'postgres';
+	const password = lookup.get('password') ?? '';
+
+	const auth = password
+		? `${encodeURIComponent(user)}:${encodeURIComponent(password)}`
+		: encodeURIComponent(user);
+	return `postgres://${auth}@${host}:${port}/${encodeURIComponent(database)}`;
+}
+
+function resolveConnectionString(): string | null {
+	const explicit = process.env.DATABASE_URL?.trim();
+	if (explicit) return explicit;
+
+	const aspire = process.env.ConnectionStrings__mealplannerDb?.trim();
+	if (aspire) return resolveNpgsqlStyleConnection(aspire);
+
+	return null;
+}
+
+async function ensureSchema(connectionString: string): Promise<void> {
+	const pool = new Pool({ connectionString });
+	try {
+		await pool.query(`CREATE SCHEMA IF NOT EXISTS "${AUTH_SCHEMA}"`);
+	} finally {
+		await pool.end();
+	}
+}
+
+async function main(): Promise<void> {
+	const connectionString = resolveConnectionString();
+	if (!connectionString) {
+		console.warn(
+			'[migrate-auth] No DATABASE_URL / ConnectionStrings__mealplannerDb configured; skipping auth migrations.'
+		);
+		return;
+	}
+
+	console.info(`[migrate-auth] Ensuring "${AUTH_SCHEMA}" schema exists...`);
+	await ensureSchema(connectionString);
+
+	console.info('[migrate-auth] Running Better Auth migrations...');
+	// Dynamic imports so the script only touches Better Auth after the schema exists.
+	// Import the framework-neutral options module (not `auth.ts`) so this script
+	// can run outside a SvelteKit request context.
+	const [{ getMigrations }, { createBaseAuthOptions }] = await Promise.all([
+		import('better-auth/db/migration'),
+		import('../src/lib/server/auth-options.ts')
+	]);
+
+	const { runMigrations, toBeCreated, toBeAdded } = await getMigrations(createBaseAuthOptions());
+	if (toBeCreated.length === 0 && toBeAdded.length === 0) {
+		console.info('[migrate-auth] Schema already up to date.');
+		return;
+	}
+
+	await runMigrations();
+	console.info(
+		`[migrate-auth] Applied migrations (created=${toBeCreated.length}, altered=${toBeAdded.length}).`
+	);
+}
+
+main()
+	.then(() => process.exit(0))
+	.catch((error) => {
+		console.error('[migrate-auth] Failed to run Better Auth migrations.', error);
+		process.exit(1);
+	});
