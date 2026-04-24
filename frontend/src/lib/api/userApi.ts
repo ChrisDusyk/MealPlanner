@@ -21,6 +21,33 @@ export interface CompleteOnboardingRequest {
 	timezone?: string | null;
 }
 
+export interface SyncCurrentUserRequest {
+	name?: string | null;
+	email?: string | null;
+}
+
+export async function syncCurrentUser(
+	accessToken: string,
+	request: SyncCurrentUserRequest,
+	fetchFn: typeof fetch = fetch
+): Promise<AppUserResponse> {
+	const response = await fetchFn(`${getApiBase()}/api/users/sync`, {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/json',
+			Authorization: `Bearer ${accessToken}`
+		},
+		body: JSON.stringify(request)
+	});
+
+	if (!response.ok) {
+		const { message, body } = await parseErrorBody(response);
+		throw new ApiError(response.status, message, body);
+	}
+
+	return response.json();
+}
+
 export async function getCurrentUser(
 	accessToken: string,
 	fetchFn: typeof fetch = fetch

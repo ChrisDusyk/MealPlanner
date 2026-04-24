@@ -14,6 +14,17 @@ const AUTH_SCHEMA = 'auth';
 const DEFAULT_ISSUER = 'http://localhost:3000';
 const DEFAULT_AUDIENCE = 'mealplanner-api';
 
+function resolveAuthOrigin(raw?: string): string {
+	const value = raw?.trim();
+	if (!value) return DEFAULT_ISSUER;
+
+	try {
+		return new URL(value).origin;
+	} catch {
+		return DEFAULT_ISSUER;
+	}
+}
+
 export function resolveConnectionString(): string {
 	const explicit = process.env.DATABASE_URL?.trim();
 	if (explicit) return explicit;
@@ -85,11 +96,12 @@ export function buildAuthPool(): Pool {
  * full TypeScript inference of the resulting `auth.api` surface.
  */
 export function createAuth(extraPlugins: BetterAuthPlugin[] = []) {
-	const issuer = process.env.BETTER_AUTH_URL?.trim() || DEFAULT_ISSUER;
+	const authOrigin = resolveAuthOrigin(process.env.BETTER_AUTH_URL);
+	const issuer = authOrigin;
 	const audience = process.env.BETTER_AUTH_JWT_AUDIENCE?.trim() || DEFAULT_AUDIENCE;
 
 	return betterAuth({
-		baseURL: process.env.BETTER_AUTH_URL,
+		baseURL: authOrigin,
 		secret: process.env.BETTER_AUTH_SECRET,
 		database: buildAuthPool(),
 		emailAndPassword: {
