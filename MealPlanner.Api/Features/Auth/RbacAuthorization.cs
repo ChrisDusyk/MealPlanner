@@ -5,7 +5,20 @@ namespace MealPlanner.Api.Features.Auth;
 
 public static class RbacAuthorization
 {
+	/// <summary>
+	/// Legacy namespaced role claim preserved for backwards compatibility with
+	/// existing tokens and external consumers. Better Auth's JWT plugin emits
+	/// this alongside the modern <see cref="NativeRoleClaimType"/> claim.
+	/// </summary>
 	public const string RoleClaimType = "https://mealplanner/roles";
+
+	/// <summary>
+	/// Standard role claim emitted by Better Auth's admin plugin. The API
+	/// accepts either this value or <see cref="RoleClaimType"/>, letting us
+	/// retire the legacy claim in a future release without a breaking change.
+	/// </summary>
+	public const string NativeRoleClaimType = "role";
+
 	public const string UserRole = "user";
 	public const string AdminRole = "admin";
 
@@ -37,13 +50,18 @@ public static class RbacAuthorization
 	public static IReadOnlyList<string> ExtractRoles(ClaimsPrincipal user)
 	{
 		var roles = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-		var roleClaims = user.FindAll(RoleClaimType);
 
-		foreach (var claim in roleClaims)
+		// Accept the legacy namespaced claim, the modern `role` claim emitted by
+		// Better Auth's admin plugin, and the canonical .NET role claim so that
+		// existing tokens and new tokens are both understood.
+		foreach (var claimType in new[] { RoleClaimType, NativeRoleClaimType, ClaimTypes.Role })
 		{
-			foreach (var role in ParseRoleClaimValue(claim.Value))
+			foreach (var claim in user.FindAll(claimType))
 			{
-				roles.Add(role);
+				foreach (var role in ParseRoleClaimValue(claim.Value))
+				{
+					roles.Add(role);
+				}
 			}
 		}
 
