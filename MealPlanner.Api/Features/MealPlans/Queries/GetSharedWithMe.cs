@@ -50,9 +50,9 @@ public class GetSharedWithMeQueryHandler(MealPlannerDbContext db)
 			// Batch-fetch owner users
 			var ownerIds = shares.Select(s => s.OwnerUserId).Distinct().ToList();
 			var owners = await db.Users
-				.Where(u => ownerIds.Contains(u.Auth0UserId))
+				.Where(u => ownerIds.Contains(u.AuthUserId))
 				.ToListAsync(cancellationToken);
-			var ownerLookup = owners.ToDictionary(u => u.Auth0UserId);
+			var ownerLookup = owners.ToDictionary(u => u.AuthUserId);
 
 			// Batch-fetch meal plans for the owners and this week
 			var plans = await db.MealPlans

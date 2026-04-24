@@ -50,9 +50,9 @@ public class GetGroceryListsSharedWithMeQueryHandler(MealPlannerDbContext db)
 			// Batch-fetch owner users
 			var ownerIds = shares.Select(s => s.OwnerUserId).Distinct().ToList();
 			var owners = await db.Users
-				.Where(u => ownerIds.Contains(u.Auth0UserId))
+				.Where(u => ownerIds.Contains(u.AuthUserId))
 				.ToListAsync(cancellationToken);
-			var ownerLookup = owners.ToDictionary(u => u.Auth0UserId);
+			var ownerLookup = owners.ToDictionary(u => u.AuthUserId);
 
 			// Batch-fetch grocery lists for the owners and this week
 			var lists = await db.GroceryLists

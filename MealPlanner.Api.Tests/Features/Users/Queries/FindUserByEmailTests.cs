@@ -23,7 +23,7 @@ public class FindUserByEmailTests
 		db.Users.Add(new UserEntity
 		{
 			Id = Guid.Parse("22222222-2222-2222-2222-222222222222"),
-			Auth0UserId = "auth0|123",
+			AuthUserId = "auth0|123",
 			Name = "Pat",
 			Email = "pat@example.com",
 			CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
@@ -35,7 +35,7 @@ public class FindUserByEmailTests
 		var result = await handler.HandleAsync(new FindUserByEmailQuery("pat@example.com"), TestContext.Current.CancellationToken);
 
 		Assert.True(result.IsSuccess);
-		Assert.Equal("auth0|123", result.Value?.Auth0UserId);
+		Assert.Equal("auth0|123", result.Value?.AuthUserId);
 		Assert.True(result.Value?.Email.HasValue);
 		Assert.Equal("pat@example.com", result.Value?.Email.Value);
 	}

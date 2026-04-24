@@ -33,7 +33,7 @@ public class UpdateCurrentUserNameTests
 		db.Users.Add(new UserEntity
 		{
 			Id = Guid.Parse("33333333-3333-3333-3333-333333333333"),
-			Auth0UserId = "auth0|123",
+			AuthUserId = "auth0|123",
 			Name = "Pat",
 			Email = "pat@example.com",
 			CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),

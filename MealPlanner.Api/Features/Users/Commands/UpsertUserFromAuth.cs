@@ -1,5 +1,6 @@
 using MealPlanner.Api.Data;
 using MealPlanner.Api.Data.Entities;
+using MealPlanner.Api.Features.Users.Mappers;
 using MealPlanner.Api.Features.Users.Models;
 using MealPlanner.Api.Shared;
 using Microsoft.EntityFrameworkCore;
@@ -7,16 +8,20 @@ using Microsoft.EntityFrameworkCore;
 namespace MealPlanner.Api.Features.Users.Commands;
 
 /// <summary>
-/// Command to create or update a user based on Auth0 identity.
+/// Command to create or update a user based on the authenticated identity
+/// provider subject (Better Auth user id).
 /// </summary>
 public record UpsertUserFromAuthCommand(
-	string Auth0UserId,
+	string AuthUserId,
 	string Name,
 	Option<string> Email
 ) : ICommand<User>;
 
 /// <summary>
-/// Handles upserting a user.
+/// Handles upserting a user. If no row exists for <see cref="UpsertUserFromAuthCommand.AuthUserId"/>
+/// but a user with the same email already exists (for example, after migrating
+/// from Auth0 to Better Auth), the existing row is re-linked to the new
+/// <c>AuthUserId</c> instead of creating a duplicate account.
 /// </summary>
 public class UpsertUserFromAuthCommandHandler(MealPlannerDbContext db)
 	: ICommandHandler<UpsertUserFromAuthCommand, User>
@@ -25,9 +30,9 @@ public class UpsertUserFromAuthCommandHandler(MealPlannerDbContext db)
 		UpsertUserFromAuthCommand command,
 		CancellationToken cancellationToken = default)
 	{
-		if (string.IsNullOrWhiteSpace(command.Auth0UserId))
+		if (string.IsNullOrWhiteSpace(command.AuthUserId))
 			return Result<User>.Failure(
-				new Error(ErrorCodes.ValidationFailed, "Auth0 user ID is required."));
+				new Error(ErrorCodes.ValidationFailed, "Auth user ID is required."));
 
 		if (string.IsNullOrWhiteSpace(command.Name))
 			return Result<User>.Failure(
@@ -39,14 +44,26 @@ public class UpsertUserFromAuthCommandHandler(MealPlannerDbContext db)
 			var email = command.Email.GetValueOrNull();
 
 			var entity = await db.Users
-				.FirstOrDefaultAsync(u => u.Auth0UserId == command.Auth0UserId, cancellationToken);
+				.FirstOrDefaultAsync(u => u.AuthUserId == command.AuthUserId, cancellationToken);
+
+			if (entity is null && !string.IsNullOrWhiteSpace(email))
+			{
+				// Re-link an existing account migrated from a previous identity
+				// provider. Matching on email avoids duplicate user rows.
+				entity = await db.Users
+					.FirstOrDefaultAsync(u => u.Email == email, cancellationToken);
+				if (entity is not null)
+				{
+					entity.AuthUserId = command.AuthUserId;
+				}
+			}
 
 			if (entity is null)
 			{
 				entity = new UserEntity
 				{
 					Id = Guid.NewGuid(),
-					Auth0UserId = command.Auth0UserId,
+					AuthUserId = command.AuthUserId,
 					Name = command.Name,
 					Email = email,
 					CreatedAt = now,
@@ -62,7 +79,7 @@ public class UpsertUserFromAuthCommandHandler(MealPlannerDbContext db)
 
 			await db.SaveChangesAsync(cancellationToken);
 
-			return Result<User>.Success(MapToDomain(entity));
+			return Result<User>.Success(UserMapper.ToDomain(entity));
 		}
 		catch (Exception ex)
 		{
@@ -71,13 +88,5 @@ public class UpsertUserFromAuthCommandHandler(MealPlannerDbContext db)
 		}
 	}
 
-	internal static User MapToDomain(UserEntity entity) =>
-		new(
-			Id: entity.Id.ToString(),
-			Auth0UserId: entity.Auth0UserId,
-			Name: entity.Name,
-			Email: Option<string>.From(entity.Email),
-			CreatedAt: entity.CreatedAt,
-			UpdatedAt: entity.UpdatedAt
-		);
+	internal static User MapToDomain(UserEntity entity) => UserMapper.ToDomain(entity);
 }

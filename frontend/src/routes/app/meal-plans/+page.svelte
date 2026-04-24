@@ -42,7 +42,7 @@
 		recipes = data.recipes;
 		sharedWithMe = data.sharedWithMe;
 		myShares = data.myShares;
-		currentUserId = data.appUser?.auth0UserId ?? null;
+		currentUserId = data.appUser?.authUserId ?? null;
 	});
 
 	// Modal state
@@ -72,7 +72,7 @@
 	let generateGroceryListLoading = $state(false);
 	const realtimeClient = new MealPlanRealtimeClient();
 	// svelte-ignore state_referenced_locally
-	let currentUserId: string | null = $state(data.appUser?.auth0UserId ?? null);
+	let currentUserId: string | null = $state(data.appUser?.authUserId ?? null);
 
 	function applyRealtimeUpdate(event: MealPlanUpdatedEvent) {
 		if (event.weekStart !== mealPlan.weekStart) {

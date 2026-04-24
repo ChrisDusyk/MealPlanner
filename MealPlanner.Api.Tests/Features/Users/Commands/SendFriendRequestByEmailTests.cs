@@ -28,7 +28,7 @@ public class SendFriendRequestByEmailTests
 			db.Users.Add(new UserEntity
 			{
 				Id = Guid.NewGuid(),
-				Auth0UserId = "auth0|you",
+				AuthUserId = "auth0|you",
 				Name = "You",
 				Email = "you@example.com",
 				CreatedAt = DateTime.UtcNow,
@@ -53,7 +53,7 @@ public class SendFriendRequestByEmailTests
 			db.Users.Add(new UserEntity
 			{
 				Id = Guid.NewGuid(),
-				Auth0UserId = "auth0|me",
+				AuthUserId = "auth0|me",
 				Name = "Me",
 				Email = "me@example.com",
 				CreatedAt = DateTime.UtcNow,
@@ -80,7 +80,7 @@ public class SendFriendRequestByEmailTests
 				new UserEntity
 				{
 					Id = Guid.NewGuid(),
-					Auth0UserId = "auth0|me",
+					AuthUserId = "auth0|me",
 					Name = "Me",
 					Email = "me@example.com",
 					CreatedAt = now,
@@ -89,7 +89,7 @@ public class SendFriendRequestByEmailTests
 				new UserEntity
 				{
 					Id = Guid.NewGuid(),
-					Auth0UserId = "auth0|you",
+					AuthUserId = "auth0|you",
 					Name = "You",
 					Email = "you@example.com",
 					CreatedAt = now,
@@ -124,7 +124,7 @@ public class SendFriendRequestByEmailTests
 				new UserEntity
 				{
 					Id = Guid.NewGuid(),
-					Auth0UserId = "auth0|me",
+					AuthUserId = "auth0|me",
 					Name = "Me",
 					Email = "me@example.com",
 					CreatedAt = now,
@@ -133,7 +133,7 @@ public class SendFriendRequestByEmailTests
 				new UserEntity
 				{
 					Id = Guid.NewGuid(),
-					Auth0UserId = "auth0|you",
+					AuthUserId = "auth0|you",
 					Name = "You",
 					Email = "you@example.com",
 					CreatedAt = now,
@@ -170,7 +170,7 @@ public class SendFriendRequestByEmailTests
 				new UserEntity
 				{
 					Id = Guid.NewGuid(),
-					Auth0UserId = "auth0|me",
+					AuthUserId = "auth0|me",
 					Name = "Me",
 					Email = "me@example.com",
 					CreatedAt = now,
@@ -179,7 +179,7 @@ public class SendFriendRequestByEmailTests
 				new UserEntity
 				{
 					Id = Guid.NewGuid(),
-					Auth0UserId = "auth0|you",
+					AuthUserId = "auth0|you",
 					Name = "You",
 					Email = "you@example.com",
 					CreatedAt = now,
@@ -209,7 +209,7 @@ public class SendFriendRequestByEmailTests
 				new UserEntity
 				{
 					Id = Guid.NewGuid(),
-					Auth0UserId = "auth0|me",
+					AuthUserId = "auth0|me",
 					Name = "Me",
 					Email = "me@example.com",
 					CreatedAt = now,
@@ -218,7 +218,7 @@ public class SendFriendRequestByEmailTests
 				new UserEntity
 				{
 					Id = Guid.NewGuid(),
-					Auth0UserId = "auth0|you",
+					AuthUserId = "auth0|you",
 					Name = "You",
 					Email = "you@example.com",
 					CreatedAt = now,

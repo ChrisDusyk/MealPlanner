@@ -39,7 +39,7 @@ public class ShareGroceryListCommandHandler(MealPlannerDbContext db)
 		try
 		{
 			// Look up the owner to prevent self-share
-			var owner = await db.Users.FirstOrDefaultAsync(u => u.Auth0UserId == command.OwnerUserId, cancellationToken);
+			var owner = await db.Users.FirstOrDefaultAsync(u => u.AuthUserId == command.OwnerUserId, cancellationToken);
 			if (owner is null)
 				return Result<GroceryListShare>.Failure(
 					new Error(ErrorCodes.NotFound, "Owner user not found."));
@@ -53,7 +53,7 @@ public class ShareGroceryListCommandHandler(MealPlannerDbContext db)
 					new Error(ErrorCodes.NotFound, $"No user found with email '{command.SharedWithEmail}'."));
 
 			// Prevent self-share
-			if (recipient.Auth0UserId == command.OwnerUserId)
+			if (recipient.AuthUserId == command.OwnerUserId)
 				return Result<GroceryListShare>.Failure(
 					new Error(ErrorCodes.ValidationFailed, "You cannot share a grocery list with yourself."));
 
@@ -67,7 +67,7 @@ public class ShareGroceryListCommandHandler(MealPlannerDbContext db)
 			// Check for existing share
 			var existing = await db.GroceryListShares
 				.AnyAsync(s => s.OwnerUserId == command.OwnerUserId
-					&& s.SharedWithUserId == recipient.Auth0UserId
+					&& s.SharedWithUserId == recipient.AuthUserId
 					&& s.WeekStart == command.WeekStart, cancellationToken);
 			if (existing)
 				return Result<GroceryListShare>.Failure(
@@ -78,7 +78,7 @@ public class ShareGroceryListCommandHandler(MealPlannerDbContext db)
 			{
 				Id = Guid.NewGuid(),
 				OwnerUserId = command.OwnerUserId,
-				SharedWithUserId = recipient.Auth0UserId,
+				SharedWithUserId = recipient.AuthUserId,
 				WeekStart = command.WeekStart,
 				Permission = command.Permission.ToString(),
 				SharedAt = DateTime.UtcNow,

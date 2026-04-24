@@ -139,9 +139,12 @@ describe('POST /app/account action', () => {
 	it('updates user and returns success payload', async () => {
 		vi.mocked(updateCurrentUser).mockResolvedValue({
 			id: 'u1',
-			auth0UserId: 'auth0|123',
+			authUserId: 'better-auth|123',
 			name: 'Updated Name',
 			email: 'pat@example.com',
+			displayName: null,
+			timezone: null,
+			onboardingCompletedAt: null,
 			createdAt: '2026-01-01T00:00:00Z',
 			updatedAt: '2026-01-02T00:00:00Z'
 		});

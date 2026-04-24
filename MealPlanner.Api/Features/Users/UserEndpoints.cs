@@ -23,6 +23,7 @@ public static class UserEndpoints
 		group.MapPost("/sync", SyncUser);
 		group.MapGet("/me", GetCurrentUser);
 		group.MapPut("/me", UpdateCurrentUser);
+		group.MapPatch("/me/onboarding", CompleteOnboarding);
 		group.MapGet("/search", SearchUserByEmail);
 		group.MapGet("/friends", GetFriends);
 		group.MapGet("/friends/requests/incoming", GetIncomingFriendRequests);
@@ -36,7 +37,7 @@ public static class UserEndpoints
 		return app;
 	}
 
-	private static string? GetAuth0UserId(HttpContext httpContext) =>
+	private static string? GetAuthUserId(HttpContext httpContext) =>
 		httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value
 		?? httpContext.User.FindFirst("sub")?.Value;
 
@@ -60,8 +61,8 @@ public static class UserEndpoints
 		ICommandHandler<UpsertUserFromAuthCommand, User> handler,
 		CancellationToken cancellationToken)
 	{
-		var auth0UserId = GetAuth0UserId(httpContext);
-		if (auth0UserId is null)
+		var authUserId = GetAuthUserId(httpContext);
+		if (authUserId is null)
 			return Results.Unauthorized();
 
 		var claimEmail = GetClaimValue(httpContext, ClaimTypes.Email, "email");
@@ -72,10 +73,10 @@ public static class UserEndpoints
 			? request.Name
 			: GetClaimValue(httpContext, ClaimTypes.Name, "name", "nickname")
 			  ?? resolvedEmail
-			  ?? auth0UserId;
+			  ?? authUserId;
 
 		var command = new UpsertUserFromAuthCommand(
-			auth0UserId,
+			authUserId,
 			resolvedName,
 			Option<string>.From(string.IsNullOrWhiteSpace(resolvedEmail) ? null : resolvedEmail));
 
@@ -89,14 +90,14 @@ public static class UserEndpoints
 
 	private static async Task<IResult> GetCurrentUser(
 		HttpContext httpContext,
-		IQueryHandler<FindUserByAuth0IdQuery, User> handler,
+		IQueryHandler<FindUserByAuthIdQuery, User> handler,
 		CancellationToken cancellationToken)
 	{
-		var auth0UserId = GetAuth0UserId(httpContext);
-		if (auth0UserId is null)
+		var authUserId = GetAuthUserId(httpContext);
+		if (authUserId is null)
 			return Results.Unauthorized();
 
-		var result = await handler.HandleAsync(new FindUserByAuth0IdQuery(auth0UserId), cancellationToken);
+		var result = await handler.HandleAsync(new FindUserByAuthIdQuery(authUserId), cancellationToken);
 		return result.Match(
 			onSuccess: user => Results.Ok(UserResponse.FromDomain(user)),
 			onFailure: error => error.Code switch
@@ -113,13 +114,39 @@ public static class UserEndpoints
 		ICommandHandler<UpdateCurrentUserNameCommand, User> handler,
 		CancellationToken cancellationToken)
 	{
-		var auth0UserId = GetAuth0UserId(httpContext);
-		if (auth0UserId is null)
+		var authUserId = GetAuthUserId(httpContext);
+		if (authUserId is null)
 			return Results.Unauthorized();
 
 		var command = new UpdateCurrentUserNameCommand(
-			auth0UserId,
+			authUserId,
 			request.Name?.Trim() ?? string.Empty);
+
+		var result = await handler.HandleAsync(command, cancellationToken);
+		return result.Match(
+			onSuccess: user => Results.Ok(UserResponse.FromDomain(user)),
+			onFailure: error => error.Code switch
+			{
+				ErrorCodes.NotFound => Results.NotFound(error.Message),
+				ErrorCodes.ValidationFailed => Results.BadRequest(error.Message),
+				_ => Results.Problem(error.Message, statusCode: 500)
+			});
+	}
+
+	private static async Task<IResult> CompleteOnboarding(
+		CompleteOnboardingRequest request,
+		HttpContext httpContext,
+		ICommandHandler<CompleteOnboardingCommand, User> handler,
+		CancellationToken cancellationToken)
+	{
+		var authUserId = GetAuthUserId(httpContext);
+		if (authUserId is null)
+			return Results.Unauthorized();
+
+		var command = new CompleteOnboardingCommand(
+			authUserId,
+			Option<string>.From(string.IsNullOrWhiteSpace(request.DisplayName) ? null : request.DisplayName),
+			Option<string>.From(string.IsNullOrWhiteSpace(request.Timezone) ? null : request.Timezone));
 
 		var result = await handler.HandleAsync(command, cancellationToken);
 		return result.Match(
@@ -138,8 +165,8 @@ public static class UserEndpoints
 		CancellationToken cancellationToken,
 		string email)
 	{
-		var auth0UserId = GetAuth0UserId(httpContext);
-		if (auth0UserId is null)
+		var authUserId = GetAuthUserId(httpContext);
+		if (authUserId is null)
 			return Results.Unauthorized();
 
 		if (string.IsNullOrWhiteSpace(email))
@@ -161,11 +188,11 @@ public static class UserEndpoints
 		IQueryHandler<GetFriendsForUserQuery, IReadOnlyList<FriendSummary>> handler,
 		CancellationToken cancellationToken)
 	{
-		var auth0UserId = GetAuth0UserId(httpContext);
-		if (auth0UserId is null)
+		var authUserId = GetAuthUserId(httpContext);
+		if (authUserId is null)
 			return Results.Unauthorized();
 
-		var result = await handler.HandleAsync(new GetFriendsForUserQuery(auth0UserId), cancellationToken);
+		var result = await handler.HandleAsync(new GetFriendsForUserQuery(authUserId), cancellationToken);
 		return result.Match(
 			onSuccess: friends => Results.Ok(friends.Select(FriendSummaryResponse.FromDomain)),
 			onFailure: error => error.Code == ErrorCodes.ValidationFailed
@@ -178,11 +205,11 @@ public static class UserEndpoints
 		IQueryHandler<GetIncomingFriendRequestsQuery, IReadOnlyList<FriendRequestSummary>> handler,
 		CancellationToken cancellationToken)
 	{
-		var auth0UserId = GetAuth0UserId(httpContext);
-		if (auth0UserId is null)
+		var authUserId = GetAuthUserId(httpContext);
+		if (authUserId is null)
 			return Results.Unauthorized();
 
-		var result = await handler.HandleAsync(new GetIncomingFriendRequestsQuery(auth0UserId), cancellationToken);
+		var result = await handler.HandleAsync(new GetIncomingFriendRequestsQuery(authUserId), cancellationToken);
 		return result.Match(
 			onSuccess: requests => Results.Ok(requests.Select(FriendRequestSummaryResponse.FromDomain)),
 			onFailure: error => error.Code == ErrorCodes.ValidationFailed
@@ -195,11 +222,11 @@ public static class UserEndpoints
 		IQueryHandler<GetOutgoingFriendRequestsQuery, IReadOnlyList<FriendRequestSummary>> handler,
 		CancellationToken cancellationToken)
 	{
-		var auth0UserId = GetAuth0UserId(httpContext);
-		if (auth0UserId is null)
+		var authUserId = GetAuthUserId(httpContext);
+		if (authUserId is null)
 			return Results.Unauthorized();
 
-		var result = await handler.HandleAsync(new GetOutgoingFriendRequestsQuery(auth0UserId), cancellationToken);
+		var result = await handler.HandleAsync(new GetOutgoingFriendRequestsQuery(authUserId), cancellationToken);
 		return result.Match(
 			onSuccess: requests => Results.Ok(requests.Select(FriendRequestSummaryResponse.FromDomain)),
 			onFailure: error => error.Code == ErrorCodes.ValidationFailed
@@ -214,12 +241,12 @@ public static class UserEndpoints
 		IFriendsRealtimeNotifier realtimeNotifier,
 		CancellationToken cancellationToken)
 	{
-		var auth0UserId = GetAuth0UserId(httpContext);
-		if (auth0UserId is null)
+		var authUserId = GetAuthUserId(httpContext);
+		if (authUserId is null)
 			return Results.Unauthorized();
 
 		var result = await handler.HandleAsync(
-			new SendFriendRequestByEmailCommand(auth0UserId, request.Email?.Trim() ?? string.Empty),
+			new SendFriendRequestByEmailCommand(authUserId, request.Email?.Trim() ?? string.Empty),
 			cancellationToken);
 
 		if (!result.IsSuccess)
@@ -235,8 +262,8 @@ public static class UserEndpoints
 
 		var sendResult = result.Value!;
 		await realtimeNotifier.PublishFriendsUpdatedAsync(
-			[auth0UserId, sendResult.RecipientUserId],
-			auth0UserId,
+			[authUserId, sendResult.RecipientUserId],
+			authUserId,
 			sendResult.Status == SendFriendRequestStatus.Accepted
 				? FriendsRealtimeEventType.RequestAccepted
 				: FriendsRealtimeEventType.RequestSent,
@@ -252,12 +279,12 @@ public static class UserEndpoints
 		IFriendsRealtimeNotifier realtimeNotifier,
 		CancellationToken cancellationToken)
 	{
-		var auth0UserId = GetAuth0UserId(httpContext);
-		if (auth0UserId is null)
+		var authUserId = GetAuthUserId(httpContext);
+		if (authUserId is null)
 			return Results.Unauthorized();
 
 		var result = await handler.HandleAsync(
-			new AcceptFriendRequestCommand(auth0UserId, requestId),
+			new AcceptFriendRequestCommand(authUserId, requestId),
 			cancellationToken);
 
 		if (!result.IsSuccess)
@@ -272,8 +299,8 @@ public static class UserEndpoints
 		}
 
 		await realtimeNotifier.PublishFriendsUpdatedAsync(
-			[auth0UserId, result.Value!.RequesterUserId],
-			auth0UserId,
+			[authUserId, result.Value!.RequesterUserId],
+			authUserId,
 			FriendsRealtimeEventType.RequestAccepted,
 			cancellationToken);
 
@@ -287,12 +314,12 @@ public static class UserEndpoints
 		IFriendsRealtimeNotifier realtimeNotifier,
 		CancellationToken cancellationToken)
 	{
-		var auth0UserId = GetAuth0UserId(httpContext);
-		if (auth0UserId is null)
+		var authUserId = GetAuthUserId(httpContext);
+		if (authUserId is null)
 			return Results.Unauthorized();
 
 		var result = await handler.HandleAsync(
-			new RejectFriendRequestCommand(auth0UserId, requestId),
+			new RejectFriendRequestCommand(authUserId, requestId),
 			cancellationToken);
 
 		if (!result.IsSuccess)
@@ -307,8 +334,8 @@ public static class UserEndpoints
 		}
 
 		await realtimeNotifier.PublishFriendsUpdatedAsync(
-			[auth0UserId, result.Value!.RequesterUserId],
-			auth0UserId,
+			[authUserId, result.Value!.RequesterUserId],
+			authUserId,
 			FriendsRealtimeEventType.RequestRejected,
 			cancellationToken);
 
@@ -322,12 +349,12 @@ public static class UserEndpoints
 		IFriendsRealtimeNotifier realtimeNotifier,
 		CancellationToken cancellationToken)
 	{
-		var auth0UserId = GetAuth0UserId(httpContext);
-		if (auth0UserId is null)
+		var authUserId = GetAuthUserId(httpContext);
+		if (authUserId is null)
 			return Results.Unauthorized();
 
 		var result = await handler.HandleAsync(
-			new RemoveFriendCommand(auth0UserId, friendUserId),
+			new RemoveFriendCommand(authUserId, friendUserId),
 			cancellationToken);
 
 		if (!result.IsSuccess)
@@ -342,8 +369,8 @@ public static class UserEndpoints
 		}
 
 		await realtimeNotifier.PublishFriendsUpdatedAsync(
-			[auth0UserId, friendUserId],
-			auth0UserId,
+			[authUserId, friendUserId],
+			authUserId,
 			FriendsRealtimeEventType.FriendshipRemoved,
 			cancellationToken);
 
@@ -358,13 +385,13 @@ public static class UserEndpoints
 		IFriendsRealtimeNotifier realtimeNotifier,
 		CancellationToken cancellationToken)
 	{
-		var auth0UserId = GetAuth0UserId(httpContext);
-		if (auth0UserId is null)
+		var authUserId = GetAuthUserId(httpContext);
+		if (authUserId is null)
 			return Results.Unauthorized();
 
 		var result = await handler.HandleAsync(
 			new UpdateFriendAutoSharePreferencesCommand(
-				auth0UserId,
+				authUserId,
 				friendUserId,
 				request.AutoShareMealPlans,
 				request.AutoShareGroceryLists),
@@ -382,8 +409,8 @@ public static class UserEndpoints
 		}
 
 		await realtimeNotifier.PublishFriendsUpdatedAsync(
-			[auth0UserId, friendUserId],
-			auth0UserId,
+			[authUserId, friendUserId],
+			authUserId,
 			FriendsRealtimeEventType.PreferencesUpdated,
 			cancellationToken);
 

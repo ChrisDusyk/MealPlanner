@@ -44,7 +44,7 @@ public class SendFriendRequestByEmailCommandHandler(MealPlannerDbContext db)
 		try
 		{
 			var requester = await db.Users
-				.FirstOrDefaultAsync(u => u.Auth0UserId == command.RequesterUserId, cancellationToken);
+				.FirstOrDefaultAsync(u => u.AuthUserId == command.RequesterUserId, cancellationToken);
 			if (requester is null)
 			{
 				return Result<SendFriendRequestResult>.Failure(
@@ -61,13 +61,13 @@ public class SendFriendRequestByEmailCommandHandler(MealPlannerDbContext db)
 					new Error(ErrorCodes.ValidationFailed, "No user exists with that email address."));
 			}
 
-			if (recipient.Auth0UserId == command.RequesterUserId)
+			if (recipient.AuthUserId == command.RequesterUserId)
 			{
 				return Result<SendFriendRequestResult>.Failure(
 					new Error(ErrorCodes.ValidationFailed, "You cannot send a friend request to yourself."));
 			}
 
-			var (userAId, userBId) = NormalizePair(command.RequesterUserId, recipient.Auth0UserId);
+			var (userAId, userBId) = NormalizePair(command.RequesterUserId, recipient.AuthUserId);
 			var existingFriendship = await db.Friendships
 				.AnyAsync(f => f.UserAId == userAId && f.UserBId == userBId, cancellationToken);
 			if (existingFriendship)
@@ -77,7 +77,7 @@ public class SendFriendRequestByEmailCommandHandler(MealPlannerDbContext db)
 			}
 
 			var existingRequest = await db.FriendRequests
-				.AnyAsync(r => r.RequesterUserId == command.RequesterUserId && r.RecipientUserId == recipient.Auth0UserId, cancellationToken);
+				.AnyAsync(r => r.RequesterUserId == command.RequesterUserId && r.RecipientUserId == recipient.AuthUserId, cancellationToken);
 			if (existingRequest)
 			{
 				return Result<SendFriendRequestResult>.Failure(
@@ -85,7 +85,7 @@ public class SendFriendRequestByEmailCommandHandler(MealPlannerDbContext db)
 			}
 
 			var reciprocalRequest = await db.FriendRequests
-				.FirstOrDefaultAsync(r => r.RequesterUserId == recipient.Auth0UserId && r.RecipientUserId == command.RequesterUserId, cancellationToken);
+				.FirstOrDefaultAsync(r => r.RequesterUserId == recipient.AuthUserId && r.RecipientUserId == command.RequesterUserId, cancellationToken);
 
 			if (reciprocalRequest is not null)
 			{
@@ -109,14 +109,14 @@ public class SendFriendRequestByEmailCommandHandler(MealPlannerDbContext db)
 				return Result<SendFriendRequestResult>.Success(
 					new SendFriendRequestResult(
 						SendFriendRequestStatus.Accepted,
-						recipient.Auth0UserId));
+						recipient.AuthUserId));
 			}
 
 			db.FriendRequests.Add(new FriendRequestEntity
 			{
 				Id = Guid.NewGuid(),
 				RequesterUserId = command.RequesterUserId,
-				RecipientUserId = recipient.Auth0UserId,
+				RecipientUserId = recipient.AuthUserId,
 				CreatedAt = DateTime.UtcNow
 			});
 			await db.SaveChangesAsync(cancellationToken);
@@ -124,7 +124,7 @@ public class SendFriendRequestByEmailCommandHandler(MealPlannerDbContext db)
 			return Result<SendFriendRequestResult>.Success(
 				new SendFriendRequestResult(
 					SendFriendRequestStatus.Pending,
-					recipient.Auth0UserId));
+					recipient.AuthUserId));
 		}
 		catch (DbUpdateException)
 		{

@@ -32,7 +32,7 @@ public class MealPlannerDbContext(DbContextOptions<MealPlannerDbContext> options
 		{
 			entity.ToTable("users");
 			entity.HasKey(e => e.Id);
-			entity.HasIndex(e => e.Auth0UserId).IsUnique();
+			entity.HasIndex(e => e.AuthUserId).IsUnique();
 		});
 
 		// ── Friendships ──

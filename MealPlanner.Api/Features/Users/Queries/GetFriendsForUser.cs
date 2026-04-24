@@ -47,7 +47,7 @@ public class GetFriendsForUserQueryHandler(MealPlannerDbContext db)
 			}
 
 			var friendEntities = await db.Users
-				.Where(u => friendUserIds.Contains(u.Auth0UserId))
+				.Where(u => friendUserIds.Contains(u.AuthUserId))
 				.ToListAsync(cancellationToken);
 
 			var preferenceEntities = await db.FriendAutoSharePreferences
@@ -58,7 +58,7 @@ public class GetFriendsForUserQueryHandler(MealPlannerDbContext db)
 				p => p.FriendUserId,
 				StringComparer.Ordinal);
 
-			var byId = friendEntities.ToDictionary(u => u.Auth0UserId, StringComparer.Ordinal);
+			var byId = friendEntities.ToDictionary(u => u.AuthUserId, StringComparer.Ordinal);
 			var ordered = friendUserIds
 				.Where(byId.ContainsKey)
 				.Select(id => MapToSummary(byId[id], preferencesByFriendId.GetValueOrDefault(id)))
@@ -75,7 +75,7 @@ public class GetFriendsForUserQueryHandler(MealPlannerDbContext db)
 
 	internal static FriendSummary MapToSummary(UserEntity user, FriendAutoSharePreferenceEntity? preference) =>
 		new(
-			user.Auth0UserId,
+			user.AuthUserId,
 			user.Name,
 			user.Email,
 			preference?.AutoShareMealPlans ?? false,

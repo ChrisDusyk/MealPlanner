@@ -1,5 +1,6 @@
 using MealPlanner.Api.Data;
 using MealPlanner.Api.Data.Entities;
+using MealPlanner.Api.Features.Users.Mappers;
 using MealPlanner.Api.Features.Users.Models;
 using MealPlanner.Api.Shared;
 using Microsoft.EntityFrameworkCore;
@@ -10,7 +11,7 @@ namespace MealPlanner.Api.Features.Users.Commands;
 /// Command to update the current user's name.
 /// </summary>
 public record UpdateCurrentUserNameCommand(
-	string Auth0UserId,
+	string AuthUserId,
 	string Name
 ) : ICommand<User>;
 
@@ -24,9 +25,9 @@ public class UpdateCurrentUserNameCommandHandler(MealPlannerDbContext db)
 		UpdateCurrentUserNameCommand command,
 		CancellationToken cancellationToken = default)
 	{
-		if (string.IsNullOrWhiteSpace(command.Auth0UserId))
+		if (string.IsNullOrWhiteSpace(command.AuthUserId))
 			return Result<User>.Failure(
-				new Error(ErrorCodes.ValidationFailed, "Auth0 user ID is required."));
+				new Error(ErrorCodes.ValidationFailed, "Auth user ID is required."));
 
 		if (string.IsNullOrWhiteSpace(command.Name))
 			return Result<User>.Failure(
@@ -35,7 +36,7 @@ public class UpdateCurrentUserNameCommandHandler(MealPlannerDbContext db)
 		try
 		{
 			var entity = await db.Users
-				.FirstOrDefaultAsync(u => u.Auth0UserId == command.Auth0UserId, cancellationToken);
+				.FirstOrDefaultAsync(u => u.AuthUserId == command.AuthUserId, cancellationToken);
 
 			if (entity is null)
 				return Result<User>.Failure(
@@ -55,13 +56,5 @@ public class UpdateCurrentUserNameCommandHandler(MealPlannerDbContext db)
 		}
 	}
 
-	internal static User MapToDomain(UserEntity entity) =>
-		new(
-			Id: entity.Id.ToString(),
-			Auth0UserId: entity.Auth0UserId,
-			Name: entity.Name,
-			Email: Option<string>.From(entity.Email),
-			CreatedAt: entity.CreatedAt,
-			UpdatedAt: entity.UpdatedAt
-		);
+	internal static User MapToDomain(UserEntity entity) => UserMapper.ToDomain(entity);
 }

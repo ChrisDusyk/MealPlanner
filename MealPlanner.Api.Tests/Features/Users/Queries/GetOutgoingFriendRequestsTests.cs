@@ -34,7 +34,7 @@ public class GetOutgoingFriendRequestsTests
 			db.Users.Add(new UserEntity
 			{
 				Id = Guid.NewGuid(),
-				Auth0UserId = "auth0|you",
+				AuthUserId = "auth0|you",
 				Name = "You",
 				Email = "you@example.com",
 				CreatedAt = createdAt,

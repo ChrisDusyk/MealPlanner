@@ -46,9 +46,9 @@ public class GetSharesForMealPlanQueryHandler(MealPlannerDbContext db)
 			// Batch-fetch recipient users
 			var recipientIds = shares.Select(s => s.SharedWithUserId).Distinct().ToList();
 			var users = await db.Users
-				.Where(u => recipientIds.Contains(u.Auth0UserId))
+				.Where(u => recipientIds.Contains(u.AuthUserId))
 				.ToListAsync(cancellationToken);
-			var userLookup = users.ToDictionary(u => u.Auth0UserId);
+			var userLookup = users.ToDictionary(u => u.AuthUserId);
 
 			var results = shares.Select(s =>
 			{

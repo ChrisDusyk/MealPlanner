@@ -1,0 +1,70 @@
+import { fail, redirect } from '@sveltejs/kit';
+import type { Actions, PageServerLoad } from './$types';
+import { requireAuthenticatedSession } from '$lib/auth/guards';
+import { completeOnboarding } from '$lib/api/userApi';
+import { ApiError } from '$lib/api/apiHelpers';
+
+export const load: PageServerLoad = async (event) => {
+	const rawSession = await event.locals.auth();
+	const session = requireAuthenticatedSession(rawSession);
+	const parent = await event.parent();
+
+	// If the user has already completed onboarding, skip the wizard.
+	if (parent.appUser?.onboardingCompletedAt) {
+		throw redirect(303, '/app');
+	}
+
+	return {
+		session,
+		appUser: parent.appUser
+	};
+};
+
+export const actions = {
+	default: async (event) => {
+		const rawSession = await event.locals.auth();
+		const session = requireAuthenticatedSession(rawSession);
+		const data = await event.request.formData();
+		const displayName = (data.get('displayName')?.toString() ?? '').trim();
+		const timezone = (data.get('timezone')?.toString() ?? '').trim();
+
+		if (!session.accessToken) {
+			return fail(401, {
+				error: 'Your session has expired. Please sign in again.',
+				displayName,
+				timezone
+			});
+		}
+
+		if (!displayName) {
+			return fail(400, {
+				error: 'Please tell us what to call you.',
+				displayName,
+				timezone
+			});
+		}
+
+		try {
+			await completeOnboarding(
+				session.accessToken,
+				{
+					displayName,
+					timezone: timezone.length > 0 ? timezone : null
+				},
+				event.fetch
+			);
+		} catch (err) {
+			const message =
+				err instanceof ApiError
+					? err.message
+					: 'We couldn\u2019t finish setting up your account. Please try again.';
+			return fail(err instanceof ApiError ? err.status : 500, {
+				error: message,
+				displayName,
+				timezone
+			});
+		}
+
+		throw redirect(303, '/app');
+	}
+} satisfies Actions;

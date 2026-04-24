@@ -31,7 +31,7 @@ public class UpsertUserFromAuthTests
 
 		Assert.True(result.IsSuccess);
 		Assert.NotNull(result.Value);
-		Assert.Equal("auth0|123", result.Value!.Auth0UserId);
+		Assert.Equal("auth0|123", result.Value!.AuthUserId);
 		Assert.True(result.Value.Email.HasValue);
 	}
 
@@ -44,7 +44,7 @@ public class UpsertUserFromAuthTests
 			db.Users.Add(new UserEntity
 			{
 				Id = Guid.NewGuid(),
-				Auth0UserId = "auth0|123",
+				AuthUserId = "auth0|123",
 				Name = "Pat",
 				Email = "old@example.com",
 				CreatedAt = now,
