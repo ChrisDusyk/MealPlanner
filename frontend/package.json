@@ -50,6 +50,7 @@
 		"vitest-browser-svelte": "^2.1.1"
 	},
 	"dependencies": {
+		"@better-auth/infra": "^0.2.5",
 		"@microsoft/signalr": "^10.0.0",
 		"better-auth": "^1.6.8",
 		"pg": "^8.20.0"
