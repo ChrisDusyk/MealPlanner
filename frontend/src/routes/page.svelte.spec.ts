@@ -7,6 +7,8 @@ describe('/+page.svelte', () => {
 	it('renders key public-page structure landmarks', async () => {
 		render(Page, {
 			data: {
+				session: null,
+				appUser: null,
 				sessionExpired: false
 			}
 		});
