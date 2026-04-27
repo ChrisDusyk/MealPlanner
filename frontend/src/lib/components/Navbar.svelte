@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { getContext } from 'svelte';
-	import { goto } from '$app/navigation';
+	import { goto, invalidateAll } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { authClient } from '$lib/auth/client';
 	import type { AppSession } from '$lib/auth/session';
@@ -37,6 +37,7 @@
 	async function handleLogout() {
 		dropdownOpen = false;
 		await authClient.signOut();
+		await invalidateAll();
 		await goto(resolve('/'));
 	}
 
