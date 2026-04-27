@@ -13,6 +13,8 @@ import { Pool } from 'pg';
 const AUTH_SCHEMA = 'auth';
 const DEFAULT_ISSUER = 'http://localhost:3000';
 const DEFAULT_AUDIENCE = 'mealplanner-api';
+const BUILD_FALLBACK_CONNECTION = 'postgres://postgres:postgres@127.0.0.1:5432/postgres';
+const BUILD_FALLBACK_SECRET = 'build-only-better-auth-secret-replace-in-runtime-env';
 
 function resolveAuthOrigin(raw?: string): string {
 	const value = raw?.trim();
@@ -25,12 +27,16 @@ function resolveAuthOrigin(raw?: string): string {
 	}
 }
 
-export function resolveConnectionString(): string {
+export function resolveConnectionString(options: { allowMissing?: boolean } = {}): string {
 	const explicit = process.env.DATABASE_URL?.trim();
 	if (explicit) return explicit;
 
 	const aspire = process.env.ConnectionStrings__mealplannerDb?.trim();
 	if (aspire) return toPostgresUrl(aspire);
+
+	if (options.allowMissing) {
+		return BUILD_FALLBACK_CONNECTION;
+	}
 
 	throw new Error(
 		'Better Auth could not resolve a Postgres connection string. Set DATABASE_URL or ConnectionStrings__mealplannerDb.'
@@ -69,8 +75,10 @@ function toPostgresUrl(connection: string): string {
 	return `postgres://${auth}@${host}:${port}/${encodeURIComponent(database)}`;
 }
 
-export function buildAuthPool(): Pool {
-	const url = new URL(resolveConnectionString());
+export function buildAuthPool(allowMissingConnectionString = false): Pool {
+	const url = new URL(
+		resolveConnectionString({ allowMissing: allowMissingConnectionString })
+	);
 
 	// Pin Better Auth to the dedicated `auth` schema without affecting the
 	// .NET API's use of the default `public` schema.
@@ -95,15 +103,25 @@ export function buildAuthPool(): Pool {
  * Returning `betterAuth(...)` directly (rather than an options bag) preserves
  * full TypeScript inference of the resulting `auth.api` surface.
  */
-export function createAuth(extraPlugins: BetterAuthPlugin[] = []) {
+export function createAuth(
+	extraPlugins: BetterAuthPlugin[] = [],
+	options: { allowMissingConnectionString?: boolean } = {}
+) {
 	const authOrigin = resolveAuthOrigin(process.env.BETTER_AUTH_URL);
 	const issuer = authOrigin;
 	const audience = process.env.BETTER_AUTH_JWT_AUDIENCE?.trim() || DEFAULT_AUDIENCE;
+	const runtimeSecret = process.env.BETTER_AUTH_SECRET?.trim();
+	const secret =
+		runtimeSecret && runtimeSecret.length > 0
+			? runtimeSecret
+			: options.allowMissingConnectionString
+				? BUILD_FALLBACK_SECRET
+				: undefined;
 
 	return betterAuth({
 		baseURL: authOrigin,
-		secret: process.env.BETTER_AUTH_SECRET,
-		database: buildAuthPool(),
+		secret,
+		database: buildAuthPool(options.allowMissingConnectionString ?? false),
 		emailAndPassword: {
 			enabled: true,
 			// Email verification is disabled in development; flip to true before deploying.
