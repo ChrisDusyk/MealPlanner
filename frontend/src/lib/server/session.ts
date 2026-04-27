@@ -19,7 +19,7 @@ export async function resolveAppSession(request: Request): Promise<AppSession | 
 			: 'user';
 
 	let accessToken = '';
-	let error: AppSession['error'];
+	let error: AppSession['error'] = undefined;
 	try {
 		const tokenResult = await auth.api.getToken({ headers: request.headers });
 		accessToken =
