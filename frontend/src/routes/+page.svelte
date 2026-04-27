@@ -79,7 +79,7 @@
 			</p>
 			<div class="flex flex-wrap gap-4">
 				<a
-					href={resolve('/auth')}
+					href={resolve('/auth/signup')}
 					class="rounded-xl bg-green-500 px-7 py-3.5 font-display text-sm font-bold text-white shadow-lg shadow-green-900/40 transition-all hover:-translate-y-0.5 hover:bg-green-400 hover:shadow-xl hover:shadow-green-900/50"
 				>
 					Start Free →
@@ -434,7 +434,7 @@
 			Join thousands of home cooks who plan smarter, shop faster, and eat better — starting tonight.
 		</p>
 		<a
-			href={resolve('/auth')}
+			href={resolve('/auth/signup')}
 			class="inline-block rounded-xl bg-white px-8 py-4 font-display text-sm font-bold text-green-800 shadow-lg shadow-green-900/30 transition-all hover:-translate-y-0.5 hover:shadow-xl"
 		>
 			Start Planning — It's Free
