@@ -11,45 +11,9 @@
  */
 
 import { Pool } from 'pg';
+import { tryResolveConnectionString } from '../src/lib/server/auth-options';
 
 const AUTH_SCHEMA = 'auth';
-
-function resolveNpgsqlStyleConnection(connection: string): string {
-	if (/^postgres(ql)?:\/\//i.test(connection)) return connection;
-
-	const parts = connection
-		.split(';')
-		.map((entry) => entry.trim())
-		.filter(Boolean);
-
-	const lookup = new Map<string, string>();
-	for (const entry of parts) {
-		const idx = entry.indexOf('=');
-		if (idx === -1) continue;
-		lookup.set(entry.slice(0, idx).trim().toLowerCase(), entry.slice(idx + 1).trim());
-	}
-
-	const host = lookup.get('host') ?? lookup.get('server') ?? 'localhost';
-	const port = lookup.get('port') ?? '5432';
-	const database = lookup.get('database') ?? lookup.get('db') ?? 'postgres';
-	const user = lookup.get('username') ?? lookup.get('user id') ?? lookup.get('user') ?? 'postgres';
-	const password = lookup.get('password') ?? '';
-
-	const auth = password
-		? `${encodeURIComponent(user)}:${encodeURIComponent(password)}`
-		: encodeURIComponent(user);
-	return `postgres://${auth}@${host}:${port}/${encodeURIComponent(database)}`;
-}
-
-function resolveConnectionString(): string | null {
-	const explicit = process.env.DATABASE_URL?.trim();
-	if (explicit) return explicit;
-
-	const aspire = process.env.ConnectionStrings__mealplannerDb?.trim();
-	if (aspire) return resolveNpgsqlStyleConnection(aspire);
-
-	return null;
-}
 
 function logMigrationTarget(connectionString: string): void {
 	try {
@@ -78,7 +42,7 @@ async function ensureSchema(connectionString: string): Promise<void> {
 }
 
 async function main(): Promise<void> {
-	const connectionString = resolveConnectionString();
+	const connectionString = tryResolveConnectionString();
 	if (!connectionString) {
 		console.warn(
 			'[migrate-auth] No DATABASE_URL / ConnectionStrings__mealplannerDb configured; skipping auth migrations.'
