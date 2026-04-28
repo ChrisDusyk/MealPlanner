@@ -46,7 +46,6 @@ export class GroceryListRealtimeClient {
 			return;
 		}
 
-		const connection = new HubConnectionBuilder()
 		const candidates = getHubUrlCandidates('/hubs/grocery-lists');
 		let lastError: unknown;
 
