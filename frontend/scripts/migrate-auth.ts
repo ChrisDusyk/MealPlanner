@@ -14,39 +14,93 @@ import { Pool } from 'pg';
 
 const AUTH_SCHEMA = 'auth';
 
-function resolveNpgsqlStyleConnection(connection: string): string {
-	if (/^postgres(ql)?:\/\//i.test(connection)) return connection;
+function parseConnectionStringEntries(value: string): Map<string, string> {
+	const entries = new Map<string, string>();
 
-	const parts = connection
-		.split(';')
-		.map((entry) => entry.trim())
-		.filter(Boolean);
+	for (const part of value.split(';')) {
+		const trimmed = part.trim();
+		if (!trimmed) continue;
 
-	const lookup = new Map<string, string>();
-	for (const entry of parts) {
-		const idx = entry.indexOf('=');
-		if (idx === -1) continue;
-		lookup.set(entry.slice(0, idx).trim().toLowerCase(), entry.slice(idx + 1).trim());
+		const separatorIndex = trimmed.indexOf('=');
+		if (separatorIndex === -1) continue;
+
+		const key = trimmed.slice(0, separatorIndex).trim().toLowerCase();
+		const entryValue = trimmed.slice(separatorIndex + 1).trim();
+		if (key) {
+			entries.set(key, entryValue);
+		}
 	}
 
-	const host = lookup.get('host') ?? lookup.get('server') ?? 'localhost';
-	const port = lookup.get('port') ?? '5432';
-	const database = lookup.get('database') ?? lookup.get('db') ?? 'postgres';
-	const user = lookup.get('username') ?? lookup.get('user id') ?? lookup.get('user') ?? 'postgres';
-	const password = lookup.get('password') ?? '';
-
-	const auth = password
-		? `${encodeURIComponent(user)}:${encodeURIComponent(password)}`
-		: encodeURIComponent(user);
-	return `postgres://${auth}@${host}:${port}/${encodeURIComponent(database)}`;
+	return entries;
 }
 
-function resolveConnectionString(): string | null {
-	const explicit = process.env.DATABASE_URL?.trim();
-	if (explicit) return explicit;
+function toPostgresUrl(value: string): string | null {
+	const trimmed = value.trim();
+	if (!trimmed) return null;
 
-	const aspire = process.env.ConnectionStrings__mealplannerDb?.trim();
-	if (aspire) return resolveNpgsqlStyleConnection(aspire);
+	if (trimmed.startsWith('postgres://') || trimmed.startsWith('postgresql://')) {
+		return trimmed;
+	}
+
+	if (!trimmed.includes('=')) {
+		return null;
+	}
+
+	const entries = parseConnectionStringEntries(trimmed);
+	const host = entries.get('host') ?? entries.get('server');
+	if (!host) {
+		return null;
+	}
+
+	const port = entries.get('port');
+	const database =
+		entries.get('database') ??
+		entries.get('initial catalog') ??
+		entries.get('db');
+	const username =
+		entries.get('username') ??
+		entries.get('user id') ??
+		entries.get('userid') ??
+		entries.get('user');
+	const password = entries.get('password') ?? entries.get('pwd');
+
+	const url = new URL(`postgresql://${host}`);
+	if (port) {
+		url.port = port;
+	}
+	if (database) {
+		url.pathname = `/${encodeURIComponent(database)}`;
+	}
+	if (username) {
+		url.username = encodeURIComponent(username);
+	}
+	if (password) {
+		url.password = encodeURIComponent(password);
+	}
+
+	const sslMode = entries.get('ssl mode') ?? entries.get('sslmode');
+	if (sslMode) {
+		url.searchParams.set('sslmode', sslMode);
+	}
+
+	const searchPath = entries.get('search path') ?? entries.get('searchpath');
+	if (searchPath) {
+		url.searchParams.set('options', `-c search_path=${searchPath}`);
+	}
+
+	return url.toString();
+}
+
+function tryResolveConnectionString(): string | null {
+	const databaseUrl = process.env.DATABASE_URL?.trim();
+	if (databaseUrl) {
+		return toPostgresUrl(databaseUrl) ?? databaseUrl;
+	}
+
+	const fallback = process.env.ConnectionStrings__mealplannerDb?.trim();
+	if (fallback) {
+		return toPostgresUrl(fallback) ?? fallback;
+	}
 
 	return null;
 }
@@ -78,7 +132,7 @@ async function ensureSchema(connectionString: string): Promise<void> {
 }
 
 async function main(): Promise<void> {
-	const connectionString = resolveConnectionString();
+	const connectionString = tryResolveConnectionString();
 	if (!connectionString) {
 		console.warn(
 			'[migrate-auth] No DATABASE_URL / ConnectionStrings__mealplannerDb configured; skipping auth migrations.'

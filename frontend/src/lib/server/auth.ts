@@ -7,3 +7,5 @@ import { dash } from '@better-auth/infra';
 export const auth = createAuth([sveltekitCookies(getRequestEvent), dash()], {
 	allowMissingConnectionString: building,
 });
+
+export type AuthInstance = typeof auth;

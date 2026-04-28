@@ -16,6 +16,14 @@ const DEFAULT_AUDIENCE = 'mealplanner-api';
 const BUILD_FALLBACK_CONNECTION = 'postgres://postgres:postgres@127.0.0.1:5432/postgres';
 const BUILD_FALLBACK_SECRET = 'build-only-better-auth-secret-replace-in-runtime-env';
 
+function parseBooleanEnv(raw: string | undefined, defaultValue = false): boolean {
+	if (!raw) return defaultValue;
+	const value = raw.trim().toLowerCase();
+	if (['1', 'true', 'yes', 'on'].includes(value)) return true;
+	if (['0', 'false', 'no', 'off'].includes(value)) return false;
+	return defaultValue;
+}
+
 function resolveAuthOrigin(raw?: string): string {
 	const value = raw?.trim();
 	if (!value) return DEFAULT_ISSUER;
@@ -27,12 +35,19 @@ function resolveAuthOrigin(raw?: string): string {
 	}
 }
 
-export function resolveConnectionString(options: { allowMissing?: boolean } = {}): string {
+export function tryResolveConnectionString(): string | null {
 	const explicit = process.env.DATABASE_URL?.trim();
 	if (explicit) return explicit;
 
 	const aspire = process.env.ConnectionStrings__mealplannerDb?.trim();
 	if (aspire) return toPostgresUrl(aspire);
+
+	return null;
+}
+
+export function resolveConnectionString(options: { allowMissing?: boolean } = {}): string {
+	const resolved = tryResolveConnectionString();
+	if (resolved) return resolved;
 
 	if (options.allowMissing) {
 		return BUILD_FALLBACK_CONNECTION;
@@ -110,6 +125,10 @@ export function createAuth(
 	const issuer = authOrigin;
 	const audience = process.env.BETTER_AUTH_JWT_AUDIENCE?.trim() || DEFAULT_AUDIENCE;
 	const runtimeSecret = process.env.BETTER_AUTH_SECRET?.trim();
+	const requireEmailVerification = parseBooleanEnv(
+		process.env.BETTER_AUTH_REQUIRE_EMAIL_VERIFICATION,
+		false
+	);
 	const secret =
 		runtimeSecret && runtimeSecret.length > 0
 			? runtimeSecret
@@ -123,8 +142,8 @@ export function createAuth(
 		database: buildAuthPool(options.allowMissingConnectionString ?? false),
 		emailAndPassword: {
 			enabled: true,
-			// Email verification is disabled in development; flip to true before deploying.
-			requireEmailVerification: false
+			// Controlled by BETTER_AUTH_REQUIRE_EMAIL_VERIFICATION (default false).
+			requireEmailVerification
 		},
 		socialProviders: {
 			google: {
