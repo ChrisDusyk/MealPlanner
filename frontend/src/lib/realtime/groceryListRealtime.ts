@@ -4,6 +4,7 @@ import {
 	LogLevel,
 	type HubConnection
 } from '@microsoft/signalr';
+import { getHubUrl } from '$lib/realtime/hubUrl';
 import type { GroceryListResponse } from '$lib/api/groceryListApi';
 
 export interface GroceryListUpdatedEvent {
@@ -46,7 +47,7 @@ export class GroceryListRealtimeClient {
 		}
 
 		const connection = new HubConnectionBuilder()
-			.withUrl('/hubs/grocery-lists', {
+			.withUrl(getHubUrl('/hubs/grocery-lists'), {
 				accessTokenFactory: () => getRealtimeAccessToken(this.fetchFn)
 			})
 			.withAutomaticReconnect()

@@ -4,6 +4,7 @@ import {
 	LogLevel,
 	type HubConnection
 } from '@microsoft/signalr';
+import { getHubUrl } from '$lib/realtime/hubUrl';
 import type { MealPlanResponse } from '$lib/api/mealPlanApi';
 
 export interface MealPlanUpdatedEvent {
@@ -46,7 +47,7 @@ export class MealPlanRealtimeClient {
 		}
 
 		const connection = new HubConnectionBuilder()
-			.withUrl('/hubs/meal-plans', {
+			.withUrl(getHubUrl('/hubs/meal-plans'), {
 				accessTokenFactory: () => getRealtimeAccessToken(this.fetchFn)
 			})
 			.withAutomaticReconnect()

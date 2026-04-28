@@ -4,6 +4,7 @@ import {
 	LogLevel,
 	type HubConnection
 } from '@microsoft/signalr';
+import { getHubUrl } from '$lib/realtime/hubUrl';
 
 export interface FriendsUpdatedEvent {
 	eventType: string;
@@ -42,7 +43,7 @@ export class FriendsRealtimeClient {
 		}
 
 		const connection = new HubConnectionBuilder()
-			.withUrl('/hubs/friends', {
+			.withUrl(getHubUrl('/hubs/friends'), {
 				accessTokenFactory: () => getRealtimeAccessToken(this.fetchFn)
 			})
 			.withAutomaticReconnect()
