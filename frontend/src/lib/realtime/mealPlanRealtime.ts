@@ -4,7 +4,7 @@ import {
 	LogLevel,
 	type HubConnection
 } from '@microsoft/signalr';
-import { getHubUrl } from '$lib/realtime/hubUrl';
+import { getHubUrlCandidates, isSignalRHubNotFoundError } from '$lib/realtime/hubUrl';
 import type { MealPlanResponse } from '$lib/api/mealPlanApi';
 
 export interface MealPlanUpdatedEvent {
@@ -46,20 +46,38 @@ export class MealPlanRealtimeClient {
 			return;
 		}
 
-		const connection = new HubConnectionBuilder()
-			.withUrl(getHubUrl('/hubs/meal-plans'), {
-				accessTokenFactory: () => getRealtimeAccessToken(this.fetchFn)
-			})
-			.withAutomaticReconnect()
-			.configureLogging(LogLevel.Warning)
-			.build();
+		const candidates = getHubUrlCandidates('/hubs/meal-plans');
+		let lastError: unknown;
 
-		connection.on('mealPlanUpdated', (event: MealPlanUpdatedEvent) => {
-			onMealPlanUpdated(event);
-		});
+		for (let i = 0; i < candidates.length; i += 1) {
+			const connection = new HubConnectionBuilder()
+				.withUrl(candidates[i], {
+					accessTokenFactory: () => getRealtimeAccessToken(this.fetchFn)
+				})
+				.withAutomaticReconnect()
+				.configureLogging(LogLevel.Warning)
+				.build();
 
-		await connection.start();
-		this.connection = connection;
+			connection.on('mealPlanUpdated', (event: MealPlanUpdatedEvent) => {
+				onMealPlanUpdated(event);
+			});
+
+			try {
+				await connection.start();
+				this.connection = connection;
+				return;
+			} catch (error) {
+				lastError = error;
+				const canRetry = i < candidates.length - 1 && isSignalRHubNotFoundError(error);
+				if (!canRetry) {
+					throw error;
+				}
+			}
+		}
+
+		if (lastError) {
+			throw lastError;
+		}
 	}
 
 	async stop(): Promise<void> {

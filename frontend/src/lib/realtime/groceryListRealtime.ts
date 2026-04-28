@@ -4,7 +4,7 @@ import {
 	LogLevel,
 	type HubConnection
 } from '@microsoft/signalr';
-import { getHubUrl } from '$lib/realtime/hubUrl';
+import { getHubUrlCandidates, isSignalRHubNotFoundError } from '$lib/realtime/hubUrl';
 import type { GroceryListResponse } from '$lib/api/groceryListApi';
 
 export interface GroceryListUpdatedEvent {
@@ -47,19 +47,38 @@ export class GroceryListRealtimeClient {
 		}
 
 		const connection = new HubConnectionBuilder()
-			.withUrl(getHubUrl('/hubs/grocery-lists'), {
-				accessTokenFactory: () => getRealtimeAccessToken(this.fetchFn)
-			})
-			.withAutomaticReconnect()
-			.configureLogging(LogLevel.Warning)
-			.build();
+		const candidates = getHubUrlCandidates('/hubs/grocery-lists');
+		let lastError: unknown;
 
-		connection.on('groceryListUpdated', (event: GroceryListUpdatedEvent) => {
-			onListUpdated(event);
-		});
+		for (let i = 0; i < candidates.length; i += 1) {
+			const connection = new HubConnectionBuilder()
+				.withUrl(candidates[i], {
+					accessTokenFactory: () => getRealtimeAccessToken(this.fetchFn)
+				})
+				.withAutomaticReconnect()
+				.configureLogging(LogLevel.Warning)
+				.build();
 
-		await connection.start();
-		this.connection = connection;
+			connection.on('groceryListUpdated', (event: GroceryListUpdatedEvent) => {
+				onListUpdated(event);
+			});
+
+			try {
+				await connection.start();
+				this.connection = connection;
+				return;
+			} catch (error) {
+				lastError = error;
+				const canRetry = i < candidates.length - 1 && isSignalRHubNotFoundError(error);
+				if (!canRetry) {
+					throw error;
+				}
+			}
+		}
+
+		if (lastError) {
+			throw lastError;
+		}
 	}
 
 	async stop(): Promise<void> {
