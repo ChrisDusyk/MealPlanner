@@ -1,10 +1,11 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { actions, load } from './+page.server';
-import { completeOnboarding } from '$lib/api/userApi';
+import { completeOnboarding, syncCurrentUser } from '$lib/api/userApi';
 import { ApiError } from '$lib/api/apiHelpers';
 
 vi.mock('$lib/api/userApi', () => ({
-	completeOnboarding: vi.fn()
+	completeOnboarding: vi.fn(),
+	syncCurrentUser: vi.fn()
 }));
 
 type LoadEvent = Parameters<typeof load>[0];
@@ -106,6 +107,7 @@ describe('onboarding page server action', () => {
 			data: { error: expect.stringContaining('call you') }
 		});
 		expect(completeOnboarding).not.toHaveBeenCalled();
+		expect(syncCurrentUser).not.toHaveBeenCalled();
 	});
 
 	it('submits trimmed profile to API and redirects on success', async () => {
@@ -124,6 +126,7 @@ describe('onboarding page server action', () => {
 			{ displayName: 'Pat H.', timezone: 'America/Toronto' },
 			expect.any(Function)
 		);
+		expect(syncCurrentUser).not.toHaveBeenCalled();
 	});
 
 	it('treats blank timezone as null so server can keep existing value', async () => {
@@ -139,6 +142,30 @@ describe('onboarding page server action', () => {
 			{ displayName: 'Pat H.', timezone: null },
 			expect.any(Function)
 		);
+		expect(syncCurrentUser).not.toHaveBeenCalled();
+	});
+
+	it('re-syncs and retries once when onboarding returns not found', async () => {
+		vi.mocked(completeOnboarding)
+			.mockRejectedValueOnce(new ApiError(404, 'User was not found.'))
+			.mockResolvedValueOnce(completedUser);
+		vi.mocked(syncCurrentUser).mockResolvedValue(completedUser);
+		const event = createActionEvent(buildAuthenticatedSession(), {
+			displayName: 'Pat H.',
+			timezone: 'America/Toronto'
+		});
+
+		await expect(actions.default(event)).rejects.toMatchObject({
+			status: 303,
+			location: '/app'
+		});
+
+		expect(syncCurrentUser).toHaveBeenCalledWith(
+			'test-token',
+			{ name: 'Pat', email: 'pat@example.com' },
+			expect.any(Function)
+		);
+		expect(completeOnboarding).toHaveBeenCalledTimes(2);
 	});
 
 	it('surfaces API errors back to the form', async () => {
@@ -157,5 +184,6 @@ describe('onboarding page server action', () => {
 				timezone: 'America/Toronto'
 			}
 		});
+		expect(syncCurrentUser).not.toHaveBeenCalled();
 	});
 });

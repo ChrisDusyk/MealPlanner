@@ -1,7 +1,7 @@
 import { fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { requireAuthenticatedSession } from '$lib/auth/guards';
-import { completeOnboarding } from '$lib/api/userApi';
+import { completeOnboarding, syncCurrentUser } from '$lib/api/userApi';
 import { ApiError } from '$lib/api/apiHelpers';
 
 export const load: PageServerLoad = async (event) => {
@@ -45,14 +45,30 @@ export const actions = {
 		}
 
 		try {
-			await completeOnboarding(
-				session.accessToken,
-				{
-					displayName,
-					timezone: timezone.length > 0 ? timezone : null
-				},
-				event.fetch
-			);
+			const request = {
+				displayName,
+				timezone: timezone.length > 0 ? timezone : null
+			};
+
+			try {
+				await completeOnboarding(session.accessToken, request, event.fetch);
+			} catch (err) {
+				// New signups can briefly hit a stale/mismatched app-user row.
+				// Re-sync from auth claims and retry once before surfacing an error.
+				if (!(err instanceof ApiError) || err.status !== 404) {
+					throw err;
+				}
+
+				await syncCurrentUser(
+					session.accessToken,
+					{
+						name: session.user?.name ?? null,
+						email: session.user?.email ?? null
+					},
+					event.fetch
+				);
+				await completeOnboarding(session.accessToken, request, event.fetch);
+			}
 		} catch (err) {
 			const message =
 				err instanceof ApiError
