@@ -13,31 +13,31 @@ export class ApiError extends Error {
 	}
 }
 
+function normalizeBaseUrl(value?: string, fallbackPort?: string): string {
+	if (!value) return '';
+
+	const trimmed = value.trim();
+	if (!trimmed) return '';
+
+	const withProtocol = /^https?:\/\//i.test(trimmed) ? trimmed : `http://${trimmed}`;
+
+	try {
+		const parsed = new URL(withProtocol);
+		if (!parsed.port && fallbackPort) {
+			parsed.port = fallbackPort;
+		}
+		return parsed.toString().replace(/\/$/, '');
+	} catch {
+		return '';
+	}
+}
+
 /**
  * Resolve the API base URL. On the server side we use the Aspire service
  * discovery env vars so requests go directly to the API rather than
  * through the Vite dev-server proxy (which only handles browser requests).
  */
 export function getApiBase(): string {
-	const normalizeBaseUrl = (value?: string, fallbackPort?: string): string => {
-		if (!value) return '';
-
-		const trimmed = value.trim();
-		if (!trimmed) return '';
-
-		const withProtocol = /^https?:\/\//i.test(trimmed) ? trimmed : `http://${trimmed}`;
-
-		try {
-			const parsed = new URL(withProtocol);
-			if (!parsed.port && fallbackPort) {
-				parsed.port = fallbackPort;
-			}
-			return parsed.toString().replace(/\/$/, '');
-		} catch {
-			return '';
-		}
-	};
-
 	if (typeof process !== 'undefined') {
 		const explicitApiUrl = normalizeBaseUrl(
 			process.env.API_INTERNAL_URL || process.env.API_BASE_URL,
@@ -52,6 +52,24 @@ export function getApiBase(): string {
 	}
 
 	return normalizeBaseUrl(import.meta.env.VITE_API_URL as string);
+}
+
+/**
+ * Resolve a browser-reachable API base URL for realtime hub connections.
+ * Falls back to getApiBase so existing local/dev behavior continues to work.
+ */
+export function getPublicApiBase(): string {
+	if (typeof process !== 'undefined') {
+		const explicitPublicApiUrl = normalizeBaseUrl(
+			process.env.API_PUBLIC_URL || process.env.PUBLIC_API_URL
+		);
+		if (explicitPublicApiUrl) return explicitPublicApiUrl;
+	}
+
+	const vitePublicApiUrl = normalizeBaseUrl(import.meta.env.VITE_API_PUBLIC_URL as string);
+	if (vitePublicApiUrl) return vitePublicApiUrl;
+
+	return getApiBase();
 }
 
 /**
