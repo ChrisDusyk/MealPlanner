@@ -80,16 +80,15 @@ export function buildAuthPool(allowMissingConnectionString = false): Pool {
 		resolveConnectionString({ allowMissing: allowMissingConnectionString })
 	);
 
-	// Pin Better Auth to the dedicated `auth` schema without affecting the
-	// .NET API's use of the default `public` schema.
+	// Force Better Auth queries to resolve `auth."user"` style tables first.
+	// Some managed Postgres URLs include an existing `search_path` in `options`;
+	// appending ours last ensures `auth` wins for this pool.
 	const existingOptions = url.searchParams.get('options') ?? '';
-	if (!existingOptions.includes('search_path')) {
-		const searchPathOption = `-c search_path=${AUTH_SCHEMA}`;
-		url.searchParams.set(
-			'options',
-			existingOptions ? `${existingOptions} ${searchPathOption}` : searchPathOption
-		);
-	}
+	const searchPathOption = `-c search_path=${AUTH_SCHEMA},public`;
+	url.searchParams.set(
+		'options',
+		existingOptions ? `${existingOptions} ${searchPathOption}` : searchPathOption
+	);
 
 	return new Pool({ connectionString: url.toString() });
 }

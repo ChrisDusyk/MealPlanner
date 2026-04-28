@@ -51,6 +51,23 @@ function resolveConnectionString(): string | null {
 	return null;
 }
 
+function logMigrationTarget(connectionString: string): void {
+	try {
+		const parsed = new URL(connectionString);
+		const database = decodeURIComponent(parsed.pathname.replace(/^\//, '') || 'postgres');
+		const options = parsed.searchParams.get('options') ?? '';
+		const hasExplicitSearchPath = options.includes('search_path');
+
+		console.info(
+			`[migrate-auth] Target database host=${parsed.hostname} port=${parsed.port || '5432'} db=${database} schema=${AUTH_SCHEMA} search_path=${hasExplicitSearchPath ? 'explicit' : 'default'}`
+		);
+	} catch {
+		console.info(
+			`[migrate-auth] Target schema=${AUTH_SCHEMA}. Connection string could not be parsed for diagnostics.`
+		);
+	}
+}
+
 async function ensureSchema(connectionString: string): Promise<void> {
 	const pool = new Pool({ connectionString });
 	try {
@@ -68,6 +85,8 @@ async function main(): Promise<void> {
 		);
 		return;
 	}
+
+	logMigrationTarget(connectionString);
 
 	console.info(`[migrate-auth] Ensuring "${AUTH_SCHEMA}" schema exists...`);
 	await ensureSchema(connectionString);
