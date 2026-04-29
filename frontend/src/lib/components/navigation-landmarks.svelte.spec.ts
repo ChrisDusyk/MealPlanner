@@ -79,6 +79,18 @@ describe('navigation landmark structure', () => {
 		expect(navbarLogoutButton).toBeTruthy();
 		expect(navbarLogoutButton?.className).toContain('cursor-pointer');
 
+		const mobileMenuTrigger = navbarContainer.querySelector(
+			'button[aria-controls="mobile-menu"]'
+		) as HTMLButtonElement;
+		expect(mobileMenuTrigger).toBeTruthy();
+		mobileMenuTrigger.click();
+		await expect.poll(() => mobileMenuTrigger.getAttribute('aria-expanded')).toBe('true');
+
+		const mobileNavbarLogoutButton = navbarContainer.querySelector(
+			'[data-testid="navbar-mobile-logout"]'
+		);
+		expect(mobileNavbarLogoutButton).toBeTruthy();
+		expect(mobileNavbarLogoutButton?.className).toContain('cursor-pointer');
 		const { container: sidebarContainer } = render(AppSidebar, {
 			session: {
 				user: {
