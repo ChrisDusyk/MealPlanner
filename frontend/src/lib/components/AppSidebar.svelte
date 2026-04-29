@@ -229,7 +229,7 @@
 		<button
 			type="button"
 			onclick={handleLogout}
-			class="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 font-display text-sm font-medium text-green-200/90 transition-all hover:bg-green-800/50 hover:text-white"
+			class="flex w-full cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 font-display text-sm font-medium text-green-200/90 transition-all hover:bg-green-800/50 hover:text-white"
 		>
 			<svg
 				xmlns="http://www.w3.org/2000/svg"

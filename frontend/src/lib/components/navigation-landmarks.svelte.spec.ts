@@ -51,4 +51,51 @@ describe('navigation landmark structure', () => {
 		await expect.poll(() => trigger.getAttribute('aria-expanded')).toBe('false');
 		expect(document.getElementById('user-menu')).toBeNull();
 	});
+
+	it('uses pointer cursor classes for logout buttons in navigation components', async () => {
+		const { container: navbarContainer } = render(Navbar, {
+			session: {
+				user: {
+					id: 'user-1',
+					name: 'Test User',
+					email: 'test@example.com',
+					role: 'user'
+				},
+				accessToken: 'test-access-token',
+				roles: ['user']
+			}
+		});
+
+		const userMenuTrigger = navbarContainer.querySelector(
+			'button[aria-controls="user-menu"]'
+		) as HTMLButtonElement;
+		expect(userMenuTrigger).toBeTruthy();
+		userMenuTrigger.click();
+		await expect.poll(() => userMenuTrigger.getAttribute('aria-expanded')).toBe('true');
+
+		const navbarLogoutButton = Array.from(navbarContainer.querySelectorAll('button[type="button"]')).find(
+			(button) => button.textContent?.includes('Log Out')
+		);
+		expect(navbarLogoutButton).toBeTruthy();
+		expect(navbarLogoutButton?.className).toContain('cursor-pointer');
+
+		const { container: sidebarContainer } = render(AppSidebar, {
+			session: {
+				user: {
+					id: 'user-1',
+					name: 'Test User',
+					email: 'test@example.com',
+					role: 'user'
+				},
+				accessToken: 'test-access-token',
+				roles: ['user']
+			}
+		});
+
+		const sidebarLogoutButton = Array.from(
+			sidebarContainer.querySelectorAll('button[type="button"]')
+		).find((button) => button.textContent?.includes('Log Out'));
+		expect(sidebarLogoutButton).toBeTruthy();
+		expect(sidebarLogoutButton?.className).toContain('cursor-pointer');
+	});
 });
