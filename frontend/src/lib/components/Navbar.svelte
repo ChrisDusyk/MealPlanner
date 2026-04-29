@@ -227,6 +227,7 @@
 									<button
 										type="button"
 										onclick={handleLogout}
+										data-testid="navbar-dropdown-logout"
 										class="flex w-full cursor-pointer items-center gap-3 px-4 py-2.5 text-left font-display text-sm font-medium text-green-200/80 transition-colors hover:bg-green-800/50 hover:text-white"
 									>
 										<svg
@@ -416,6 +417,7 @@
 							mobileOpen = false;
 							handleLogout();
 						}}
+						data-testid="navbar-mobile-logout"
 						class="cursor-pointer rounded-lg border border-green-400/30 px-3 py-2.5 text-center font-display text-sm font-medium text-green-100 transition-all hover:border-green-400/60 hover:bg-green-800/50"
 					>
 						Log Out

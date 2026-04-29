@@ -229,6 +229,7 @@
 		<button
 			type="button"
 			onclick={handleLogout}
+			data-testid="sidebar-logout"
 			class="flex w-full cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 font-display text-sm font-medium text-green-200/90 transition-all hover:bg-green-800/50 hover:text-white"
 		>
 			<svg

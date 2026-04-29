@@ -73,8 +73,8 @@ describe('navigation landmark structure', () => {
 		userMenuTrigger.click();
 		await expect.poll(() => userMenuTrigger.getAttribute('aria-expanded')).toBe('true');
 
-		const navbarLogoutButton = Array.from(navbarContainer.querySelectorAll('button[type="button"]')).find(
-			(button) => button.textContent?.includes('Log Out')
+		const navbarLogoutButton = navbarContainer.querySelector(
+			'[data-testid="navbar-dropdown-logout"]'
 		);
 		expect(navbarLogoutButton).toBeTruthy();
 		expect(navbarLogoutButton?.className).toContain('cursor-pointer');
@@ -92,9 +92,7 @@ describe('navigation landmark structure', () => {
 			}
 		});
 
-		const sidebarLogoutButton = Array.from(
-			sidebarContainer.querySelectorAll('button[type="button"]')
-		).find((button) => button.textContent?.includes('Log Out'));
+		const sidebarLogoutButton = sidebarContainer.querySelector('[data-testid="sidebar-logout"]');
 		expect(sidebarLogoutButton).toBeTruthy();
 		expect(sidebarLogoutButton?.className).toContain('cursor-pointer');
 	});
