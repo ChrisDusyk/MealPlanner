@@ -24,6 +24,22 @@ function parseBooleanEnv(raw: string | undefined, defaultValue = false): boolean
 	return defaultValue;
 }
 
+function resolveGoogleSocialProviders() {
+	const clientId = process.env.GOOGLE_CLIENT_ID?.trim();
+	const clientSecret = process.env.GOOGLE_CLIENT_SECRET?.trim();
+
+	if (!clientId || !clientSecret) {
+		return undefined;
+	}
+
+	return {
+		google: {
+			clientId,
+			clientSecret
+		}
+	};
+}
+
 function resolveAuthOrigin(raw?: string): string {
 	const value = raw?.trim();
 	if (!value) return DEFAULT_ISSUER;
@@ -129,6 +145,7 @@ export function createAuth(
 		process.env.BETTER_AUTH_REQUIRE_EMAIL_VERIFICATION,
 		false
 	);
+	const socialProviders = resolveGoogleSocialProviders();
 	const secret =
 		runtimeSecret && runtimeSecret.length > 0
 			? runtimeSecret
@@ -145,12 +162,7 @@ export function createAuth(
 			// Controlled by BETTER_AUTH_REQUIRE_EMAIL_VERIFICATION (default false).
 			requireEmailVerification
 		},
-		socialProviders: {
-			google: {
-				clientId: process.env.GOOGLE_CLIENT_ID ?? '',
-				clientSecret: process.env.GOOGLE_CLIENT_SECRET ?? ''
-			}
-		},
+		socialProviders,
 		user: {
 			additionalFields: {
 				displayName: { type: 'string', required: false, input: true },
