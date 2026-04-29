@@ -27,6 +27,9 @@ npm run dev
 
 # or start the server and open the app in a new browser tab
 npm run dev -- --open
+
+# run Better Auth migrations before starting dev
+npm run dev:migrate
 ```
 
 ## Building
@@ -38,5 +41,17 @@ npm run build
 ```
 
 You can preview the production build with `npm run preview`.
+
+To run Better Auth migrations before starting the production server:
+
+```sh
+npm run start:migrate
+```
+
+Optional Better Auth email verification toggle:
+
+```sh
+BETTER_AUTH_REQUIRE_EMAIL_VERIFICATION=true
+```
 
 > To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.

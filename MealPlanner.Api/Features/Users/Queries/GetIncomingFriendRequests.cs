@@ -45,9 +45,9 @@ public class GetIncomingFriendRequestsQueryHandler(MealPlannerDbContext db)
 				.ToList();
 
 			var requesterEntities = await db.Users
-				.Where(u => requesterIds.Contains(u.Auth0UserId))
+				.Where(u => requesterIds.Contains(u.AuthUserId))
 				.ToListAsync(cancellationToken);
-			var requesterById = requesterEntities.ToDictionary(u => u.Auth0UserId, StringComparer.Ordinal);
+			var requesterById = requesterEntities.ToDictionary(u => u.AuthUserId, StringComparer.Ordinal);
 
 			var summaries = incoming
 				.Where(r => requesterById.ContainsKey(r.RequesterUserId))
@@ -56,7 +56,7 @@ public class GetIncomingFriendRequestsQueryHandler(MealPlannerDbContext db)
 					var requester = requesterById[r.RequesterUserId];
 					return new FriendRequestSummary(
 						r.Id.ToString(),
-						requester.Auth0UserId,
+						requester.AuthUserId,
 						requester.Name,
 						requester.Email,
 						r.CreatedAt);

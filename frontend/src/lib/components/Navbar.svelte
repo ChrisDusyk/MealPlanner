@@ -1,12 +1,13 @@
 <script lang="ts">
 	import { getContext } from 'svelte';
+	import { goto, invalidateAll } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import { signIn, signOut } from '@auth/sveltekit/client';
-	import type { Session } from '@auth/sveltekit';
+	import { authClient } from '$lib/auth/client';
+	import type { AppSession } from '$lib/auth/session';
 	import { APP_USER_CONTEXT_KEY, type AppUserContextValue } from '$lib/context/appUserContext';
 	import { APP_ROLES, hasRole } from '$lib/auth/roles';
 
-	let { session }: { session: Session | null } = $props();
+	let { session }: { session: AppSession | null } = $props();
 	const appUserContext = getContext<AppUserContextValue | undefined>(APP_USER_CONTEXT_KEY);
 
 	let displayName = $derived(
@@ -26,16 +27,18 @@
 	}
 
 	function handleLogin() {
-		signIn('auth0');
+		void goto(resolve('/auth/signin'));
 	}
 
 	function handleSignup() {
-		signIn('auth0', undefined, { screen_hint: 'signup' });
+		void goto(resolve('/auth/signup'));
 	}
 
-	function handleLogout() {
-		signOut({ redirectTo: '/auth/logout-auth0' });
+	async function handleLogout() {
 		dropdownOpen = false;
+		await authClient.signOut();
+		await invalidateAll();
+		await goto(resolve('/'));
 	}
 
 	function toggleDropdown() {

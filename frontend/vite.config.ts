@@ -11,7 +11,7 @@ export default defineConfig({
 	server: {
 		host: '127.0.0.1',
 		proxy: {
-			'/api': {
+			'^/api/(?!auth(?:/|$)).*': {
 				target: process.env.services__api__https__0 || process.env.services__api__http__0,
 				changeOrigin: true
 			},

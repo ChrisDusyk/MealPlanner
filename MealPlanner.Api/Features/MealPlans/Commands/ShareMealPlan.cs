@@ -40,7 +40,7 @@ public class ShareMealPlanCommandHandler(MealPlannerDbContext db)
 		{
 			// Look up the owner
 			var owner = await db.Users
-				.FirstOrDefaultAsync(u => u.Auth0UserId == command.OwnerUserId, cancellationToken);
+				.FirstOrDefaultAsync(u => u.AuthUserId == command.OwnerUserId, cancellationToken);
 			if (owner is null)
 				return Result<MealPlanShare>.Failure(
 					new Error(ErrorCodes.NotFound, "Owner user not found."));
@@ -54,14 +54,14 @@ public class ShareMealPlanCommandHandler(MealPlannerDbContext db)
 					new Error(ErrorCodes.NotFound, $"No user found with email '{command.SharedWithEmail}'."));
 
 			// Prevent self-share
-			if (recipient.Auth0UserId == command.OwnerUserId)
+			if (recipient.AuthUserId == command.OwnerUserId)
 				return Result<MealPlanShare>.Failure(
 					new Error(ErrorCodes.ValidationFailed, "You cannot share a meal plan with yourself."));
 
 			// Check for existing share
 			var exists = await db.MealPlanShares
 				.AnyAsync(s => s.OwnerUserId == command.OwnerUserId
-					&& s.SharedWithUserId == recipient.Auth0UserId
+					&& s.SharedWithUserId == recipient.AuthUserId
 					&& s.WeekStart == command.WeekStart, cancellationToken);
 			if (exists)
 				return Result<MealPlanShare>.Failure(
@@ -72,7 +72,7 @@ public class ShareMealPlanCommandHandler(MealPlannerDbContext db)
 			{
 				Id = Guid.NewGuid(),
 				OwnerUserId = command.OwnerUserId,
-				SharedWithUserId = recipient.Auth0UserId,
+				SharedWithUserId = recipient.AuthUserId,
 				WeekStart = command.WeekStart,
 				Permission = command.Permission.ToString(),
 				SharedAt = DateTime.UtcNow,

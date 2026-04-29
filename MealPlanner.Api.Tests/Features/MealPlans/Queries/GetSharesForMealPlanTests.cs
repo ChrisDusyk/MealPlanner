@@ -37,7 +37,7 @@ public class GetSharesForMealPlanTests
 			db.Users.Add(new UserEntity
 			{
 				Id = Guid.NewGuid(),
-				Auth0UserId = "recipient1",
+				AuthUserId = "recipient1",
 				Name = "Alex",
 				Email = "alex@example.com",
 				CreatedAt = DateTime.UtcNow,

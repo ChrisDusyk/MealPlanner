@@ -2,15 +2,50 @@ import { ApiError, getApiBase, parseErrorBody } from './apiHelpers';
 
 export interface AppUserResponse {
 	id: string;
-	auth0UserId: string;
+	authUserId: string;
 	name: string;
 	email: string | null;
+	displayName: string | null;
+	timezone: string | null;
+	onboardingCompletedAt: string | null;
 	createdAt: string;
 	updatedAt: string;
 }
 
 export interface UpdateCurrentUserRequest {
 	name: string;
+}
+
+export interface CompleteOnboardingRequest {
+	displayName?: string | null;
+	timezone?: string | null;
+}
+
+export interface SyncCurrentUserRequest {
+	name?: string | null;
+	email?: string | null;
+}
+
+export async function syncCurrentUser(
+	accessToken: string,
+	request: SyncCurrentUserRequest,
+	fetchFn: typeof fetch = fetch
+): Promise<AppUserResponse> {
+	const response = await fetchFn(`${getApiBase()}/api/users/sync`, {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/json',
+			Authorization: `Bearer ${accessToken}`
+		},
+		body: JSON.stringify(request)
+	});
+
+	if (!response.ok) {
+		const { message, body } = await parseErrorBody(response);
+		throw new ApiError(response.status, message, body);
+	}
+
+	return response.json();
 }
 
 export async function getCurrentUser(
@@ -38,6 +73,28 @@ export async function updateCurrentUser(
 ): Promise<AppUserResponse> {
 	const response = await fetchFn(`${getApiBase()}/api/users/me`, {
 		method: 'PUT',
+		headers: {
+			'Content-Type': 'application/json',
+			Authorization: `Bearer ${accessToken}`
+		},
+		body: JSON.stringify(request)
+	});
+
+	if (!response.ok) {
+		const { message, body } = await parseErrorBody(response);
+		throw new ApiError(response.status, message, body);
+	}
+
+	return response.json();
+}
+
+export async function completeOnboarding(
+	accessToken: string,
+	request: CompleteOnboardingRequest,
+	fetchFn: typeof fetch = fetch
+): Promise<AppUserResponse> {
+	const response = await fetchFn(`${getApiBase()}/api/users/me/onboarding`, {
+		method: 'PATCH',
 		headers: {
 			'Content-Type': 'application/json',
 			Authorization: `Bearer ${accessToken}`

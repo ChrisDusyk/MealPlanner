@@ -47,7 +47,7 @@ public class GetSharedWithMeTests
 			db.Users.Add(new UserEntity
 			{
 				Id = Guid.NewGuid(),
-				Auth0UserId = "owner1",
+				AuthUserId = "owner1",
 				Name = "Morgan",
 				Email = "morgan@example.com",
 				CreatedAt = DateTime.UtcNow,

@@ -1,5 +1,6 @@
 using MealPlanner.Api.Data;
 using MealPlanner.Api.Data.Entities;
+using MealPlanner.Api.Features.Users.Mappers;
 using MealPlanner.Api.Features.Users.Models;
 using MealPlanner.Api.Shared;
 using Microsoft.EntityFrameworkCore;
@@ -45,13 +46,5 @@ public class FindUserByEmailQueryHandler(MealPlannerDbContext db)
 		}
 	}
 
-	internal static User MapToDomain(UserEntity entity) =>
-		new(
-			Id: entity.Id.ToString(),
-			Auth0UserId: entity.Auth0UserId,
-			Name: entity.Name,
-			Email: Option<string>.From(entity.Email),
-			CreatedAt: entity.CreatedAt,
-			UpdatedAt: entity.UpdatedAt
-		);
+	internal static User MapToDomain(UserEntity entity) => UserMapper.ToDomain(entity);
 }

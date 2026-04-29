@@ -48,6 +48,56 @@ public class RbacAuthorizationTests
 		Assert.Contains("admin", roles);
 	}
 
+	[Fact]
+	public void ExtractRoles_AcceptsNativeBetterAuthRoleClaim()
+	{
+		// Better Auth's admin plugin emits the standard unprefixed `role` claim;
+		// the API must accept it going forward so we can retire the legacy
+		// namespaced claim without impacting clients.
+		var identity = new ClaimsIdentity(
+		[
+			new Claim(RbacAuthorization.NativeRoleClaimType, "admin"),
+			new Claim(ClaimTypes.NameIdentifier, "better-auth|test-user")
+		], "Test");
+		var principal = new ClaimsPrincipal(identity);
+
+		Assert.True(RbacAuthorization.IsAdminAuthorized(principal));
+		Assert.Contains("admin", RbacAuthorization.ExtractRoles(principal));
+	}
+
+	[Fact]
+	public void ExtractRoles_AcceptsClaimTypesRoleClaim()
+	{
+		// AddJwtBearer may map incoming `role` JWT claims into the canonical
+		// System.Security.Claims.ClaimTypes.Role via its configured role claim
+		// type; this test guards that path explicitly.
+		var identity = new ClaimsIdentity(
+		[
+			new Claim(ClaimTypes.Role, "user"),
+			new Claim(ClaimTypes.NameIdentifier, "better-auth|test-user")
+		], "Test");
+		var principal = new ClaimsPrincipal(identity);
+
+		Assert.True(RbacAuthorization.IsUserAuthorized(principal));
+	}
+
+	[Fact]
+	public void ExtractRoles_MergesClaimsFromMultipleSources()
+	{
+		var identity = new ClaimsIdentity(
+		[
+			new Claim(RbacAuthorization.RoleClaimType, "user"),
+			new Claim(RbacAuthorization.NativeRoleClaimType, "admin"),
+			new Claim(ClaimTypes.NameIdentifier, "better-auth|test-user")
+		], "Test");
+		var principal = new ClaimsPrincipal(identity);
+
+		var roles = RbacAuthorization.ExtractRoles(principal);
+
+		Assert.Contains("user", roles);
+		Assert.Contains("admin", roles);
+	}
+
 	private static ClaimsPrincipal CreatePrincipal(string roleClaimValue)
 	{
 		var identity = new ClaimsIdentity(

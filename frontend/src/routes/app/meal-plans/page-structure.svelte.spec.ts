@@ -8,11 +8,13 @@ function buildData() {
 	return {
 		session: {
 			user: {
+				id: 'user-1',
 				name: 'Test User',
-				email: 'test@example.com'
+				email: 'test@example.com',
+				role: 'user'
 			},
-			expires: new Date(Date.now() + 60_000).toISOString(),
-			accessToken: 'test-access-token'
+			accessToken: 'test-access-token',
+			roles: ['user']
 		},
 		appUser: null,
 		mealPlan: {

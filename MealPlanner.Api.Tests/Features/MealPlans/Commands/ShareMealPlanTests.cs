@@ -41,7 +41,7 @@ public class ShareMealPlanTests
 			db.Users.Add(new UserEntity
 			{
 				Id = Guid.NewGuid(),
-				Auth0UserId = "owner1",
+				AuthUserId = "owner1",
 				Name = "Owner",
 				Email = "owner@example.com",
 				CreatedAt = now,
@@ -68,7 +68,7 @@ public class ShareMealPlanTests
 				new UserEntity
 				{
 					Id = Guid.NewGuid(),
-					Auth0UserId = "owner1",
+					AuthUserId = "owner1",
 					Name = "Owner",
 					Email = "owner@example.com",
 					CreatedAt = now,
@@ -77,7 +77,7 @@ public class ShareMealPlanTests
 				new UserEntity
 				{
 					Id = Guid.NewGuid(),
-					Auth0UserId = "recipient1",
+					AuthUserId = "recipient1",
 					Name = "Recipient",
 					Email = "recipient@example.com",
 					CreatedAt = now,
@@ -114,7 +114,7 @@ public class ShareMealPlanTests
 				new UserEntity
 				{
 					Id = Guid.NewGuid(),
-					Auth0UserId = "owner1",
+					AuthUserId = "owner1",
 					Name = "Owner",
 					Email = "owner@example.com",
 					CreatedAt = now,
@@ -123,7 +123,7 @@ public class ShareMealPlanTests
 				new UserEntity
 				{
 					Id = Guid.NewGuid(),
-					Auth0UserId = "recipient1",
+					AuthUserId = "recipient1",
 					Name = "Recipient",
 					Email = "recipient@example.com",
 					CreatedAt = now,

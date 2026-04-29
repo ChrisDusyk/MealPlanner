@@ -4,6 +4,7 @@ import {
 	LogLevel,
 	type HubConnection
 } from '@microsoft/signalr';
+import { getHubUrlCandidates, isSignalRHubNotFoundError } from '$lib/realtime/hubUrl';
 
 export interface FriendsUpdatedEvent {
 	eventType: string;
@@ -41,20 +42,38 @@ export class FriendsRealtimeClient {
 			return;
 		}
 
-		const connection = new HubConnectionBuilder()
-			.withUrl('/hubs/friends', {
-				accessTokenFactory: () => getRealtimeAccessToken(this.fetchFn)
-			})
-			.withAutomaticReconnect()
-			.configureLogging(LogLevel.Warning)
-			.build();
+		const candidates = getHubUrlCandidates('/hubs/friends');
+		let lastError: unknown;
 
-		connection.on('friendsUpdated', (event: FriendsUpdatedEvent) => {
-			onFriendsUpdated(event);
-		});
+		for (let i = 0; i < candidates.length; i += 1) {
+			const connection = new HubConnectionBuilder()
+				.withUrl(candidates[i], {
+					accessTokenFactory: () => getRealtimeAccessToken(this.fetchFn)
+				})
+				.withAutomaticReconnect()
+				.configureLogging(LogLevel.Warning)
+				.build();
 
-		await connection.start();
-		this.connection = connection;
+			connection.on('friendsUpdated', (event: FriendsUpdatedEvent) => {
+				onFriendsUpdated(event);
+			});
+
+			try {
+				await connection.start();
+				this.connection = connection;
+				return;
+			} catch (error) {
+				lastError = error;
+				const canRetry = i < candidates.length - 1 && isSignalRHubNotFoundError(error);
+				if (!canRetry) {
+					throw error;
+				}
+			}
+		}
+
+		if (lastError) {
+			throw lastError;
+		}
 	}
 
 	async stop(): Promise<void> {

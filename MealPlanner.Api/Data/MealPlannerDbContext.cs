@@ -32,7 +32,7 @@ public class MealPlannerDbContext(DbContextOptions<MealPlannerDbContext> options
 		{
 			entity.ToTable("users");
 			entity.HasKey(e => e.Id);
-			entity.HasIndex(e => e.Auth0UserId).IsUnique();
+			entity.HasIndex(e => e.AuthUserId).IsUnique();
 		});
 
 		// ── Friendships ──
@@ -67,7 +67,7 @@ public class MealPlannerDbContext(DbContextOptions<MealPlannerDbContext> options
 			entity.HasIndex(e => e.UserId);
 			if (isNpgsql)
 			{
-				entity.Property(e => e.Ingredients).HasColumnType("jsonb");
+				ConfigureNpgsqlJsonProperty(entity.Property(e => e.Ingredients));
 			}
 			else
 			{
@@ -83,7 +83,7 @@ public class MealPlannerDbContext(DbContextOptions<MealPlannerDbContext> options
 			entity.HasIndex(e => new { e.UserId, e.WeekStart }).IsUnique();
 			if (isNpgsql)
 			{
-				entity.Property(e => e.Days).HasColumnType("jsonb");
+				ConfigureNpgsqlJsonProperty(entity.Property(e => e.Days));
 			}
 			else
 			{
@@ -107,8 +107,8 @@ public class MealPlannerDbContext(DbContextOptions<MealPlannerDbContext> options
 			entity.HasIndex(e => new { e.UserId, e.WeekStart }).IsUnique();
 			if (isNpgsql)
 			{
-				entity.Property(e => e.Items).HasColumnType("jsonb");
-				entity.Property(e => e.PantryStapleItems).HasColumnType("jsonb");
+				ConfigureNpgsqlJsonProperty(entity.Property(e => e.Items));
+				ConfigureNpgsqlJsonProperty(entity.Property(e => e.PantryStapleItems));
 			}
 			else
 			{
@@ -134,7 +134,7 @@ public class MealPlannerDbContext(DbContextOptions<MealPlannerDbContext> options
 			entity.HasIndex(e => new { e.GoogleSubject, e.Provider }).IsUnique();
 			if (isNpgsql)
 			{
-				entity.Property(e => e.Scopes).HasColumnType("jsonb");
+				ConfigureNpgsqlJsonProperty(entity.Property(e => e.Scopes));
 			}
 			else
 			{
@@ -161,6 +161,19 @@ public class MealPlannerDbContext(DbContextOptions<MealPlannerDbContext> options
 				? new T()
 				: JsonSerializer.Deserialize<T>(value, JsonOptions) ?? new T());
 
+		SetJsonValueComparer(property);
+	}
+
+	private static void ConfigureNpgsqlJsonProperty<T>(PropertyBuilder<T> property)
+		where T : class, new()
+	{
+		property.HasColumnType("jsonb");
+		SetJsonValueComparer(property);
+	}
+
+	private static void SetJsonValueComparer<T>(PropertyBuilder<T> property)
+		where T : class, new()
+	{
 		property.Metadata.SetValueComparer(new ValueComparer<T>(
 			(left, right) => JsonSerializer.Serialize(left, JsonOptions) == JsonSerializer.Serialize(right, JsonOptions),
 			value => JsonSerializer.Serialize(value, JsonOptions).GetHashCode(),

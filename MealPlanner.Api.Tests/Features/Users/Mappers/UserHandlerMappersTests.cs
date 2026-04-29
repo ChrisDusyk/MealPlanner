@@ -11,7 +11,7 @@ public class UserHandlerMappersTests
 		return new UserEntity
 		{
 			Id = Guid.Parse("11111111-1111-1111-1111-111111111111"),
-			Auth0UserId = "auth0|123",
+			AuthUserId = "auth0|123",
 			Name = "Pat",
 			Email = email,
 			CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
@@ -39,9 +39,9 @@ public class UserHandlerMappersTests
 	}
 
 	[Fact]
-	public void FindUserByAuth0Id_MapToDomain_MapsEmailSome_WhenPresent()
+	public void FindUserByAuthId_MapToDomain_MapsEmailSome_WhenPresent()
 	{
-		var user = FindUserByAuth0IdQueryHandler.MapToDomain(CreateEntity("pat@example.com"));
+		var user = FindUserByAuthIdQueryHandler.MapToDomain(CreateEntity("pat@example.com"));
 
 		Assert.Equal("11111111-1111-1111-1111-111111111111", user.Id);
 		Assert.True(user.Email.HasValue);

@@ -17,6 +17,8 @@ using MealPlanner.Api.Shared;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.IdentityModel.Protocols;
+using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using System.Security.Claims;
 using System.Threading.RateLimiting;
 
@@ -104,12 +106,35 @@ builder.Services.AddScoped<IClaudeIngredientExtractorClient, ClaudeIngredientExt
 builder.Services.AddScoped<IRecipeIngredientImportService, RecipeIngredientImportService>();
 
 // Authentication & Authorization
+//
+// Better Auth hosts the JWT plugin inside the SvelteKit frontend. Its JWKS document
+// is served at `{Authority}/api/auth/jwks` (not a full OIDC discovery document), so
+// we plug in a small retriever that wraps the JWKS in an OpenIdConnectConfiguration
+// for the standard JwtBearer ConfigurationManager pipeline.
+var authAuthority = builder.Configuration["Authentication:Authority"]?.TrimEnd('/');
+var authAudience = builder.Configuration["Authentication:Audience"];
 builder.Services.AddAuthentication()
 	.AddJwtBearer(options =>
 	{
-		options.Authority = builder.Configuration["Authentication:Authority"];
-		options.Audience = builder.Configuration["Authentication:Audience"];
+		options.Authority = authAuthority;
+		options.Audience = authAudience;
 		options.TokenValidationParameters.ValidateAudience = true;
+		options.TokenValidationParameters.ValidateIssuer = true;
+		if (!string.IsNullOrWhiteSpace(authAuthority))
+		{
+			options.TokenValidationParameters.ValidIssuer = authAuthority;
+		}
+
+		if (!string.IsNullOrWhiteSpace(authAuthority))
+		{
+			var jwksAddress = $"{authAuthority}/api/auth/jwks";
+			var requireHttps = !builder.Environment.IsDevelopment();
+			options.ConfigurationManager = new ConfigurationManager<OpenIdConnectConfiguration>(
+				jwksAddress,
+				new BetterAuthJwksConfigurationRetriever(),
+				new HttpDocumentRetriever { RequireHttps = requireHttps });
+		}
+
 		options.Events = new JwtBearerEvents
 		{
 			OnMessageReceived = context =>
