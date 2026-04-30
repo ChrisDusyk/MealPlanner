@@ -35,10 +35,10 @@ public class ListAllCatalogueRecipesQueryHandler(MealPlannerDbContext db)
 
 			if (!string.IsNullOrWhiteSpace(query.Search))
 			{
-				var search = $"%{query.Search.Trim()}%";
+				var search = query.Search.Trim().ToLower();
 				q = q.Where(r =>
-					EF.Functions.ILike(r.Name, search) ||
-					EF.Functions.ILike(r.Description, search));
+					r.Name.ToLower().Contains(search) ||
+					r.Description.ToLower().Contains(search));
 			}
 
 			var entities = await q
