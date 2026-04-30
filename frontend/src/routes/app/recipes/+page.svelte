@@ -1,8 +1,11 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
+	import CatalogueBrowserModal from '$lib/components/CatalogueBrowserModal.svelte';
 	import RecipeCard from '$lib/components/RecipeCard.svelte';
 
 	let { data } = $props();
+
+	let catalogueOpen = $state(false);
 </script>
 
 <svelte:head>
@@ -18,22 +21,45 @@
 				Manage your collection of recipes and discover new meal ideas.
 			</p>
 		</div>
-		<a
-			href={resolve('/app/recipes/new')}
-			class="flex w-fit items-center gap-2 rounded-lg bg-green-600 px-5 py-2.5 font-display text-sm font-semibold text-white shadow-md shadow-green-900/20 transition-all hover:bg-green-700 hover:shadow-lg"
-		>
-			<svg
-				xmlns="http://www.w3.org/2000/svg"
-				class="h-5 w-5"
-				fill="none"
-				viewBox="0 0 24 24"
-				stroke="currentColor"
-				stroke-width="2"
+		<div class="flex flex-wrap gap-2">
+			<button
+				type="button"
+				onclick={() => (catalogueOpen = true)}
+				class="flex w-fit items-center gap-2 rounded-lg border border-green-300 bg-white px-5 py-2.5 font-display text-sm font-semibold text-green-700 shadow-sm transition-all hover:bg-green-50"
 			>
-				<path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
-			</svg>
-			Add Recipe
-		</a>
+				<svg
+					xmlns="http://www.w3.org/2000/svg"
+					class="h-5 w-5"
+					fill="none"
+					viewBox="0 0 24 24"
+					stroke="currentColor"
+					stroke-width="2"
+				>
+					<path
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25"
+					/>
+				</svg>
+				Browse catalogue
+			</button>
+			<a
+				href={resolve('/app/recipes/new')}
+				class="flex w-fit items-center gap-2 rounded-lg bg-green-600 px-5 py-2.5 font-display text-sm font-semibold text-white shadow-md shadow-green-900/20 transition-all hover:bg-green-700 hover:shadow-lg"
+			>
+				<svg
+					xmlns="http://www.w3.org/2000/svg"
+					class="h-5 w-5"
+					fill="none"
+					viewBox="0 0 24 24"
+					stroke="currentColor"
+					stroke-width="2"
+				>
+					<path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+				</svg>
+				Add Recipe
+			</a>
+		</div>
 	</div>
 
 	{#if data.recipes.length === 0}
@@ -64,6 +90,13 @@
 				You haven't added any recipes to your collection. Start building your meal plan by adding
 				your first recipe!
 			</p>
+			<button
+				type="button"
+				onclick={() => (catalogueOpen = true)}
+				class="mt-4 inline-flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-700"
+			>
+				Browse catalogue
+			</button>
 		</div>
 	{:else}
 		<!-- Recipe grid -->
@@ -74,3 +107,9 @@
 		</div>
 	{/if}
 </div>
+
+<CatalogueBrowserModal
+	open={catalogueOpen}
+	accessToken={data.session.accessToken}
+	onClose={() => (catalogueOpen = false)}
+/>
