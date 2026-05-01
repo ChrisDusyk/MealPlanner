@@ -37,10 +37,14 @@ public class ListAllCatalogueRecipesQueryHandler(MealPlannerDbContext db)
 			{
 				if (db.Database.ProviderName?.Contains("Npgsql", StringComparison.OrdinalIgnoreCase) == true)
 				{
-					var pattern = $"%{query.Search.Trim()}%";
+					var escaped = query.Search.Trim()
+						.Replace(@"\", @"\\")
+						.Replace("%", @"\%")
+						.Replace("_", @"\_");
+					var pattern = $"%{escaped}%";
 					q = q.Where(r =>
-						EF.Functions.ILike(r.Name, pattern) ||
-						EF.Functions.ILike(r.Description, pattern));
+						EF.Functions.ILike(r.Name, pattern, @"\") ||
+						EF.Functions.ILike(r.Description, pattern, @"\"));
 				}
 				else
 				{
