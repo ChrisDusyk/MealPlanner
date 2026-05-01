@@ -63,8 +63,16 @@ internal sealed class DbMigrator(
 			.ToArray();
 
 		db.CatalogueTags.AddRange(entities);
-		await db.SaveChangesAsync(cancellationToken);
 
-		logger.LogInformation("Seeded {Count} default catalogue tags.", entities.Length);
+		try
+		{
+			await db.SaveChangesAsync(cancellationToken);
+			logger.LogInformation("Seeded {Count} default catalogue tags.", entities.Length);
+		}
+		catch (DbUpdateException ex) when (ex.InnerException is Npgsql.PostgresException { SqlState: "23505" })
+		{
+			logger.LogInformation(
+				"Catalogue tags were seeded by another concurrent migrator instance; skipping seed.");
+		}
 	}
 }
