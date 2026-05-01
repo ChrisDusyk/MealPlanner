@@ -18,6 +18,12 @@ public class RecipeEntity
 	public string? SourceUrl { get; set; }
 
 	/// <summary>
+	/// When this recipe was added by copying from the admin-curated catalogue,
+	/// the source catalogue recipe ID. Used to prevent duplicate adds.
+	/// </summary>
+	public Guid? CatalogueRecipeId { get; set; }
+
+	/// <summary>
 	/// Stored as jsonb in PostgreSQL.
 	/// </summary>
 	public List<IngredientData> Ingredients { get; set; } = [];

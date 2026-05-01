@@ -4,6 +4,7 @@ using MealPlanner.Api.Features.GroceryLists;
 using MealPlanner.Api.Features.GroceryLists.Realtime;
 using MealPlanner.Api.Features.Admin;
 using MealPlanner.Api.Features.Auth;
+using MealPlanner.Api.Features.Catalogue;
 using MealPlanner.Api.Features.Integrations.GoogleKeep;
 using MealPlanner.Api.Features.Integrations.GoogleKeep.Options;
 using MealPlanner.Api.Features.Integrations.GoogleKeep.Services;
@@ -212,6 +213,8 @@ app.MapGroceryListEndpoints();
 app.MapUserEndpoints();
 app.MapGoogleKeepEndpoints();
 app.MapAdminEndpoints();
+app.MapCatalogueEndpoints();
+app.MapAdminCatalogueEndpoints();
 app.MapHub<GroceryListHub>(GroceryListHub.HubRoute)
 	.RequireAuthorization(RbacAuthorization.RequireUserRolePolicy);
 app.MapHub<MealPlanHub>(MealPlanHub.HubRoute)

@@ -21,6 +21,9 @@ public class MealPlannerDbContext(DbContextOptions<MealPlannerDbContext> options
 	public DbSet<GroceryListShareEntity> GroceryListShares => Set<GroceryListShareEntity>();
 	public DbSet<GoogleIntegrationConnectionEntity> GoogleIntegrationConnections => Set<GoogleIntegrationConnectionEntity>();
 	public DbSet<GroceryListExportLinkEntity> GroceryListExportLinks => Set<GroceryListExportLinkEntity>();
+	public DbSet<CatalogueRecipeEntity> CatalogueRecipes => Set<CatalogueRecipeEntity>();
+	public DbSet<CatalogueTagEntity> CatalogueTags => Set<CatalogueTagEntity>();
+	public DbSet<CatalogueRecipeTagEntity> CatalogueRecipeTags => Set<CatalogueRecipeTagEntity>();
 
 	protected override void OnModelCreating(ModelBuilder modelBuilder)
 	{
@@ -65,6 +68,17 @@ public class MealPlannerDbContext(DbContextOptions<MealPlannerDbContext> options
 			entity.ToTable("recipes");
 			entity.HasKey(e => e.Id);
 			entity.HasIndex(e => e.UserId);
+			// Enforces one-copy-per-user when a recipe is added from the catalogue.
+			// In Postgres, this is enforced by the filtered unique index below when
+			// CatalogueRecipeId is not null. EF Core's InMemory provider does not
+			// enforce unique indexes/constraints, so tests rely on the explicit
+			// duplicate-prevention check in application code instead.
+			var catalogueIndex = entity.HasIndex(e => new { e.UserId, e.CatalogueRecipeId })
+				.IsUnique();
+			if (isNpgsql)
+			{
+				catalogueIndex.HasFilter("\"CatalogueRecipeId\" IS NOT NULL");
+			}
 			if (isNpgsql)
 			{
 				ConfigureNpgsqlJsonProperty(entity.Property(e => e.Ingredients));
@@ -73,6 +87,47 @@ public class MealPlannerDbContext(DbContextOptions<MealPlannerDbContext> options
 			{
 				ConfigureJsonProperty(entity.Property(e => e.Ingredients));
 			}
+		});
+
+		// ── Catalogue Recipes ──
+		modelBuilder.Entity<CatalogueRecipeEntity>(entity =>
+		{
+			entity.ToTable("catalogue_recipes");
+			entity.HasKey(e => e.Id);
+			entity.HasIndex(e => e.IsPublished);
+			entity.HasIndex(e => e.PublishedAt);
+			if (isNpgsql)
+			{
+				ConfigureNpgsqlJsonProperty(entity.Property(e => e.Ingredients));
+			}
+			else
+			{
+				ConfigureJsonProperty(entity.Property(e => e.Ingredients));
+			}
+		});
+
+		// ── Catalogue Tags ──
+		modelBuilder.Entity<CatalogueTagEntity>(entity =>
+		{
+			entity.ToTable("catalogue_tags");
+			entity.HasKey(e => e.Id);
+			entity.HasIndex(e => e.Slug).IsUnique();
+		});
+
+		// ── Catalogue Recipe ↔ Tag join ──
+		modelBuilder.Entity<CatalogueRecipeTagEntity>(entity =>
+		{
+			entity.ToTable("catalogue_recipe_tags");
+			entity.HasKey(e => new { e.CatalogueRecipeId, e.TagId });
+			entity.HasOne(e => e.CatalogueRecipe)
+				.WithMany(r => r.Tags)
+				.HasForeignKey(e => e.CatalogueRecipeId)
+				.OnDelete(DeleteBehavior.Cascade);
+			entity.HasOne(e => e.Tag)
+				.WithMany(t => t.RecipeTags)
+				.HasForeignKey(e => e.TagId)
+				.OnDelete(DeleteBehavior.Restrict);
+			entity.HasIndex(e => e.TagId);
 		});
 
 		// ── Meal Plans ──
