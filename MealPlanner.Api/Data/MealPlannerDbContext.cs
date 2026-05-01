@@ -69,9 +69,10 @@ public class MealPlannerDbContext(DbContextOptions<MealPlannerDbContext> options
 			entity.HasKey(e => e.Id);
 			entity.HasIndex(e => e.UserId);
 			// Enforces one-copy-per-user when a recipe is added from the catalogue.
-			// The partial filter only applies on Postgres; in-memory tests treat the
-			// index as a regular composite index, which is still correct for the
-			// duplicate-prevention check (pairs are only set when copied).
+			// In Postgres, this is enforced by the filtered unique index below when
+			// CatalogueRecipeId is not null. EF Core's InMemory provider does not
+			// enforce unique indexes/constraints, so tests rely on the explicit
+			// duplicate-prevention check in application code instead.
 			var catalogueIndex = entity.HasIndex(e => new { e.UserId, e.CatalogueRecipeId })
 				.IsUnique();
 			if (isNpgsql)

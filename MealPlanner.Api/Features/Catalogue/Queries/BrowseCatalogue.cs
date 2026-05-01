@@ -52,7 +52,7 @@ public class BrowseCatalogueQueryHandler(MealPlannerDbContext db)
 			if (query.TagSlugs is { Count: > 0 })
 			{
 				var slugs = query.TagSlugs.Select(s => s.ToLowerInvariant()).ToList();
-				q = q.Where(r => r.Tags.Any(t => slugs.Contains(t.Tag.Slug.ToLower())));
+				q = q.Where(r => r.Tags.Any(t => slugs.Contains(t.Tag.Slug)));
 			}
 
 			q = query.Sort switch
