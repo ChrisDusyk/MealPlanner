@@ -43,10 +43,20 @@ public class BrowseCatalogueQueryHandler(MealPlannerDbContext db)
 
 			if (!string.IsNullOrWhiteSpace(query.Search))
 			{
-				var search = query.Search.Trim().ToLower();
-				q = q.Where(r =>
-					r.Name.ToLower().Contains(search) ||
-					r.Description.ToLower().Contains(search));
+				if (db.Database.ProviderName?.Contains("Npgsql", StringComparison.OrdinalIgnoreCase) == true)
+				{
+					var pattern = $"%{query.Search.Trim()}%";
+					q = q.Where(r =>
+						EF.Functions.ILike(r.Name, pattern) ||
+						EF.Functions.ILike(r.Description, pattern));
+				}
+				else
+				{
+					var search = query.Search.Trim().ToLower();
+					q = q.Where(r =>
+						r.Name.ToLower().Contains(search) ||
+						r.Description.ToLower().Contains(search));
+				}
 			}
 
 			if (query.TagSlugs is { Count: > 0 })
