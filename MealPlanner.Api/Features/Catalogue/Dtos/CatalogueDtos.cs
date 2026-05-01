@@ -113,11 +113,11 @@ public record CatalogueRecipeListItemResponse(
 /// </summary>
 public record CreateCatalogueRecipeRequest(
 	[property: Required] string Name,
-	string Description,
+	[property: Required] string Description,
 	string? SourceUrl,
 	string? ImageUrl,
-	List<CatalogueIngredientDto> Ingredients,
-	List<Guid> TagIds,
+	[property: Required] List<CatalogueIngredientDto> Ingredients,
+	[property: Required] List<Guid> TagIds,
 	[property: Range(1, int.MaxValue)] int Servings = 1,
 	bool IsPublished = false
 );
