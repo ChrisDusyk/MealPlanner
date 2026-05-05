@@ -1,12 +1,6 @@
 <script lang="ts">
 	import { invalidateAll } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import {
-		adminCreateCatalogueTag,
-		adminDeleteCatalogueTag,
-		adminUpdateCatalogueTag
-	} from '$lib/api/adminCatalogueApi';
-	import { ApiError } from '$lib/api/apiHelpers';
 	import type { CatalogueTag } from '$lib/api/catalogueApi';
 	import type { PageData } from './$types';
 
@@ -22,6 +16,18 @@
 	let editSlug = $state('');
 	let editError = $state<string | null>(null);
 	let savingId = $state<string | null>(null);
+
+	async function readErrorMessage(response: Response, fallback: string): Promise<string> {
+		const contentType = response.headers.get('content-type') || '';
+		if (contentType.includes('application/json')) {
+			const body = await response.json().catch(() => ({}));
+			if (typeof body?.error === 'string' && body.error) return body.error;
+			if (typeof body?.message === 'string' && body.message) return body.message;
+		}
+
+		const text = await response.text().catch(() => '');
+		return text || fallback;
+	}
 
 	function slugify(value: string): string {
 		return value
@@ -45,10 +51,19 @@
 		creating = true;
 		newError = null;
 		try {
-			await adminCreateCatalogueTag(data.session.accessToken, {
+			const response = await fetch('/app/admin/catalogue/tags', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
 				name: newName.trim(),
 				slug: newSlug.trim()
+				})
 			});
+
+			if (!response.ok) {
+				throw new Error(await readErrorMessage(response, 'Failed to create tag'));
+			}
+
 			newName = '';
 			newSlug = '';
 			await invalidateAll();
@@ -75,10 +90,19 @@
 		savingId = id;
 		editError = null;
 		try {
-			await adminUpdateCatalogueTag(data.session.accessToken, id, {
+			const response = await fetch(`/app/admin/catalogue/tags/${encodeURIComponent(id)}`, {
+				method: 'PUT',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
 				name: editName.trim(),
 				slug: editSlug.trim()
+				})
 			});
+
+			if (!response.ok) {
+				throw new Error(await readErrorMessage(response, 'Failed to update tag'));
+			}
+
 			editId = null;
 			await invalidateAll();
 		} catch (err) {
@@ -91,14 +115,22 @@
 	async function deleteTag(tag: CatalogueTag) {
 		if (!confirm(`Delete tag "${tag.name}"?`)) return;
 		try {
-			await adminDeleteCatalogueTag(data.session.accessToken, tag.id);
+			const response = await fetch(`/app/admin/catalogue/tags/${encodeURIComponent(tag.id)}`, {
+				method: 'DELETE'
+			});
+
+			if (!response.ok) {
+				if (response.status === 409) {
+					alert('Cannot delete: tag is in use by one or more recipes.');
+					return;
+				}
+
+				throw new Error(await readErrorMessage(response, 'Failed to delete tag'));
+			}
+
 			await invalidateAll();
 		} catch (err) {
-			if (err instanceof ApiError && err.status === 409) {
-				alert('Cannot delete: tag is in use by one or more recipes.');
-			} else {
-				alert(err instanceof Error ? err.message : 'Failed to delete tag');
-			}
+			alert(err instanceof Error ? err.message : 'Failed to delete tag');
 		}
 	}
 </script>

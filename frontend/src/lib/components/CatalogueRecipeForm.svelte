@@ -4,7 +4,7 @@
 		CreateCatalogueRecipeRequest,
 		UpdateCatalogueRecipeRequest
 	} from '$lib/api/adminCatalogueApi';
-	import { adminImportCatalogueFromUrl } from '$lib/api/adminCatalogueApi';
+	import type { ImportIngredientsResponse } from '$lib/api/recipeApi';
 	import { untrack } from 'svelte';
 
 	export interface CatalogueRecipeFormData {
@@ -21,7 +21,6 @@
 	let {
 		initialData,
 		availableTags,
-		accessToken,
 		mode,
 		submitting = false,
 		errorMessage = '',
@@ -30,7 +29,6 @@
 	}: {
 		initialData?: CatalogueRecipeFormData;
 		availableTags: CatalogueTag[];
-		accessToken: string;
 		mode: 'create' | 'edit';
 		submitting?: boolean;
 		errorMessage?: string;
@@ -146,7 +144,27 @@
 		}
 		importBusy = true;
 		try {
-			const result = await adminImportCatalogueFromUrl(accessToken, url);
+			const response = await fetch('/app/admin/catalogue/import-from-url', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ sourceUrl: url })
+			});
+
+			if (!response.ok) {
+				const contentType = response.headers.get('content-type') || '';
+				if (contentType.includes('application/json')) {
+					const body = await response.json().catch(() => ({}));
+					const message =
+						typeof body?.error === 'string' && body.error
+							? body.error
+							: 'Failed to import ingredients';
+					throw new Error(message);
+				}
+
+				throw new Error((await response.text()) || 'Failed to import ingredients');
+			}
+
+			const result = (await response.json()) as ImportIngredientsResponse;
 			if (result.recipeName && !name.trim()) name = result.recipeName;
 			if (typeof result.servings === 'number' && servings === 1) servings = result.servings;
 			ingredients = result.ingredients.map((ing, i) => ({ ...ing, _id: nextId + i }));

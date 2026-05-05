@@ -2,11 +2,6 @@
 	import { goto, invalidateAll } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { untrack } from 'svelte';
-	import {
-		adminDeleteCatalogueRecipe,
-		adminSetCatalogueRecipePublished,
-		adminUpdateCatalogueRecipe
-	} from '$lib/api/adminCatalogueApi';
 	import CatalogueRecipeForm from '$lib/components/CatalogueRecipeForm.svelte';
 	import type { CatalogueRecipeFormData } from '$lib/components/CatalogueRecipeForm.svelte';
 	import type { PageData } from './$types';
@@ -16,6 +11,18 @@
 	let submitting = $state(false);
 	let errorMessage = $state('');
 	let publishBusy = $state(false);
+
+	async function readErrorMessage(response: Response, fallback: string): Promise<string> {
+		const contentType = response.headers.get('content-type') || '';
+		if (contentType.includes('application/json')) {
+			const body = await response.json().catch(() => ({}));
+			if (typeof body?.error === 'string' && body.error) return body.error;
+			if (typeof body?.message === 'string' && body.message) return body.message;
+		}
+
+		const text = await response.text().catch(() => '');
+		return text || fallback;
+	}
 
 	const initialData: CatalogueRecipeFormData = untrack(() => ({
 		name: data.recipe.name,
@@ -32,7 +39,16 @@
 		submitting = true;
 		errorMessage = '';
 		try {
-			await adminUpdateCatalogueRecipe(data.session.accessToken, data.recipe.id, payload);
+			const response = await fetch(`/app/admin/catalogue/${encodeURIComponent(data.recipe.id)}`, {
+				method: 'PUT',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(payload)
+			});
+
+			if (!response.ok) {
+				throw new Error(await readErrorMessage(response, 'Failed to save recipe'));
+			}
+
 			await invalidateAll();
 		} catch (err) {
 			errorMessage = err instanceof Error ? err.message : 'Failed to save recipe';
@@ -44,11 +60,19 @@
 	async function togglePublished() {
 		publishBusy = true;
 		try {
-			await adminSetCatalogueRecipePublished(
-				data.session.accessToken,
-				data.recipe.id,
-				!data.recipe.isPublished
+			const response = await fetch(
+				`/app/admin/catalogue/${encodeURIComponent(data.recipe.id)}/published`,
+				{
+					method: 'PUT',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ isPublished: !data.recipe.isPublished })
+				}
 			);
+
+			if (!response.ok) {
+				throw new Error(await readErrorMessage(response, 'Failed to update'));
+			}
+
 			await invalidateAll();
 		} catch (err) {
 			errorMessage = err instanceof Error ? err.message : 'Failed to update';
@@ -60,7 +84,14 @@
 	async function deleteRecipe() {
 		if (!confirm(`Delete catalogue recipe "${data.recipe.name}"?`)) return;
 		try {
-			await adminDeleteCatalogueRecipe(data.session.accessToken, data.recipe.id);
+			const response = await fetch(`/app/admin/catalogue/${encodeURIComponent(data.recipe.id)}`, {
+				method: 'DELETE'
+			});
+
+			if (!response.ok) {
+				throw new Error(await readErrorMessage(response, 'Failed to delete'));
+			}
+
 			await goto(resolve('/app/admin/catalogue'));
 		} catch (err) {
 			errorMessage = err instanceof Error ? err.message : 'Failed to delete';
@@ -113,7 +144,6 @@
 		mode="edit"
 		{initialData}
 		availableTags={data.tags}
-		accessToken={data.session.accessToken}
 		{submitting}
 		{errorMessage}
 		onsubmit={handleSubmit}

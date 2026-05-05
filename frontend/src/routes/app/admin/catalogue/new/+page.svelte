@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import { adminCreateCatalogueRecipe } from '$lib/api/adminCatalogueApi';
+	import type { CatalogueRecipe } from '$lib/api/catalogueApi';
 	import CatalogueRecipeForm from '$lib/components/CatalogueRecipeForm.svelte';
 	import type { PageData } from './$types';
 
@@ -10,11 +10,33 @@
 	let submitting = $state(false);
 	let errorMessage = $state('');
 
+	async function readErrorMessage(response: Response, fallback: string): Promise<string> {
+		const contentType = response.headers.get('content-type') || '';
+		if (contentType.includes('application/json')) {
+			const body = await response.json().catch(() => ({}));
+			if (typeof body?.error === 'string' && body.error) return body.error;
+			if (typeof body?.message === 'string' && body.message) return body.message;
+		}
+
+		const text = await response.text().catch(() => '');
+		return text || fallback;
+	}
+
 	async function handleSubmit(payload: any) {
 		submitting = true;
 		errorMessage = '';
 		try {
-			const created = await adminCreateCatalogueRecipe(data.session.accessToken, payload);
+			const response = await fetch('/app/admin/catalogue', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(payload)
+			});
+
+			if (!response.ok) {
+				throw new Error(await readErrorMessage(response, 'Failed to create recipe'));
+			}
+
+			const created = (await response.json()) as CatalogueRecipe;
 			await goto(resolve('/app/admin/catalogue/[id]', { id: created.id }));
 		} catch (err) {
 			errorMessage = err instanceof Error ? err.message : 'Failed to create recipe';
@@ -44,7 +66,6 @@
 	<CatalogueRecipeForm
 		mode="create"
 		availableTags={data.tags}
-		accessToken={data.session.accessToken}
 		{submitting}
 		{errorMessage}
 		onsubmit={handleSubmit}

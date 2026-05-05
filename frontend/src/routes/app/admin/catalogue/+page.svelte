@@ -2,10 +2,6 @@
 	import { goto, invalidateAll } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { untrack } from 'svelte';
-	import {
-		adminDeleteCatalogueRecipe,
-		adminSetCatalogueRecipePublished
-	} from '$lib/api/adminCatalogueApi';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -18,6 +14,18 @@
 	);
 	let busyId = $state<string | null>(null);
 	let actionError = $state<string | null>(null);
+
+	async function readErrorMessage(response: Response, fallback: string): Promise<string> {
+		const contentType = response.headers.get('content-type') || '';
+		if (contentType.includes('application/json')) {
+			const body = await response.json().catch(() => ({}));
+			if (typeof body?.error === 'string' && body.error) return body.error;
+			if (typeof body?.message === 'string' && body.message) return body.message;
+		}
+
+		const text = await response.text().catch(() => '');
+		return text || fallback;
+	}
 
 	function applyFilters() {
 		const params = new URLSearchParams();
@@ -32,7 +40,19 @@
 		busyId = id;
 		actionError = null;
 		try {
-			await adminSetCatalogueRecipePublished(data.session.accessToken, id, !current);
+			const response = await fetch(
+				`/app/admin/catalogue/${encodeURIComponent(id)}/published`,
+				{
+					method: 'PUT',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ isPublished: !current })
+				}
+			);
+
+			if (!response.ok) {
+				throw new Error(await readErrorMessage(response, 'Failed to update'));
+			}
+
 			await invalidateAll();
 		} catch (err) {
 			actionError = err instanceof Error ? err.message : 'Failed to update';
@@ -46,7 +66,14 @@
 		busyId = id;
 		actionError = null;
 		try {
-			await adminDeleteCatalogueRecipe(data.session.accessToken, id);
+			const response = await fetch(`/app/admin/catalogue/${encodeURIComponent(id)}`, {
+				method: 'DELETE'
+			});
+
+			if (!response.ok) {
+				throw new Error(await readErrorMessage(response, 'Failed to delete'));
+			}
+
 			await invalidateAll();
 		} catch (err) {
 			actionError = err instanceof Error ? err.message : 'Failed to delete';
