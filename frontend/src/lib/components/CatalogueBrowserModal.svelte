@@ -1,11 +1,6 @@
 <script lang="ts">
 	import { invalidateAll } from '$app/navigation';
 	import {
-		addCatalogueRecipeToMyRecipes,
-		fetchCatalogue,
-		fetchCatalogueRecipe,
-		fetchCatalogueTags,
-		ApiError,
 		type CatalogueRecipe,
 		type CatalogueRecipeListItem,
 		type CatalogueSort,
@@ -16,11 +11,9 @@
 
 	let {
 		open,
-		accessToken,
 		onClose
 	}: {
 		open: boolean;
-		accessToken: string;
 		onClose: () => void;
 	} = $props();
 
@@ -70,9 +63,30 @@
 		}
 	});
 
+	async function readJsonOrNull<T>(response: Response): Promise<T | null> {
+		const contentType = response.headers.get('content-type') || '';
+		if (!contentType.includes('application/json')) {
+			return null;
+		}
+		return (await response.json().catch(() => null)) as T | null;
+	}
+
+	async function readErrorMessage(response: Response, fallback: string): Promise<string> {
+		const body = await readJsonOrNull<{ error?: string; message?: string }>(response);
+		if (body?.error) return body.error;
+		if (body?.message) return body.message;
+		const text = await response.text().catch(() => '');
+		return text || fallback;
+	}
+
 	async function loadTags() {
 		try {
-			tags = await fetchCatalogueTags(accessToken);
+			const response = await fetch('/app/recipes/catalogue/tags');
+			if (!response.ok) {
+				throw new Error(await readErrorMessage(response, 'Failed to load catalogue tags'));
+			}
+			const body = await readJsonOrNull<CatalogueTag[]>(response);
+			tags = body ?? [];
 		} catch (err) {
 			console.error('Failed to load catalogue tags', err);
 		}
@@ -82,12 +96,19 @@
 		loading = true;
 		loadError = null;
 		try {
-			items = await fetchCatalogue(accessToken, {
-				search: debouncedSearch || undefined,
-				tagSlugs: selectedTags.length > 0 ? selectedTags : undefined,
-				sort,
-				take: 60
-			});
+			const params = new URLSearchParams();
+			if (debouncedSearch) params.set('search', debouncedSearch);
+			if (selectedTags.length > 0) params.set('tags', selectedTags.join(','));
+			params.set('sort', sort);
+			params.set('take', '60');
+
+			const query = params.toString();
+			const response = await fetch(`/app/recipes/catalogue${query ? `?${query}` : ''}`);
+			if (!response.ok) {
+				throw new Error(await readErrorMessage(response, 'Failed to load recipes'));
+			}
+			const body = await readJsonOrNull<CatalogueRecipeListItem[]>(response);
+			items = body ?? [];
 		} catch (err) {
 			console.error('Failed to load catalogue', err);
 			loadError = err instanceof Error ? err.message : 'Failed to load recipes';
@@ -115,7 +136,11 @@
 		detailLoading = true;
 		detailError = null;
 		try {
-			detail = await fetchCatalogueRecipe(accessToken, item.id);
+			const response = await fetch(`/app/recipes/catalogue/${encodeURIComponent(item.id)}`);
+			if (!response.ok) {
+				throw new Error(await readErrorMessage(response, 'Failed to load recipe'));
+			}
+			detail = await readJsonOrNull<CatalogueRecipe>(response);
 		} catch (err) {
 			detailError = err instanceof Error ? err.message : 'Failed to load recipe';
 		} finally {
@@ -127,7 +152,20 @@
 		if ('alreadyAdded' in item && item.alreadyAdded) return;
 		addingId = item.id;
 		try {
-			await addCatalogueRecipeToMyRecipes(accessToken, item.id);
+			const response = await fetch(`/app/recipes/catalogue/${encodeURIComponent(item.id)}`, {
+				method: 'POST'
+			});
+
+			if (!response.ok) {
+				if (response.status === 409) {
+					items = items.map((r) => (r.id === item.id ? { ...r, alreadyAdded: true } : r));
+					showToast('That recipe is already in your collection', 'error');
+					return;
+				}
+
+				throw new Error(await readErrorMessage(response, 'Failed to add recipe'));
+			}
+
 			items = items.map((r) => (r.id === item.id ? { ...r, alreadyAdded: true } : r));
 			if (detail && detail.id === item.id) {
 				detail = { ...detail, alreadyAdded: true, addCount: detail.addCount + 1 };
@@ -135,13 +173,8 @@
 			showToast(`Added “${item.name}” to your recipes`);
 			await invalidateAll();
 		} catch (err) {
-			if (err instanceof ApiError && err.status === 409) {
-				items = items.map((r) => (r.id === item.id ? { ...r, alreadyAdded: true } : r));
-				showToast('That recipe is already in your collection', 'error');
-			} else {
-				const message = err instanceof Error ? err.message : 'Failed to add recipe';
-				showToast(message, 'error');
-			}
+			const message = err instanceof Error ? err.message : 'Failed to add recipe';
+			showToast(message, 'error');
 		} finally {
 			addingId = null;
 		}

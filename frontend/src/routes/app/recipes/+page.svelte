@@ -110,6 +110,5 @@
 
 <CatalogueBrowserModal
 	open={catalogueOpen}
-	accessToken={data.session.accessToken}
 	onClose={() => (catalogueOpen = false)}
 />
