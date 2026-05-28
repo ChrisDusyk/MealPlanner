@@ -2,6 +2,10 @@
 	import { goto, invalidateAll } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { untrack } from 'svelte';
+	import type {
+		CreateCatalogueRecipeRequest,
+		UpdateCatalogueRecipeRequest
+	} from '$lib/api/adminCatalogueApi';
 	import CatalogueRecipeForm from '$lib/components/CatalogueRecipeForm.svelte';
 	import type { CatalogueRecipeFormData } from '$lib/components/CatalogueRecipeForm.svelte';
 	import type { PageData } from './$types';
@@ -35,7 +39,7 @@
 		isPublished: data.recipe.isPublished
 	}));
 
-	async function handleSubmit(payload: any) {
+	async function handleSubmit(payload: CreateCatalogueRecipeRequest | UpdateCatalogueRecipeRequest) {
 		submitting = true;
 		errorMessage = '';
 		try {
@@ -104,15 +108,29 @@
 </svelte:head>
 
 <div class="mx-auto max-w-3xl">
-	<header class="mb-6">
-		<a href={resolve('/app/admin/catalogue')} class="text-sm text-charcoal/60 hover:text-charcoal">
-			← Back to catalogue
+	<header class="mb-8">
+		<a
+			href={resolve('/app/admin/catalogue')}
+			class="mb-4 inline-flex items-center gap-1.5 py-2 font-display text-sm font-medium text-green-600 transition-colors hover:text-green-700"
+		>
+			<svg
+				xmlns="http://www.w3.org/2000/svg"
+				class="h-4 w-4"
+				fill="none"
+				viewBox="0 0 24 24"
+				stroke="currentColor"
+				stroke-width="2"
+			>
+				<path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+			</svg>
+			Back to Catalogue
 		</a>
-		<div class="mt-1 flex flex-wrap items-center justify-between gap-3">
-			<h1 class="font-display text-2xl font-bold text-charcoal sm:text-3xl">
-				Edit catalogue recipe
-			</h1>
-			<div class="flex items-center gap-2">
+		<div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+			<div>
+				<h1 class="font-display text-2xl font-bold text-charcoal sm:text-3xl">Edit Recipe</h1>
+				<p class="mt-1 text-charcoal/60">Update the catalogue entry for "{data.recipe.name}".</p>
+			</div>
+			<div class="flex w-fit shrink-0 flex-wrap items-center justify-end gap-2">
 				<span
 					class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold {data
 						.recipe.isPublished
@@ -123,7 +141,7 @@
 				</span>
 				<button
 					type="button"
-					class="rounded-lg border border-green-300 bg-white px-3 py-1.5 text-sm font-semibold text-green-700 hover:bg-green-50 disabled:opacity-50"
+					class="rounded-lg border border-green-300 bg-white px-3 py-1.5 text-sm font-semibold text-green-700 transition-colors hover:bg-green-50 disabled:opacity-50"
 					disabled={publishBusy}
 					onclick={togglePublished}
 				>
@@ -131,7 +149,7 @@
 				</button>
 				<button
 					type="button"
-					class="rounded-lg border border-red-200 bg-white px-3 py-1.5 text-sm font-semibold text-red-600 hover:bg-red-50"
+					class="rounded-lg border border-red-200 bg-white px-3 py-1.5 text-sm font-semibold text-red-600 transition-colors hover:bg-red-50"
 					onclick={deleteRecipe}
 				>
 					Delete
