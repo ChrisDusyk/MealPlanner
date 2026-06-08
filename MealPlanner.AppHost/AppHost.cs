@@ -1,6 +1,6 @@
 var builder = DistributedApplication.CreateBuilder(args);
 
-var postgres = builder.AddPostgres("postgres")
+var postgres = builder.AddPostgres("mealplanner")
 	.WithDataVolume()
 	.WithLifetime(ContainerLifetime.Persistent)
 	.WithPgWeb();
@@ -16,7 +16,7 @@ var api = builder.AddProject<Projects.MealPlanner_Api>("api")
 	.WithEnvironment("Anthropic__ApiKey",
 		builder.Configuration["Anthropic__ApiKey"] ?? builder.Configuration["Anthropic:ApiKey"]);
 
-builder.AddViteApp("frontend", "..\\frontend")
+var frontend = builder.AddViteApp("frontend", "../frontend")
 	.WithReference(api).WaitFor(api)
 	.WithReference(mealPlannerDb).WaitFor(mealPlannerDb)
 	.WithEnvironment("BETTER_AUTH_SECRET", builder.Configuration["BETTER_AUTH_SECRET"])
@@ -32,5 +32,21 @@ builder.AddViteApp("frontend", "..\\frontend")
 		cfg.IsProxied = false;
 		cfg.IsExternal = true;
 	});
+
+var frontendAuthMigrator = builder.AddExecutable(
+		"frontend-auth-migrator",
+		"pnpm",
+		"../frontend",
+		"run", "migrate:auth")
+	.WithParentRelationship(frontend.Resource)
+	.ExcludeFromManifest()
+	.WithReference(mealPlannerDb).WaitFor(mealPlannerDb)
+	.WithEnvironment("BETTER_AUTH_SECRET", builder.Configuration["BETTER_AUTH_SECRET"])
+	.WithEnvironment("BETTER_AUTH_URL", builder.Configuration["BETTER_AUTH_URL"] ?? "http://localhost:3000")
+	.WithEnvironment("BETTER_AUTH_JWT_AUDIENCE", builder.Configuration["BETTER_AUTH_JWT_AUDIENCE"] ?? "mealplanner-api")
+	.WithEnvironment("GOOGLE_CLIENT_ID", builder.Configuration["GOOGLE_CLIENT_ID"])
+	.WithEnvironment("GOOGLE_CLIENT_SECRET", builder.Configuration["GOOGLE_CLIENT_SECRET"]);
+
+frontend.WaitForCompletion(frontendAuthMigrator);
 
 builder.Build().Run();
