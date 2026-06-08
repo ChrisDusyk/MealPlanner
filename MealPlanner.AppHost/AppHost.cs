@@ -16,7 +16,7 @@ var api = builder.AddProject<Projects.MealPlanner_Api>("api")
 	.WithEnvironment("Anthropic__ApiKey",
 		builder.Configuration["Anthropic__ApiKey"] ?? builder.Configuration["Anthropic:ApiKey"]);
 
-var frontend = builder.AddViteApp("frontend", "..\\frontend")
+var frontend = builder.AddViteApp("frontend", "../frontend")
 	.WithReference(api).WaitFor(api)
 	.WithReference(mealPlannerDb).WaitFor(mealPlannerDb)
 	.WithEnvironment("BETTER_AUTH_SECRET", builder.Configuration["BETTER_AUTH_SECRET"])
@@ -36,7 +36,7 @@ var frontend = builder.AddViteApp("frontend", "..\\frontend")
 var frontendAuthMigrator = builder.AddExecutable(
 		"frontend-auth-migrator",
 		"pnpm",
-		"..\\frontend",
+		"../frontend",
 		"run", "migrate:auth")
 	.WithParentRelationship(frontend.Resource)
 	.ExcludeFromManifest()
