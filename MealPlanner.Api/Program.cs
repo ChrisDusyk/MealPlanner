@@ -83,10 +83,14 @@ builder.Services.AddHttpClient(AnthropicOptions.HttpClientName, client =>
 });
 
 builder.Services.AddHttpClient(AnthropicOptions.PageFetchHttpClientName, client =>
-{
-	client.Timeout = TimeSpan.FromSeconds(Math.Max(5, pageFetchTimeoutSeconds));
-	client.DefaultRequestHeaders.UserAgent.ParseAdd("MealPlanner/1.0 (recipe-import)");
-});
+	{
+		client.Timeout = TimeSpan.FromSeconds(Math.Max(5, pageFetchTimeoutSeconds));
+		client.DefaultRequestHeaders.UserAgent.ParseAdd("MealPlanner/1.0 (recipe-import)");
+	})
+	// Recipe URLs are user-supplied: validate the resolved address at connect time
+	// (covering every redirect hop) so redirects and DNS rebinding cannot reach
+	// private or local networks.
+	.ConfigurePrimaryHttpMessageHandler(SsrfProtection.CreatePageFetchHandler);
 
 builder.Services.AddHttpClient(GoogleIntegrationsOptions.OAuthHttpClientName, client =>
 {
