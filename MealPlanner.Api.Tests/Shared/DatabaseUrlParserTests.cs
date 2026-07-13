@@ -51,6 +51,31 @@ public class DatabaseUrlParserTests
 		Assert.Equal(5432, parsed.Port);
 	}
 
+	[Theory]
+	[InlineData("sslmode=require", SslMode.Require)]
+	[InlineData("sslmode=Require", SslMode.Require)]
+	[InlineData("sslmode=verify-full", SslMode.VerifyFull)]
+	[InlineData("sslmode=disable", SslMode.Disable)]
+	public void ToConnectionString_MapsSslModeQueryParameter(string query, SslMode expected)
+	{
+		var connectionString = DatabaseUrlParser.ToConnectionString(
+			$"postgresql://appuser:secret@db.example.com:5432/mealplanner?{query}");
+
+		var parsed = new NpgsqlConnectionStringBuilder(connectionString);
+		Assert.Equal(expected, parsed.SslMode);
+	}
+
+	[Fact]
+	public void ToConnectionString_IgnoresUnknownQueryParameters()
+	{
+		var connectionString = DatabaseUrlParser.ToConnectionString(
+			"postgresql://appuser:secret@db.example.com:5432/mealplanner?application_name=foo&sslmode=require");
+
+		var parsed = new NpgsqlConnectionStringBuilder(connectionString);
+		Assert.Equal(SslMode.Require, parsed.SslMode);
+		Assert.Equal("mealplanner", parsed.Database);
+	}
+
 	[Fact]
 	public void ToConnectionString_HandlesMissingPassword()
 	{
