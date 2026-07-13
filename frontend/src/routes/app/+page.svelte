@@ -127,16 +127,17 @@
 			</div>
 		</a>
 
-		<!-- Grocery Lists (Coming Soon) -->
-		<div
-			class="overflow-hidden rounded-xl border border-green-200/30 bg-gradient-to-br from-white to-green-50/20 opacity-60"
+		<!-- Grocery Lists -->
+		<a
+			href={resolve('/app/grocery-lists')}
+			class="group overflow-hidden rounded-xl border border-green-200/30 bg-gradient-to-br from-white to-green-50/20 transition-all hover:border-green-300 hover:shadow-md"
 		>
 			<div class="p-6">
 				<div class="flex items-center justify-between">
 					<div>
 						<p class="text-sm font-medium text-charcoal/60">Grocery Lists</p>
-						<p class="mt-2 font-display text-3xl font-bold text-charcoal">—</p>
-						<p class="mt-1 text-xs text-charcoal/40">Coming Soon</p>
+						<p class="mt-2 font-display text-3xl font-bold text-charcoal">This Week</p>
+						<p class="mt-1 text-xs text-green-600 group-hover:underline">View lists &rarr;</p>
 					</div>
 					<div class="flex h-12 w-12 items-center justify-center rounded-xl bg-green-500/10">
 						<svg
@@ -156,7 +157,7 @@
 					</div>
 				</div>
 			</div>
-		</div>
+		</a>
 	</div>
 
 	<!-- Recent Recipes Section -->
