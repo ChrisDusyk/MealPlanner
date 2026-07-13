@@ -1,20 +1,14 @@
 {
-  "servers": {
+  "mcpServers": {
     "aspire": {
       "type": "stdio",
       "command": "aspire",
-      "args": [
-        "mcp",
-        "start"
-      ]
+      "args": ["mcp", "start"]
     },
     "playwright": {
       "type": "stdio",
       "command": "npx",
-      "args": [
-        "-y",
-        "@playwright/mcp@latest"
-      ]
+      "args": ["-y", "@playwright/mcp@latest"]
     },
     "svelte": {
       "type": "stdio",
