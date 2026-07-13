@@ -67,10 +67,13 @@ internal static class SsrfProtection
 			{
 				0 => true,
 				10 => true,
+				100 when bytes[1] >= 64 && bytes[1] <= 127 => true, // 100.64.0.0/10 CGNAT
 				127 => true,
 				169 when bytes[1] == 254 => true,
 				172 when bytes[1] >= 16 && bytes[1] <= 31 => true,
 				192 when bytes[1] == 168 => true,
+				198 when bytes[1] == 18 || bytes[1] == 19 => true, // 198.18.0.0/15 benchmarking
+				>= 224 => true, // 224.0.0.0/4 multicast, 240.0.0.0/4 reserved
 				_ => false
 			};
 		}
