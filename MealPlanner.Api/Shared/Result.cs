@@ -31,8 +31,8 @@ public class Result<T>
 	/// </summary>
 	public Result<U> Bind<U>(Func<T, Result<U>> func)
 	{
-		if (IsSuccess && Value is not null)
-			return func(Value);
+		if (IsSuccess)
+			return func(Value!);
 		return Result<U>.Failure(Error!);
 	}
 
@@ -41,8 +41,8 @@ public class Result<T>
 	/// </summary>
 	public Result<U> Map<U>(Func<T, U> func)
 	{
-		if (IsSuccess && Value is not null)
-			return Result<U>.Success(func(Value));
+		if (IsSuccess)
+			return Result<U>.Success(func(Value!));
 		return Result<U>.Failure(Error!);
 	}
 
@@ -59,8 +59,8 @@ public class Result<T>
 	/// </summary>
 	public TResult Match<TResult>(Func<T, TResult> onSuccess, Func<Error, TResult> onFailure)
 	{
-		if (IsSuccess && Value is not null)
-			return onSuccess(Value);
+		if (IsSuccess)
+			return onSuccess(Value!);
 		return onFailure(Error!);
 	}
 }
