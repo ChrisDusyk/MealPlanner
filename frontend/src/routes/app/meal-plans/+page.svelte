@@ -16,6 +16,7 @@
 	import CopyModal from '$lib/components/meal-plans/CopyModal.svelte';
 	import ShareModal from '$lib/components/meal-plans/ShareModal.svelte';
 	import SharedMealPlanCard from '$lib/components/meal-plans/SharedMealPlanCard.svelte';
+	import { toast } from '$lib/stores/toast.svelte';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -65,10 +66,6 @@
 	// Shared-with-me section collapsed state
 	let sharedSectionOpen = $state(true);
 
-	// Toast state
-	let toastMessage = $state('');
-	let toastType: 'success' | 'error' = $state('success');
-	let toastVisible = $state(false);
 	let generateGroceryListLoading = $state(false);
 	const realtimeClient = new MealPlanRealtimeClient();
 	// svelte-ignore state_referenced_locally
@@ -119,15 +116,6 @@
 		};
 	});
 
-	function showToast(message: string, type: 'success' | 'error' = 'success') {
-		toastMessage = message;
-		toastType = type;
-		toastVisible = true;
-		setTimeout(() => {
-			toastVisible = false;
-		}, 3000);
-	}
-
 	// ── Navigation ──
 
 	function handleNavigate(weekStart: string) {
@@ -158,7 +146,7 @@
 			const redirectParams = new SvelteURLSearchParams({ weekStart });
 			await goto(resolve(`/app/grocery-lists?${redirectParams}`));
 		} catch (err) {
-			showToast(err instanceof Error ? err.message : 'Failed to generate grocery list.', 'error');
+			toast.show(err instanceof Error ? err.message : 'Failed to generate grocery list.', 'error');
 		} finally {
 			generateGroceryListLoading = false;
 		}
@@ -243,7 +231,7 @@
 			} catch {
 				// Revert
 				dayPlan.slots[addModalCategory] = currentItems;
-				showToast('Failed to add item. Please try again.', 'error');
+				toast.show('Failed to add item. Please try again.', 'error');
 			}
 		});
 	}
@@ -278,7 +266,7 @@
 		} catch {
 			// Revert
 			dayPlan.slots[category] = currentItems;
-			showToast('Failed to remove item. Please try again.', 'error');
+			toast.show('Failed to remove item. Please try again.', 'error');
 		}
 	}
 
@@ -324,7 +312,7 @@
 			} catch {
 				// Revert
 				dayPlan.slots[category] = currentItems;
-				showToast('Failed to update servings. Please try again.', 'error');
+				toast.show('Failed to update servings. Please try again.', 'error');
 			}
 		});
 	}
@@ -373,7 +361,7 @@
 			if (!res.ok) throw new Error('Failed to copy');
 			const updated: MealPlanResponse = await res.json();
 			applyUpdatedPlan(updated);
-			showToast(
+			toast.show(
 				`Copied ${copyModalCategory} from ${copyModalDay} to ${targetDays.length} ${targetDays.length === 1 ? 'day' : 'days'}`
 			);
 		} catch {
@@ -384,7 +372,7 @@
 					targetDayPlan.slots[copyModalCategory] = backups[td];
 				}
 			}
-			showToast('Failed to copy. Please try again.', 'error');
+			toast.show('Failed to copy. Please try again.', 'error');
 		}
 	}
 
@@ -448,7 +436,7 @@
 			);
 			if (sharesRes.ok) myShares = await sharesRes.json();
 
-			showToast(`Meal plan shared with ${email}`);
+			toast.show(`Meal plan shared with ${email}`);
 			return null;
 		} catch (err) {
 			return err instanceof Error ? err.message : 'Failed to share meal plan.';
@@ -463,9 +451,9 @@
 			if (!res.ok) throw new Error('Failed to revoke');
 
 			myShares = myShares.filter((s) => s.id !== shareId);
-			showToast('Share revoked');
+			toast.show('Share revoked');
 		} catch {
-			showToast('Failed to revoke share.', 'error');
+			toast.show('Failed to revoke share.', 'error');
 		}
 	}
 
@@ -478,9 +466,9 @@
 
 			sharedWithMe = sharedWithMe.filter((s) => s.shareId !== shareId);
 			editingSharedPlan = null;
-			showToast('Shared plan dismissed');
+			toast.show('Shared plan dismissed');
 		} catch {
-			showToast('Failed to dismiss shared plan.', 'error');
+			toast.show('Failed to dismiss shared plan.', 'error');
 		}
 	}
 </script>
@@ -647,49 +635,4 @@
 		</div>
 	{/if}
 
-	<!-- Toast notification -->
-	{#if toastVisible}
-		<div
-			role={toastType === 'error' ? 'alert' : 'status'}
-			aria-live={toastType === 'error' ? 'assertive' : 'polite'}
-			aria-atomic="true"
-			class="fixed right-6 bottom-6 left-6 z-50 flex items-center gap-2 rounded-lg px-4 py-3 shadow-lg transition-all sm:left-auto {toastType ===
-			'error'
-				? 'bg-red-600 text-white'
-				: 'bg-green-700 text-white'}"
-		>
-			{#if toastType === 'success'}
-				<svg
-					xmlns="http://www.w3.org/2000/svg"
-					class="h-5 w-5"
-					fill="none"
-					viewBox="0 0 24 24"
-					stroke="currentColor"
-					stroke-width="2"
-				>
-					<path
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-					/>
-				</svg>
-			{:else}
-				<svg
-					xmlns="http://www.w3.org/2000/svg"
-					class="h-5 w-5"
-					fill="none"
-					viewBox="0 0 24 24"
-					stroke="currentColor"
-					stroke-width="2"
-				>
-					<path
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"
-					/>
-				</svg>
-			{/if}
-			<span class="font-display text-sm font-medium">{toastMessage}</span>
-		</div>
-	{/if}
 </div>

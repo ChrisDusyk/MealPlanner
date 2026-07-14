@@ -1,5 +1,4 @@
 using System.Net;
-using System.Net.Sockets;
 using System.Text;
 using System.Text.RegularExpressions;
 using MealPlanner.Api.Shared;
@@ -149,7 +148,7 @@ public sealed class RecipePageTextExtractor(
 				"Loopback or localhost URLs are not allowed."));
 		}
 
-		if (IPAddress.TryParse(uri.Host, out var literalIp) && IsPrivateOrLocalAddress(literalIp))
+		if (IPAddress.TryParse(uri.Host, out var literalIp) && SsrfProtection.IsPrivateOrLocalAddress(literalIp))
 		{
 			return Result<string>.Failure(new Error(
 				ErrorCodes.ValidationFailed,
@@ -179,7 +178,7 @@ public sealed class RecipePageTextExtractor(
 				"Recipe host did not resolve to a valid address."));
 		}
 
-		if (addresses.Any(IsPrivateOrLocalAddress))
+		if (addresses.Any(SsrfProtection.IsPrivateOrLocalAddress))
 		{
 			return Result<string>.Failure(new Error(
 				ErrorCodes.ValidationFailed,
@@ -187,39 +186,6 @@ public sealed class RecipePageTextExtractor(
 		}
 
 		return Result<string>.Success(string.Empty);
-	}
-
-	private static bool IsPrivateOrLocalAddress(IPAddress address)
-	{
-		if (IPAddress.IsLoopback(address))
-			return true;
-
-		if (address.IsIPv4MappedToIPv6)
-			address = address.MapToIPv4();
-
-		if (address.AddressFamily == AddressFamily.InterNetwork)
-		{
-			var bytes = address.GetAddressBytes();
-			return bytes[0] switch
-			{
-				10 => true,
-				127 => true,
-				169 when bytes[1] == 254 => true,
-				172 when bytes[1] >= 16 && bytes[1] <= 31 => true,
-				192 when bytes[1] == 168 => true,
-				_ => false
-			};
-		}
-
-		if (address.AddressFamily == AddressFamily.InterNetworkV6)
-		{
-			return address.IsIPv6LinkLocal
-			       || address.IsIPv6Multicast
-			       || address.IsIPv6SiteLocal
-			       || address.Equals(IPAddress.IPv6Loopback);
-		}
-
-		return false;
 	}
 
 	private static async Task<Result<string>> ReadBodyWithSizeLimitAsync(

@@ -30,11 +30,7 @@ var builder = WebApplication.CreateBuilder(args);
 var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
 if (!string.IsNullOrEmpty(databaseUrl))
 {
-	var uri = new Uri(databaseUrl);
-	var userInfo = uri.UserInfo.Split(':');
-	var connectionString =
-		$"Host={uri.Host};Port={uri.Port};Database={uri.AbsolutePath.TrimStart('/')};Username={userInfo[0]};Password={userInfo[1]}";
-	builder.Configuration["ConnectionStrings:mealplannerDb"] = connectionString;
+	builder.Configuration["ConnectionStrings:mealplannerDb"] = DatabaseUrlParser.ToConnectionString(databaseUrl);
 }
 
 builder.AddServiceDefaults();
@@ -83,10 +79,14 @@ builder.Services.AddHttpClient(AnthropicOptions.HttpClientName, client =>
 });
 
 builder.Services.AddHttpClient(AnthropicOptions.PageFetchHttpClientName, client =>
-{
-	client.Timeout = TimeSpan.FromSeconds(Math.Max(5, pageFetchTimeoutSeconds));
-	client.DefaultRequestHeaders.UserAgent.ParseAdd("MealPlanner/1.0 (recipe-import)");
-});
+	{
+		client.Timeout = TimeSpan.FromSeconds(Math.Max(5, pageFetchTimeoutSeconds));
+		client.DefaultRequestHeaders.UserAgent.ParseAdd("MealPlanner/1.0 (recipe-import)");
+	})
+	// Recipe URLs are user-supplied: validate the resolved address at connect time
+	// (covering every redirect hop) so redirects and DNS rebinding cannot reach
+	// private or local networks.
+	.ConfigurePrimaryHttpMessageHandler(SsrfProtection.CreatePageFetchHandler);
 
 builder.Services.AddHttpClient(GoogleIntegrationsOptions.OAuthHttpClientName, client =>
 {

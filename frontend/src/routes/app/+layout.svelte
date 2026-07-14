@@ -1,5 +1,6 @@
 <script lang="ts">
 	import AppSidebar from '$lib/components/AppSidebar.svelte';
+	import Toast from '$lib/components/Toast.svelte';
 
 	let { children, data } = $props();
 </script>
@@ -13,3 +14,5 @@
 		{@render children()}
 	</section>
 </div>
+
+<Toast />

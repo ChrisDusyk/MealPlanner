@@ -10,6 +10,8 @@
 		type GroceryListUpdatedEvent
 	} from '$lib/realtime/groceryListRealtime';
 	import WeekNavigator from '$lib/components/meal-plans/WeekNavigator.svelte';
+	import Modal from '$lib/components/Modal.svelte';
+	import { toast } from '$lib/stores/toast.svelte';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -33,10 +35,6 @@
 	let sharesLoaded = $state(false);
 	let sharedDraftNames: Record<string, string> = $state({});
 
-	// Toast state
-	let toastMessage = $state('');
-	let toastType: 'success' | 'error' = $state('success');
-	let toastVisible = $state(false);
 	const realtimeClient = new GroceryListRealtimeClient();
 
 	// Re-sync when server data changes
@@ -54,15 +52,6 @@
 		sharesLoaded = false;
 		sharedDraftNames = {};
 	});
-
-	function showToast(message: string, type: 'success' | 'error' = 'success') {
-		toastMessage = message;
-		toastType = type;
-		toastVisible = true;
-		setTimeout(() => {
-			toastVisible = false;
-		}, 3000);
-	}
 
 	function applyRealtimeUpdate(event: GroceryListUpdatedEvent) {
 		if (event.weekStart !== weekStart) {
@@ -185,13 +174,13 @@
 				const newShare = await resp.json();
 				myShares = [...myShares, newShare];
 				shareEmail = '';
-				showToast(`Shared with ${newShare.sharedWithEmail}`);
+				toast.show(`Shared with ${newShare.sharedWithEmail}`);
 			} else {
 				const body = await resp.json().catch(() => ({}));
-				showToast(body?.error ?? 'Failed to share', 'error');
+				toast.show(body?.error ?? 'Failed to share', 'error');
 			}
 		} catch {
-			showToast('Failed to share', 'error');
+			toast.show('Failed to share', 'error');
 		} finally {
 			shareLoading = false;
 		}
@@ -204,12 +193,12 @@
 			});
 			if (resp.ok) {
 				myShares = myShares.filter((s) => s.id !== shareId);
-				showToast(`Revoked access for ${email}`);
+				toast.show(`Revoked access for ${email}`);
 			} else {
-				showToast('Failed to revoke', 'error');
+				toast.show('Failed to revoke', 'error');
 			}
 		} catch {
-			showToast('Failed to revoke', 'error');
+			toast.show('Failed to revoke', 'error');
 		}
 	}
 
@@ -220,12 +209,12 @@
 			});
 			if (resp.ok) {
 				sharedWithMe = sharedWithMe.filter((s) => s.shareId !== shareId);
-				showToast('Dismissed');
+				toast.show('Dismissed');
 			} else {
-				showToast('Failed to dismiss', 'error');
+				toast.show('Failed to dismiss', 'error');
 			}
 		} catch {
-			showToast('Failed to dismiss', 'error');
+			toast.show('Failed to dismiss', 'error');
 		}
 	}
 
@@ -233,7 +222,7 @@
 		const sharedEntry = sharedWithMe.find((s) => s.shareId === shareId);
 		if (!sharedEntry) return;
 		if (sharedEntry.permission !== 'ReadWrite') {
-			showToast('You only have view access to this list', 'error');
+			toast.show('You only have view access to this list', 'error');
 			return;
 		}
 
@@ -262,14 +251,14 @@
 				sharedEntry.groceryList.items[itemIndex].isChecked =
 					!sharedEntry.groceryList.items[itemIndex].isChecked;
 				sharedWithMe = [...sharedWithMe];
-				showToast('Failed to update item', 'error');
+				toast.show('Failed to update item', 'error');
 			}
 		} catch {
 			// Revert
 			sharedEntry.groceryList.items[itemIndex].isChecked =
 				!sharedEntry.groceryList.items[itemIndex].isChecked;
 			sharedWithMe = [...sharedWithMe];
-			showToast('Failed to update item', 'error');
+			toast.show('Failed to update item', 'error');
 		}
 	}
 
@@ -277,7 +266,7 @@
 		const sharedEntry = sharedWithMe.find((s) => s.shareId === shareId);
 		if (!sharedEntry) return;
 		if (sharedEntry.permission !== 'ReadWrite') {
-			showToast('You only have view access to this list', 'error');
+			toast.show('You only have view access to this list', 'error');
 			return;
 		}
 
@@ -297,13 +286,13 @@
 				sharedEntry.groceryList = updated;
 				sharedWithMe = [...sharedWithMe];
 				sharedDraftNames = { ...sharedDraftNames, [shareId]: '' };
-				showToast('Item added');
+				toast.show('Item added');
 			} else {
 				const body = await resp.json().catch(() => ({}));
-				showToast(body?.error ?? 'Failed to add item', 'error');
+				toast.show(body?.error ?? 'Failed to add item', 'error');
 			}
 		} catch {
-			showToast('Failed to add item', 'error');
+			toast.show('Failed to add item', 'error');
 		}
 	}
 </script>
@@ -354,10 +343,10 @@
 						loading = false;
 						if (result.type === 'success' && result.data?.groceryList) {
 							groceryList = result.data.groceryList as GroceryListResponse;
-							showToast('Grocery list regenerated');
+							toast.show('Grocery list regenerated');
 							await invalidateAll();
 						} else {
-							showToast('Failed to regenerate list', 'error');
+							toast.show('Failed to regenerate list', 'error');
 						}
 						await update({ reset: false });
 					};
@@ -528,9 +517,9 @@
 					if (result.type === 'success' && result.data?.groceryList) {
 						groceryList = result.data.groceryList as GroceryListResponse;
 						newItemName = '';
-						showToast('Item added');
+						toast.show('Item added');
 					} else {
-						showToast('Failed to add item', 'error');
+						toast.show('Failed to add item', 'error');
 					}
 					await update({ reset: false });
 				};
@@ -625,11 +614,11 @@
 									return async ({ result, update }) => {
 										if (result.type === 'success' && result.data?.groceryList) {
 											groceryList = result.data.groceryList as GroceryListResponse;
-											showToast('Added to grocery list');
+											toast.show('Added to grocery list');
 										} else {
 											// Revert optimistic update on failure
 											await invalidateAll();
-											showToast('Failed to add item', 'error');
+											toast.show('Failed to add item', 'error');
 										}
 										await update({ reset: false });
 									};
@@ -791,10 +780,10 @@
 						loading = false;
 						if (result.type === 'success' && result.data?.groceryList) {
 							groceryList = result.data.groceryList as GroceryListResponse;
-							showToast('Grocery list generated!');
+							toast.show('Grocery list generated!');
 							await invalidateAll();
 						} else {
-							showToast('Failed to generate grocery list', 'error');
+							toast.show('Failed to generate grocery list', 'error');
 						}
 						await update({ reset: false });
 					};
@@ -954,103 +943,53 @@
 	{/if}
 
 	<!-- Delete confirmation dialog -->
-	{#if deleteConfirmOpen}
-		<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-			<div
-				class="mx-4 w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl"
-				role="dialog"
-				aria-labelledby="delete-confirm-title"
-				tabindex="-1"
-			>
-				<h3 id="delete-confirm-title" class="mb-2 font-display text-lg font-semibold text-charcoal">
-					Delete Grocery List?
-				</h3>
-				<p class="mb-6 text-sm text-charcoal/70">
-					This will permanently delete your grocery list for this week. You can always regenerate it
-					from your meal plan.
-				</p>
-				<div class="flex justify-end gap-2">
-					<button
-						type="button"
-						onclick={() => (deleteConfirmOpen = false)}
-						class="rounded-lg px-4 py-2 text-sm font-medium text-charcoal/70 transition-colors hover:bg-charcoal/5"
-					>
-						Cancel
-					</button>
-					<form
-						method="POST"
-						action="?/delete"
-						use:enhance={() => {
-							loading = true;
-							deleteConfirmOpen = false;
-							return async ({ result, update }) => {
-								loading = false;
-								if (result.type === 'success') {
-									groceryList = null;
-									showToast('Grocery list deleted');
-								} else {
-									showToast('Failed to delete list', 'error');
-								}
-								await update({ reset: false });
-							};
-						}}
-					>
-						<input type="hidden" name="weekStart" value={weekStart} />
-						<button
-							type="submit"
-							class="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-700"
-						>
-							Delete
-						</button>
-					</form>
-				</div>
-			</div>
+	<Modal
+		open={deleteConfirmOpen}
+		onClose={() => (deleteConfirmOpen = false)}
+		size="sm"
+		title="Delete Grocery List?"
+	>
+		<div class="px-5 py-4">
+			<p class="text-sm text-charcoal/70">
+				This will permanently delete your grocery list for this week. You can always regenerate it
+				from your meal plan.
+			</p>
 		</div>
-	{/if}
 
-	<!-- Toast notification -->
-	{#if toastVisible}
-		<div
-			role={toastType === 'error' ? 'alert' : 'status'}
-			aria-live={toastType === 'error' ? 'assertive' : 'polite'}
-			aria-atomic="true"
-			class="fixed right-6 bottom-6 left-6 z-50 flex items-center gap-2 rounded-lg px-4 py-3 shadow-lg transition-all sm:left-auto {toastType ===
-			'error'
-				? 'bg-red-600 text-white'
-				: 'bg-green-700 text-white'}"
-		>
-			{#if toastType === 'success'}
-				<svg
-					xmlns="http://www.w3.org/2000/svg"
-					class="h-5 w-5"
-					fill="none"
-					viewBox="0 0 24 24"
-					stroke="currentColor"
-					stroke-width="2"
+		{#snippet footer()}
+			<button
+				type="button"
+				onclick={() => (deleteConfirmOpen = false)}
+				class="rounded-lg px-4 py-2 text-sm font-medium text-charcoal/70 transition-colors hover:bg-charcoal/5"
+			>
+				Cancel
+			</button>
+			<form
+				method="POST"
+				action="?/delete"
+				use:enhance={() => {
+					loading = true;
+					deleteConfirmOpen = false;
+					return async ({ result, update }) => {
+						loading = false;
+						if (result.type === 'success') {
+							groceryList = null;
+							toast.show('Grocery list deleted');
+						} else {
+							toast.show('Failed to delete list', 'error');
+						}
+						await update({ reset: false });
+					};
+				}}
+			>
+				<input type="hidden" name="weekStart" value={weekStart} />
+				<button
+					type="submit"
+					class="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-700"
 				>
-					<path
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-					/>
-				</svg>
-			{:else}
-				<svg
-					xmlns="http://www.w3.org/2000/svg"
-					class="h-5 w-5"
-					fill="none"
-					viewBox="0 0 24 24"
-					stroke="currentColor"
-					stroke-width="2"
-				>
-					<path
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"
-					/>
-				</svg>
-			{/if}
-			<span class="font-display text-sm font-medium">{toastMessage}</span>
-		</div>
-	{/if}
+					Delete
+				</button>
+			</form>
+		{/snippet}
+	</Modal>
 </div>
