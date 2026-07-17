@@ -101,6 +101,16 @@ dotnet test --solution MealPlanner.slnx -c Release --no-build
 
 This section describes the architectural patterns and conventions used in the MealPlanner.Api project.
 
+## Family Group Ownership Model
+
+Meal plans, grocery lists, and recipes are owned by a **family group**, not by individual users:
+
+- Every user belongs to exactly one family (`family_group_members` has a unique index on `UserId`). A single-member "personal family" is provisioned automatically on first sync (`UpsertUserFromAuth`) or lazily by `IFamilyContextResolver`.
+- Content endpoints resolve the caller's JWT `sub` to their `FamilyGroupId` via `IFamilyContextResolver` (`Features/Families/FamilyContextResolver.cs`) and pass that Guid into commands/queries. Family membership is the only authorization needed for content access — there is no per-row sharing.
+- One user is the family **owner** (`family_groups.OwnerUserId`) and manages membership (invite by email, cancel invitations, remove members, rename, transfer ownership, delete family). All members edit content equally.
+- Joining another family is invite + accept (`family_invitations`; invitee must already be a registered user). Accepting moves the member; recipes they contributed (`recipes.ContributedByUserId`) are carried along, and their old family is deleted when it has no members left. Leaving or being removed provisions a fresh personal family plus copies of contributed recipes.
+- SignalR realtime updates fan out to all family members (`Features/*/Realtime`).
+
 ## CQRS Pattern with Vertical Slices
 
 The API uses CQRS (Command Query Responsibility Segregation) to separate read operations (queries) from write operations (commands). All domain logic is organized using vertical slices within the `Features` folder.
