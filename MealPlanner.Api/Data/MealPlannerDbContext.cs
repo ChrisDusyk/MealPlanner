@@ -11,14 +11,12 @@ public class MealPlannerDbContext(DbContextOptions<MealPlannerDbContext> options
 	private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
 	public DbSet<UserEntity> Users => Set<UserEntity>();
-	public DbSet<FriendshipEntity> Friendships => Set<FriendshipEntity>();
-	public DbSet<FriendRequestEntity> FriendRequests => Set<FriendRequestEntity>();
-	public DbSet<FriendAutoSharePreferenceEntity> FriendAutoSharePreferences => Set<FriendAutoSharePreferenceEntity>();
+	public DbSet<FamilyGroupEntity> FamilyGroups => Set<FamilyGroupEntity>();
+	public DbSet<FamilyGroupMemberEntity> FamilyGroupMembers => Set<FamilyGroupMemberEntity>();
+	public DbSet<FamilyInvitationEntity> FamilyInvitations => Set<FamilyInvitationEntity>();
 	public DbSet<RecipeEntity> Recipes => Set<RecipeEntity>();
 	public DbSet<MealPlanEntity> MealPlans => Set<MealPlanEntity>();
-	public DbSet<MealPlanShareEntity> MealPlanShares => Set<MealPlanShareEntity>();
 	public DbSet<GroceryListEntity> GroceryLists => Set<GroceryListEntity>();
-	public DbSet<GroceryListShareEntity> GroceryListShares => Set<GroceryListShareEntity>();
 	public DbSet<GoogleIntegrationConnectionEntity> GoogleIntegrationConnections => Set<GoogleIntegrationConnectionEntity>();
 	public DbSet<GroceryListExportLinkEntity> GroceryListExportLinks => Set<GroceryListExportLinkEntity>();
 	public DbSet<CatalogueRecipeEntity> CatalogueRecipes => Set<CatalogueRecipeEntity>();
@@ -38,28 +36,41 @@ public class MealPlannerDbContext(DbContextOptions<MealPlannerDbContext> options
 			entity.HasIndex(e => e.AuthUserId).IsUnique();
 		});
 
-		// ── Friendships ──
-		modelBuilder.Entity<FriendshipEntity>(entity =>
+		// ── Family Groups ──
+		modelBuilder.Entity<FamilyGroupEntity>(entity =>
 		{
-			entity.ToTable("friendships");
+			entity.ToTable("family_groups");
 			entity.HasKey(e => e.Id);
-			entity.HasIndex(e => new { e.UserAId, e.UserBId }).IsUnique();
+			entity.HasIndex(e => e.OwnerUserId);
 		});
 
-		// ── Friend Requests ──
-		modelBuilder.Entity<FriendRequestEntity>(entity =>
+		// ── Family Group Members ──
+		modelBuilder.Entity<FamilyGroupMemberEntity>(entity =>
 		{
-			entity.ToTable("friend_requests");
+			entity.ToTable("family_group_members");
 			entity.HasKey(e => e.Id);
-			entity.HasIndex(e => new { e.RequesterUserId, e.RecipientUserId }).IsUnique();
+			// Enforces one-family-per-user in Postgres. EF Core's InMemory
+			// provider does not enforce unique indexes, so tests rely on the
+			// explicit membership checks in application code instead.
+			entity.HasIndex(e => e.UserId).IsUnique();
+			entity.HasIndex(e => e.FamilyGroupId);
+			entity.HasOne<FamilyGroupEntity>()
+				.WithMany()
+				.HasForeignKey(e => e.FamilyGroupId)
+				.OnDelete(DeleteBehavior.Cascade);
 		});
 
-		// ── Friend Auto-Share Preferences ──
-		modelBuilder.Entity<FriendAutoSharePreferenceEntity>(entity =>
+		// ── Family Invitations ──
+		modelBuilder.Entity<FamilyInvitationEntity>(entity =>
 		{
-			entity.ToTable("friend_auto_share_preferences");
+			entity.ToTable("family_invitations");
 			entity.HasKey(e => e.Id);
-			entity.HasIndex(e => new { e.UserId, e.FriendUserId }).IsUnique();
+			entity.HasIndex(e => new { e.FamilyGroupId, e.InviteeUserId }).IsUnique();
+			entity.HasIndex(e => e.InviteeUserId);
+			entity.HasOne<FamilyGroupEntity>()
+				.WithMany()
+				.HasForeignKey(e => e.FamilyGroupId)
+				.OnDelete(DeleteBehavior.Cascade);
 		});
 
 		// ── Recipes ──
@@ -67,13 +78,13 @@ public class MealPlannerDbContext(DbContextOptions<MealPlannerDbContext> options
 		{
 			entity.ToTable("recipes");
 			entity.HasKey(e => e.Id);
-			entity.HasIndex(e => e.UserId);
-			// Enforces one-copy-per-user when a recipe is added from the catalogue.
+			entity.HasIndex(e => e.FamilyGroupId);
+			// Enforces one-copy-per-family when a recipe is added from the catalogue.
 			// In Postgres, this is enforced by the filtered unique index below when
 			// CatalogueRecipeId is not null. EF Core's InMemory provider does not
 			// enforce unique indexes/constraints, so tests rely on the explicit
 			// duplicate-prevention check in application code instead.
-			var catalogueIndex = entity.HasIndex(e => new { e.UserId, e.CatalogueRecipeId })
+			var catalogueIndex = entity.HasIndex(e => new { e.FamilyGroupId, e.CatalogueRecipeId })
 				.IsUnique();
 			if (isNpgsql)
 			{
@@ -135,7 +146,11 @@ public class MealPlannerDbContext(DbContextOptions<MealPlannerDbContext> options
 		{
 			entity.ToTable("meal_plans");
 			entity.HasKey(e => e.Id);
-			entity.HasIndex(e => new { e.UserId, e.WeekStart }).IsUnique();
+			entity.HasIndex(e => new { e.FamilyGroupId, e.WeekStart }).IsUnique();
+			entity.HasOne<FamilyGroupEntity>()
+				.WithMany()
+				.HasForeignKey(e => e.FamilyGroupId)
+				.OnDelete(DeleteBehavior.Cascade);
 			if (isNpgsql)
 			{
 				ConfigureNpgsqlJsonProperty(entity.Property(e => e.Days));
@@ -146,20 +161,16 @@ public class MealPlannerDbContext(DbContextOptions<MealPlannerDbContext> options
 			}
 		});
 
-		// ── Meal Plan Shares ──
-		modelBuilder.Entity<MealPlanShareEntity>(entity =>
-		{
-			entity.ToTable("meal_plan_shares");
-			entity.HasKey(e => e.Id);
-			entity.HasIndex(e => new { e.OwnerUserId, e.SharedWithUserId, e.WeekStart }).IsUnique();
-		});
-
 		// ── Grocery Lists ──
 		modelBuilder.Entity<GroceryListEntity>(entity =>
 		{
 			entity.ToTable("grocery_lists");
 			entity.HasKey(e => e.Id);
-			entity.HasIndex(e => new { e.UserId, e.WeekStart }).IsUnique();
+			entity.HasIndex(e => new { e.FamilyGroupId, e.WeekStart }).IsUnique();
+			entity.HasOne<FamilyGroupEntity>()
+				.WithMany()
+				.HasForeignKey(e => e.FamilyGroupId)
+				.OnDelete(DeleteBehavior.Cascade);
 			if (isNpgsql)
 			{
 				ConfigureNpgsqlJsonProperty(entity.Property(e => e.Items));
@@ -170,14 +181,6 @@ public class MealPlannerDbContext(DbContextOptions<MealPlannerDbContext> options
 				ConfigureJsonProperty(entity.Property(e => e.Items));
 				ConfigureJsonProperty(entity.Property(e => e.PantryStapleItems));
 			}
-		});
-
-		// ── Grocery List Shares ──
-		modelBuilder.Entity<GroceryListShareEntity>(entity =>
-		{
-			entity.ToTable("grocery_list_shares");
-			entity.HasKey(e => e.Id);
-			entity.HasIndex(e => new { e.OwnerUserId, e.SharedWithUserId, e.WeekStart }).IsUnique();
 		});
 
 		// ── Google Integration Connections ──

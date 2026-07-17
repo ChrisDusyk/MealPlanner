@@ -7,7 +7,14 @@ public class RecipeEntity
 {
 	public Guid Id { get; set; }
 
-	public string UserId { get; set; } = string.Empty;
+	public Guid FamilyGroupId { get; set; }
+
+	/// <summary>
+	/// Auth user id (JWT sub) of the family member who created this recipe or
+	/// brought it into the family. Used to copy recipes back to a member when
+	/// they leave the family.
+	/// </summary>
+	public string ContributedByUserId { get; set; } = string.Empty;
 
 	public string Name { get; set; } = string.Empty;
 

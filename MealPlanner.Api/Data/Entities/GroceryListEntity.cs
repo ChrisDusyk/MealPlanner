@@ -7,7 +7,7 @@ public class GroceryListEntity
 {
 	public Guid Id { get; set; }
 
-	public string UserId { get; set; } = string.Empty;
+	public Guid FamilyGroupId { get; set; }
 
 	/// <summary>
 	/// The Monday that anchors this grocery list, stored as yyyy-MM-dd.
