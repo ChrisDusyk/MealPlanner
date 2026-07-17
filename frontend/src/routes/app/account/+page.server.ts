@@ -1,10 +1,6 @@
 import { error, fail } from '@sveltejs/kit';
 import { ApiError } from '$lib/api/recipeApi';
-import {
-	getFriends,
-	getIncomingFriendRequests,
-	getOutgoingFriendRequests
-} from '$lib/api/friendsApi';
+import { getIncomingFamilyInvitations, getMyFamily } from '$lib/api/familyApi';
 import { updateCurrentUser } from '$lib/api/userApi';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -12,27 +8,24 @@ export const load: PageServerLoad = async ({ locals, fetch }) => {
 	const session = await locals.auth();
 	if (!session?.accessToken) {
 		return {
-			friends: [],
-			incomingFriendRequests: [],
-			outgoingFriendRequests: []
+			family: null,
+			incomingInvitations: []
 		};
 	}
 
 	try {
-		const [friends, incomingFriendRequests, outgoingFriendRequests] = await Promise.all([
-			getFriends(session.accessToken, fetch),
-			getIncomingFriendRequests(session.accessToken, fetch),
-			getOutgoingFriendRequests(session.accessToken, fetch)
+		const [family, incomingInvitations] = await Promise.all([
+			getMyFamily(session.accessToken, fetch),
+			getIncomingFamilyInvitations(session.accessToken, fetch)
 		]);
 
 		return {
-			friends,
-			incomingFriendRequests,
-			outgoingFriendRequests
+			family,
+			incomingInvitations
 		};
 	} catch (err) {
-		console.error('Failed to load account friend data:', err);
-		error(500, 'Failed to load account friend data. Please try again.');
+		console.error('Failed to load account family data:', err);
+		error(500, 'Failed to load account family data. Please try again.');
 	}
 };
 
