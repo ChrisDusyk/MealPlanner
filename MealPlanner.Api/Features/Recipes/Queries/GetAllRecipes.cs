@@ -9,7 +9,7 @@ namespace MealPlanner.Api.Features.Recipes.Queries;
 /// <summary>
 /// Query to retrieve all recipes.
 /// </summary>
-public record GetAllRecipesQuery(string UserId) : IQuery<IReadOnlyList<Recipe>>;
+public record GetAllRecipesQuery(Guid FamilyGroupId) : IQuery<IReadOnlyList<Recipe>>;
 
 /// <summary>
 /// Handles retrieving all recipes.
@@ -24,7 +24,7 @@ public class GetAllRecipesQueryHandler(MealPlannerDbContext db)
 		try
 		{
 			var entities = await db.Recipes
-				.Where(r => r.UserId == query.UserId)
+				.Where(r => r.FamilyGroupId == query.FamilyGroupId)
 				.ToListAsync(cancellationToken);
 
 			var recipes = entities
@@ -43,7 +43,8 @@ public class GetAllRecipesQueryHandler(MealPlannerDbContext db)
 	internal static Recipe MapToRecipe(RecipeEntity entity) =>
 		new(
 			Id: entity.Id.ToString(),
-			UserId: entity.UserId,
+			FamilyGroupId: entity.FamilyGroupId.ToString(),
+			ContributedByUserId: entity.ContributedByUserId,
 			Name: entity.Name,
 			Description: entity.Description,
 			Servings: entity.Servings,

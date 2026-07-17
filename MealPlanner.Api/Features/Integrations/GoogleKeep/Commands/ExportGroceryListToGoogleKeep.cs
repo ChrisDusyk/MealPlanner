@@ -10,7 +10,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MealPlanner.Api.Features.Integrations.GoogleKeep.Commands;
 
-public record ExportGroceryListToGoogleKeepCommand(string UserId, DateOnly WeekStart, bool ForceNewNote)
+public record ExportGroceryListToGoogleKeepCommand(string UserId, Guid FamilyGroupId, DateOnly WeekStart, bool ForceNewNote)
 	: ICommand<GoogleKeepExportResult>;
 
 public record GoogleKeepExportResult(
@@ -39,7 +39,7 @@ public class ExportGroceryListToGoogleKeepCommandHandler(
 			var normalizedWeek = NormalizeToMonday(command.WeekStart);
 			var weekStartStr = normalizedWeek.ToString("yyyy-MM-dd");
 			var listEntity = await db.GroceryLists
-				.FirstOrDefaultAsync(g => g.UserId == command.UserId && g.WeekStart == weekStartStr, cancellationToken);
+				.FirstOrDefaultAsync(g => g.FamilyGroupId == command.FamilyGroupId && g.WeekStart == weekStartStr, cancellationToken);
 			if (listEntity is null)
 				return Result<GoogleKeepExportResult>.Failure(new Error(ErrorCodes.NotFound, "Grocery list not found for the requested week."));
 
@@ -155,7 +155,7 @@ public class ExportGroceryListToGoogleKeepCommandHandler(
 	internal static GroceryList MapToDomain(GroceryListEntity doc) =>
 		new(
 			doc.Id.ToString(),
-			doc.UserId,
+			doc.FamilyGroupId.ToString(),
 			DateOnly.ParseExact(doc.WeekStart, "yyyy-MM-dd"),
 			doc.Items.Select(i => new GroceryListItem(i.Name, i.Quantity, i.Unit, i.IsChecked, i.SourceRecipeNames)).ToList(),
 			doc.PantryStapleItems.Select(i => new GroceryListItem(i.Name, i.Quantity, i.Unit, i.IsChecked, i.SourceRecipeNames)).ToList(),

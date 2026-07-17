@@ -1,6 +1,5 @@
 using MealPlanner.Api.Data;
 using MealPlanner.Api.Features.GroceryLists.Models;
-using MealPlanner.Api.Features.MealPlans.Models;
 using MealPlanner.Api.Shared;
 using Microsoft.EntityFrameworkCore;
 
@@ -8,23 +7,15 @@ namespace MealPlanner.Api.Features.GroceryLists.Commands;
 
 /// <summary>
 /// Command to toggle the IsChecked state of a grocery list item by index.
-/// If OwnerUserId is set and differs from RequestingUserId, the handler verifies
-/// the requesting user has a ReadWrite share on the owner's list for that week.
 /// </summary>
 public record ToggleGroceryListItemCommand(
-	string RequestingUserId,
+	Guid FamilyGroupId,
 	DateOnly WeekStart,
-	int ItemIndex,
-	string? OwnerUserId = null
-) : ICommand<GroceryList>
-{
-	/// <summary>The user ID whose list will actually be modified.</summary>
-	public string EffectiveOwnerUserId => OwnerUserId ?? RequestingUserId;
-}
+	int ItemIndex
+) : ICommand<GroceryList>;
 
 /// <summary>
-/// Toggles a single item's checked state in the grocery list.
-/// Supports both owned lists and shared ReadWrite lists.
+/// Toggles a single item's checked state in the family's grocery list.
 /// </summary>
 public class ToggleGroceryListItemCommandHandler(MealPlannerDbContext db)
 	: ICommandHandler<ToggleGroceryListItemCommand, GroceryList>
@@ -38,35 +29,10 @@ public class ToggleGroceryListItemCommandHandler(MealPlannerDbContext db)
 			var weekStartStr = GroceryListHelpers.NormalizeToMonday(command.WeekStart)
 				.ToString("yyyy-MM-dd");
 
-			// If a different owner is specified, validate the requesting user has ReadWrite access
-			if (!string.IsNullOrEmpty(command.OwnerUserId)
-			    && command.OwnerUserId != command.RequestingUserId)
-			{
-				var share = await db.GroceryListShares.FirstOrDefaultAsync(
-					s => s.OwnerUserId == command.OwnerUserId
-						&& s.SharedWithUserId == command.RequestingUserId
-						&& s.WeekStart == weekStartStr
-						&& !s.DismissedByRecipient,
-					cancellationToken);
-
-				if (share is null)
-				{
-					return Result<GroceryList>.Failure(
-						new Error(ErrorCodes.ValidationFailed,
-							"You do not have access to this grocery list."));
-				}
-
-				if (!Enum.TryParse<SharePermission>(share.Permission, true, out var permission)
-				    || permission != SharePermission.ReadWrite)
-				{
-					return Result<GroceryList>.Failure(
-						new Error(ErrorCodes.ValidationFailed,
-							"You only have read-only access to this grocery list."));
-				}
-			}
-
 			var entity = await db.GroceryLists
-				.FirstOrDefaultAsync(g => g.UserId == command.EffectiveOwnerUserId && g.WeekStart == weekStartStr, cancellationToken);
+				.FirstOrDefaultAsync(
+					g => g.FamilyGroupId == command.FamilyGroupId && g.WeekStart == weekStartStr,
+					cancellationToken);
 
 			if (entity is null)
 			{

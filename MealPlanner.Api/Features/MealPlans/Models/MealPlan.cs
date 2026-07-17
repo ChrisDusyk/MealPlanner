@@ -33,11 +33,11 @@ public record DayPlan(
 );
 
 /// <summary>
-/// A weekly meal plan for a single user, anchored to a Monday start date.
+/// A weekly meal plan for a family group, anchored to a Monday start date.
 /// </summary>
 public record MealPlan(
 	string Id,
-	string UserId,
+	string FamilyGroupId,
 	DateOnly WeekStart,
 	List<DayPlan> Days,
 	DateTime CreatedAt,

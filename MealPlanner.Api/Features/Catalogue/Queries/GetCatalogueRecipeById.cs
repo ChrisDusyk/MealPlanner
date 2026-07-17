@@ -9,7 +9,7 @@ namespace MealPlanner.Api.Features.Catalogue.Queries;
 /// Retrieve a single published catalogue recipe with the
 /// "alreadyAdded" flag computed for the current user.
 /// </summary>
-public record GetCatalogueRecipeByIdQuery(Guid Id, string UserId)
+public record GetCatalogueRecipeByIdQuery(Guid Id, Guid FamilyGroupId)
 	: IQuery<(CatalogueRecipe Recipe, bool AlreadyAdded)>;
 
 public class GetCatalogueRecipeByIdQueryHandler(MealPlannerDbContext db)
@@ -36,7 +36,7 @@ public class GetCatalogueRecipeByIdQueryHandler(MealPlannerDbContext db)
 			var alreadyAdded = await db.Recipes
 				.AsNoTracking()
 				.AnyAsync(
-					r => r.UserId == query.UserId && r.CatalogueRecipeId == entity.Id,
+					r => r.FamilyGroupId == query.FamilyGroupId && r.CatalogueRecipeId == entity.Id,
 					cancellationToken);
 
 			return Result<(CatalogueRecipe, bool)>.Success(

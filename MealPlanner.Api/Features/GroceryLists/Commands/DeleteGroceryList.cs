@@ -7,7 +7,7 @@ namespace MealPlanner.Api.Features.GroceryLists.Commands;
 /// <summary>
 /// Command to delete a grocery list for a given user and week.
 /// </summary>
-public record DeleteGroceryListCommand(string UserId, DateOnly WeekStart) : ICommand<Unit>;
+public record DeleteGroceryListCommand(Guid FamilyGroupId, DateOnly WeekStart) : ICommand<Unit>;
 
 /// <summary>
 /// Deletes the grocery list for the specified user and week.
@@ -24,7 +24,7 @@ public class DeleteGroceryListCommandHandler(MealPlannerDbContext db)
 			var weekStartStr = GroceryListHelpers.NormalizeToMonday(command.WeekStart)
 				.ToString("yyyy-MM-dd");
 			var entity = await db.GroceryLists
-				.FirstOrDefaultAsync(g => g.UserId == command.UserId && g.WeekStart == weekStartStr, cancellationToken);
+				.FirstOrDefaultAsync(g => g.FamilyGroupId == command.FamilyGroupId && g.WeekStart == weekStartStr, cancellationToken);
 
 			if (entity is null)
 			{

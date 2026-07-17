@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using MealPlanner.Api.Features.Auth;
+using MealPlanner.Api.Features.Families;
 using MealPlanner.Api.Features.Recipes.Commands;
 using MealPlanner.Api.Features.Recipes.Dtos;
 using MealPlanner.Api.Features.Recipes.Import;
@@ -52,13 +53,19 @@ public static class RecipeEndpoints
 	private static async Task<IResult> GetAllRecipes(
 		HttpContext httpContext,
 		IQueryHandler<GetAllRecipesQuery, IReadOnlyList<Recipe>> handler,
+		IFamilyContextResolver familyResolver,
 		CancellationToken cancellationToken)
 	{
 		var userId = GetUserId(httpContext);
 		if (userId is null)
 			return Results.Unauthorized();
 
-		var result = await handler.HandleAsync(new GetAllRecipesQuery(userId), cancellationToken);
+		var familyResult = await familyResolver.ResolveAsync(userId, cancellationToken);
+		if (!familyResult.IsSuccess)
+			return Results.Problem(familyResult.Error!.Message, statusCode: 500);
+
+		var result = await handler.HandleAsync(
+			new GetAllRecipesQuery(familyResult.Value!.FamilyGroupId), cancellationToken);
 		return result.Match(
 			onSuccess: recipes => Results.Ok(recipes.Select(RecipeResponse.FromDomain).ToList()),
 			onFailure: error => Results.Problem(error.Message, statusCode: 500));
@@ -68,13 +75,19 @@ public static class RecipeEndpoints
 		string id,
 		HttpContext httpContext,
 		IQueryHandler<GetRecipeByIdQuery, Recipe> handler,
+		IFamilyContextResolver familyResolver,
 		CancellationToken cancellationToken)
 	{
 		var userId = GetUserId(httpContext);
 		if (userId is null)
 			return Results.Unauthorized();
 
-		var result = await handler.HandleAsync(new GetRecipeByIdQuery(id, userId), cancellationToken);
+		var familyResult = await familyResolver.ResolveAsync(userId, cancellationToken);
+		if (!familyResult.IsSuccess)
+			return Results.Problem(familyResult.Error!.Message, statusCode: 500);
+
+		var result = await handler.HandleAsync(
+			new GetRecipeByIdQuery(id, familyResult.Value!.FamilyGroupId), cancellationToken);
 		return result.Match(
 			onSuccess: recipe => Results.Ok(RecipeResponse.FromDomain(recipe)),
 			onFailure: error => error.Code switch
@@ -89,6 +102,7 @@ public static class RecipeEndpoints
 		CreateRecipeRequest request,
 		HttpContext httpContext,
 		ICommandHandler<CreateRecipeCommand, Recipe> handler,
+		IFamilyContextResolver familyResolver,
 		CancellationToken cancellationToken)
 	{
 		var validationErrors = ValidateRequest(request);
@@ -99,7 +113,12 @@ public static class RecipeEndpoints
 		if (userId is null)
 			return Results.Unauthorized();
 
+		var familyResult = await familyResolver.ResolveAsync(userId, cancellationToken);
+		if (!familyResult.IsSuccess)
+			return Results.Problem(familyResult.Error!.Message, statusCode: 500);
+
 		var command = new CreateRecipeCommand(
+			familyResult.Value!.FamilyGroupId,
 			userId,
 			request.Name,
 			request.Description,
@@ -146,6 +165,7 @@ public static class RecipeEndpoints
 		UpdateRecipeRequest request,
 		HttpContext httpContext,
 		ICommandHandler<UpdateRecipeCommand, Recipe> handler,
+		IFamilyContextResolver familyResolver,
 		CancellationToken cancellationToken)
 	{
 		var validationErrors = ValidateRequest(request);
@@ -156,9 +176,13 @@ public static class RecipeEndpoints
 		if (userId is null)
 			return Results.Unauthorized();
 
+		var familyResult = await familyResolver.ResolveAsync(userId, cancellationToken);
+		if (!familyResult.IsSuccess)
+			return Results.Problem(familyResult.Error!.Message, statusCode: 500);
+
 		var command = new UpdateRecipeCommand(
 			id,
-			userId,
+			familyResult.Value!.FamilyGroupId,
 			request.Name,
 			request.Description,
 			request.Servings,

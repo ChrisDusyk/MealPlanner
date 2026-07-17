@@ -1,21 +1,20 @@
 using MealPlanner.Api.Data;
 using MealPlanner.Api.Data.Entities;
 using MealPlanner.Api.Features.GroceryLists.Models;
-using MealPlanner.Api.Features.MealPlans.Models;
 using MealPlanner.Api.Shared;
 using Microsoft.EntityFrameworkCore;
 
 namespace MealPlanner.Api.Features.GroceryLists.Commands;
 
 /// <summary>
-/// Command to generate a grocery list from a meal plan for a given week.
+/// Command to generate a grocery list from the family's meal plan for a given week.
 /// </summary>
-public record GenerateGroceryListCommand(string UserId, DateOnly WeekStart) : ICommand<GroceryList>;
+public record GenerateGroceryListCommand(Guid FamilyGroupId, DateOnly WeekStart) : ICommand<GroceryList>;
 
 /// <summary>
 /// Generates a grocery list by aggregating ingredients from all recipe-linked meals in the plan.
 /// Free-text items (no RecipeId) are added as uncategorized entries.
-/// If a grocery list already exists for the same user + week, it is replaced (upsert).
+/// If a grocery list already exists for the same family + week, it is replaced (upsert).
 /// </summary>
 public class GenerateGroceryListCommandHandler(MealPlannerDbContext db)
 	: ICommandHandler<GenerateGroceryListCommand, GroceryList>
@@ -31,7 +30,9 @@ public class GenerateGroceryListCommandHandler(MealPlannerDbContext db)
 
 			// 1. Fetch the meal plan
 			var mealPlanEntity = await db.MealPlans
-				.FirstOrDefaultAsync(p => p.UserId == command.UserId && p.WeekStart == weekStartStr, cancellationToken);
+				.FirstOrDefaultAsync(
+					p => p.FamilyGroupId == command.FamilyGroupId && p.WeekStart == weekStartStr,
+					cancellationToken);
 
 			if (mealPlanEntity is null)
 			{
@@ -157,7 +158,9 @@ public class GenerateGroceryListCommandHandler(MealPlannerDbContext db)
 			var now = DateTime.UtcNow;
 
 			var entity = await db.GroceryLists
-				.FirstOrDefaultAsync(g => g.UserId == command.UserId && g.WeekStart == weekStartStr, cancellationToken);
+				.FirstOrDefaultAsync(
+					g => g.FamilyGroupId == command.FamilyGroupId && g.WeekStart == weekStartStr,
+					cancellationToken);
 
 			if (entity is not null)
 			{
@@ -170,7 +173,7 @@ public class GenerateGroceryListCommandHandler(MealPlannerDbContext db)
 				entity = new GroceryListEntity
 				{
 					Id = Guid.NewGuid(),
-					UserId = command.UserId,
+					FamilyGroupId = command.FamilyGroupId,
 					WeekStart = weekStartStr,
 					Items = groceryItems,
 					PantryStapleItems = pantryStapleItems,
@@ -182,10 +185,6 @@ public class GenerateGroceryListCommandHandler(MealPlannerDbContext db)
 
 			await db.SaveChangesAsync(cancellationToken);
 
-			// 7. Auto-share the grocery list with everyone the meal plan is shared with
-			await PropagateSharesFromMealPlanAsync(db, command.UserId, weekStartStr, cancellationToken);
-			await PropagateAutoSharesFromFriendPreferencesAsync(db, command.UserId, weekStartStr, cancellationToken);
-
 			return Result<GroceryList>.Success(GroceryListHelpers.MapToDomain(entity));
 		}
 		catch (Exception ex)
@@ -193,128 +192,5 @@ public class GenerateGroceryListCommandHandler(MealPlannerDbContext db)
 			return Result<GroceryList>.Failure(
 				new Error(ErrorCodes.DatabaseError, "Failed to generate grocery list.", ex));
 		}
-	}
-
-	/// <summary>
-	/// Upserts grocery list shares for all active meal plan shares that do not already
-	/// have a corresponding grocery list share. No-ops if there are no meal plan shares.
-	/// </summary>
-	private static async Task PropagateSharesFromMealPlanAsync(
-		MealPlannerDbContext db,
-		string ownerUserId,
-		string weekStartStr,
-		CancellationToken cancellationToken)
-	{
-		// Find all active (non-dismissed) meal plan shares for this owner and week
-		var mealPlanShares = await db.MealPlanShares
-			.Where(s => s.OwnerUserId == ownerUserId
-				&& s.WeekStart == weekStartStr
-				&& !s.DismissedByRecipient)
-			.ToListAsync(cancellationToken);
-
-		if (mealPlanShares.Count == 0)
-			return;
-
-		// Fetch existing grocery list shares so we do not create duplicates
-		var recipientIds = mealPlanShares.Select(s => s.SharedWithUserId).Distinct().ToList();
-		var existingShares = await db.GroceryListShares
-			.Where(s => s.OwnerUserId == ownerUserId
-				&& s.WeekStart == weekStartStr
-				&& recipientIds.Contains(s.SharedWithUserId))
-			.ToListAsync(cancellationToken);
-
-		var alreadySharedWith = existingShares
-			.Select(s => s.SharedWithUserId)
-			.ToHashSet();
-
-		var newShares = mealPlanShares
-			.Where(s => !alreadySharedWith.Contains(s.SharedWithUserId))
-			.Select(s => new GroceryListShareEntity
-			{
-				Id = Guid.NewGuid(),
-				OwnerUserId = s.OwnerUserId,
-				SharedWithUserId = s.SharedWithUserId,
-				WeekStart = s.WeekStart,
-				Permission = s.Permission,
-				SharedAt = DateTime.UtcNow,
-				DismissedByRecipient = false
-			})
-			.ToList();
-
-		if (newShares.Count > 0)
-		{
-			db.GroceryListShares.AddRange(newShares);
-			await db.SaveChangesAsync(cancellationToken);
-		}
-	}
-
-	private static async Task PropagateAutoSharesFromFriendPreferencesAsync(
-		MealPlannerDbContext db,
-		string ownerUserId,
-		string weekStartStr,
-		CancellationToken cancellationToken)
-	{
-		var enabledPreferences = await db.FriendAutoSharePreferences
-			.Where(p => p.UserId == ownerUserId && p.AutoShareGroceryLists)
-			.ToListAsync(cancellationToken);
-
-		if (enabledPreferences.Count == 0)
-			return;
-
-		var recipientIds = enabledPreferences
-			.Select(p => p.FriendUserId)
-			.Where(id => !string.IsNullOrWhiteSpace(id))
-			.Distinct(StringComparer.Ordinal)
-			.ToList();
-
-		if (recipientIds.Count == 0)
-			return;
-
-		var activeFriendships = await db.Friendships
-			.Where(f =>
-				(f.UserAId == ownerUserId && recipientIds.Contains(f.UserBId)) ||
-				(f.UserBId == ownerUserId && recipientIds.Contains(f.UserAId)))
-			.ToListAsync(cancellationToken);
-
-		var activeRecipientIds = activeFriendships
-			.Select(f => f.UserAId == ownerUserId ? f.UserBId : f.UserAId)
-			.Where(id => !string.IsNullOrWhiteSpace(id))
-			.Distinct(StringComparer.Ordinal)
-			.ToList();
-
-		if (activeRecipientIds.Count == 0)
-			return;
-
-		var existingShares = await db.GroceryListShares
-			.Where(s =>
-				s.OwnerUserId == ownerUserId &&
-				s.WeekStart == weekStartStr &&
-				activeRecipientIds.Contains(s.SharedWithUserId))
-			.ToListAsync(cancellationToken);
-
-		var alreadySharedWith = existingShares
-			.Select(s => s.SharedWithUserId)
-			.ToHashSet(StringComparer.Ordinal);
-
-		var now = DateTime.UtcNow;
-		var newShares = activeRecipientIds
-			.Where(recipientId => !alreadySharedWith.Contains(recipientId))
-			.Select(recipientId => new GroceryListShareEntity
-			{
-				Id = Guid.NewGuid(),
-				OwnerUserId = ownerUserId,
-				SharedWithUserId = recipientId,
-				WeekStart = weekStartStr,
-				Permission = nameof(SharePermission.ReadWrite),
-				SharedAt = now,
-				DismissedByRecipient = false
-			})
-			.ToList();
-
-		if (newShares.Count == 0)
-			return;
-
-		db.GroceryListShares.AddRange(newShares);
-		await db.SaveChangesAsync(cancellationToken);
 	}
 }

@@ -1,19 +1,20 @@
 using System.Security.Claims;
-using MealPlanner.Api.Data;
 using MealPlanner.Api.Features.Auth;
+using MealPlanner.Api.Features.Families;
 using MealPlanner.Api.Features.MealPlans.Commands;
 using MealPlanner.Api.Features.MealPlans.Dtos;
 using MealPlanner.Api.Features.MealPlans.Models;
 using MealPlanner.Api.Features.MealPlans.Queries;
 using MealPlanner.Api.Features.MealPlans.Realtime;
 using MealPlanner.Api.Shared;
-using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
 
 namespace MealPlanner.Api.Features.MealPlans;
 
 /// <summary>
-/// Maps minimal API endpoints for meal plan management.
+/// Maps minimal API endpoints for meal plan management. The caller's family
+/// group (resolved from their auth user id) owns the plan; every family
+/// member has full access.
 /// </summary>
 public static class MealPlanEndpoints
 {
@@ -27,13 +28,6 @@ public static class MealPlanEndpoints
 		group.MapPut("/slots", UpdateDaySlot);
 		group.MapPost("/copy-category", CopyCategory);
 		group.MapDelete("/slots/{itemIndex:int}", RemoveSlotItem);
-
-		// Sharing endpoints
-		group.MapPost("/shares", ShareMealPlan);
-		group.MapGet("/shares", GetSharesForMealPlan);
-		group.MapDelete("/shares/{shareId}", RevokeMealPlanShare);
-		group.MapGet("/shared-with-me", GetSharedWithMe);
-		group.MapPost("/shared-with-me/{shareId}/dismiss", DismissSharedMealPlan);
 
 		return app;
 	}
@@ -80,40 +74,10 @@ public static class MealPlanEndpoints
 		return errors.ToDictionary(kvp => kvp.Key, kvp => kvp.Value.Distinct().ToArray());
 	}
 
-	/// <summary>
-	/// Resolves the effective plan owner for mutation endpoints.
-	/// If onBehalfOf is provided, verifies the caller has a ReadWrite share for that plan.
-	/// Returns (effectiveUserId, errorResult) — errorResult is non-null if access is denied.
-	/// </summary>
-	private static async Task<(string? EffectiveUserId, IResult? Error)> ResolveEffectiveOwner(
-		string callerId,
-		string weekStart,
-		string? onBehalfOf,
-		MealPlannerDbContext db,
-		CancellationToken cancellationToken)
-	{
-		if (string.IsNullOrWhiteSpace(onBehalfOf))
-			return (callerId, null);
-
-		var hasReadWriteShare = await db.MealPlanShares
-			.AsNoTracking()
-			.AnyAsync(
-				s => s.OwnerUserId == onBehalfOf
-				     && s.SharedWithUserId == callerId
-				     && s.WeekStart == weekStart
-				     && s.Permission == nameof(SharePermission.ReadWrite)
-				     && !s.DismissedByRecipient,
-				cancellationToken);
-
-		if (!hasReadWriteShare)
-			return (null, Results.Forbid());
-
-		return (onBehalfOf, null);
-	}
-
 	private static async Task<IResult> GetMealPlan(
 		HttpContext httpContext,
 		IQueryHandler<GetMealPlanQuery, MealPlan> handler,
+		IFamilyContextResolver familyResolver,
 		CancellationToken cancellationToken,
 		string? weekStart = null)
 	{
@@ -121,11 +85,16 @@ public static class MealPlanEndpoints
 		if (userId is null)
 			return Results.Unauthorized();
 
+		var familyResult = await familyResolver.ResolveAsync(userId, cancellationToken);
+		if (!familyResult.IsSuccess)
+			return Results.Problem(familyResult.Error!.Message, statusCode: 500);
+
 		var week = string.IsNullOrEmpty(weekStart)
 			? DateOnly.FromDateTime(DateTime.UtcNow)
 			: DateOnly.ParseExact(weekStart, "yyyy-MM-dd");
 
-		var result = await handler.HandleAsync(new GetMealPlanQuery(userId, week), cancellationToken);
+		var result = await handler.HandleAsync(
+			new GetMealPlanQuery(familyResult.Value!.FamilyGroupId, week), cancellationToken);
 		return result.Match(
 			onSuccess: plan => Results.Ok(MealPlanResponse.FromDomain(plan)),
 			onFailure: error => Results.Problem(error.Message, statusCode: 500));
@@ -136,12 +105,11 @@ public static class MealPlanEndpoints
 		UpdateDaySlotRequest request,
 		ICommandHandler<UpdateDaySlotCommand, MealPlan> handler,
 		IMealPlanRealtimeNotifier realtimeNotifier,
-		MealPlannerDbContext db,
+		IFamilyContextResolver familyResolver,
 		CancellationToken cancellationToken,
 		string weekStart,
 		string day,
-		string category,
-		string? onBehalfOf = null)
+		string category)
 	{
 		var validationErrors = ValidateUpdateDaySlotRequest(request);
 		if (validationErrors.Count > 0)
@@ -151,8 +119,10 @@ public static class MealPlanEndpoints
 		if (userId is null)
 			return Results.Unauthorized();
 
-		var (effectiveUserId, accessError) = await ResolveEffectiveOwner(userId, weekStart, onBehalfOf, db, cancellationToken);
-		if (accessError is not null) return accessError;
+		var familyResult = await familyResolver.ResolveAsync(userId, cancellationToken);
+		if (!familyResult.IsSuccess)
+			return Results.Problem(familyResult.Error!.Message, statusCode: 500);
+		var familyGroupId = familyResult.Value!.FamilyGroupId;
 
 		if (!Enum.TryParse<DayOfWeek>(day, true, out var dayOfWeek))
 			return Results.BadRequest($"Invalid day: {day}");
@@ -161,7 +131,7 @@ public static class MealPlanEndpoints
 			return Results.BadRequest($"Invalid category: {category}");
 
 		var command = new UpdateDaySlotCommand(
-			effectiveUserId!,
+			familyGroupId,
 			DateOnly.ParseExact(weekStart, "yyyy-MM-dd"),
 			dayOfWeek,
 			mealCategory,
@@ -181,7 +151,7 @@ public static class MealPlanEndpoints
 
 		var plan = result.Value!;
 		await realtimeNotifier.PublishMealPlanUpdatedAsync(
-			ownerUserId: plan.UserId,
+			familyGroupId: familyGroupId,
 			weekStart: plan.WeekStart,
 			updatedPlan: plan,
 			changedByUserId: userId,
@@ -196,17 +166,18 @@ public static class MealPlanEndpoints
 		CopyCategoryRequest request,
 		ICommandHandler<CopyCategoryCommand, MealPlan> handler,
 		IMealPlanRealtimeNotifier realtimeNotifier,
-		MealPlannerDbContext db,
+		IFamilyContextResolver familyResolver,
 		CancellationToken cancellationToken,
-		string weekStart,
-		string? onBehalfOf = null)
+		string weekStart)
 	{
 		var userId = GetUserId(httpContext);
 		if (userId is null)
 			return Results.Unauthorized();
 
-		var (effectiveUserId, accessError) = await ResolveEffectiveOwner(userId, weekStart, onBehalfOf, db, cancellationToken);
-		if (accessError is not null) return accessError;
+		var familyResult = await familyResolver.ResolveAsync(userId, cancellationToken);
+		if (!familyResult.IsSuccess)
+			return Results.Problem(familyResult.Error!.Message, statusCode: 500);
+		var familyGroupId = familyResult.Value!.FamilyGroupId;
 
 		if (!Enum.TryParse<DayOfWeek>(request.SourceDay, true, out var sourceDay))
 			return Results.BadRequest($"Invalid source day: {request.SourceDay}");
@@ -223,7 +194,7 @@ public static class MealPlanEndpoints
 		}
 
 		var command = new CopyCategoryCommand(
-			effectiveUserId!,
+			familyGroupId,
 			DateOnly.ParseExact(weekStart, "yyyy-MM-dd"),
 			sourceDay,
 			category,
@@ -243,7 +214,7 @@ public static class MealPlanEndpoints
 
 		var plan = result.Value!;
 		await realtimeNotifier.PublishMealPlanUpdatedAsync(
-			ownerUserId: plan.UserId,
+			familyGroupId: familyGroupId,
 			weekStart: plan.WeekStart,
 			updatedPlan: plan,
 			changedByUserId: userId,
@@ -258,19 +229,20 @@ public static class MealPlanEndpoints
 		HttpContext httpContext,
 		ICommandHandler<RemoveSlotItemCommand, MealPlan> handler,
 		IMealPlanRealtimeNotifier realtimeNotifier,
-		MealPlannerDbContext db,
+		IFamilyContextResolver familyResolver,
 		CancellationToken cancellationToken,
 		string weekStart,
 		string day,
-		string category,
-		string? onBehalfOf = null)
+		string category)
 	{
 		var userId = GetUserId(httpContext);
 		if (userId is null)
 			return Results.Unauthorized();
 
-		var (effectiveUserId, accessError) = await ResolveEffectiveOwner(userId, weekStart, onBehalfOf, db, cancellationToken);
-		if (accessError is not null) return accessError;
+		var familyResult = await familyResolver.ResolveAsync(userId, cancellationToken);
+		if (!familyResult.IsSuccess)
+			return Results.Problem(familyResult.Error!.Message, statusCode: 500);
+		var familyGroupId = familyResult.Value!.FamilyGroupId;
 
 		if (!Enum.TryParse<DayOfWeek>(day, true, out var dayOfWeek))
 			return Results.BadRequest($"Invalid day: {day}");
@@ -279,7 +251,7 @@ public static class MealPlanEndpoints
 			return Results.BadRequest($"Invalid category: {category}");
 
 		var command = new RemoveSlotItemCommand(
-			effectiveUserId!,
+			familyGroupId,
 			DateOnly.ParseExact(weekStart, "yyyy-MM-dd"),
 			dayOfWeek,
 			mealCategory,
@@ -299,7 +271,7 @@ public static class MealPlanEndpoints
 
 		var plan = result.Value!;
 		await realtimeNotifier.PublishMealPlanUpdatedAsync(
-			ownerUserId: plan.UserId,
+			familyGroupId: familyGroupId,
 			weekStart: plan.WeekStart,
 			updatedPlan: plan,
 			changedByUserId: userId,
@@ -307,117 +279,5 @@ public static class MealPlanEndpoints
 			cancellationToken: cancellationToken);
 
 		return Results.Ok(MealPlanResponse.FromDomain(plan));
-	}
-
-	// ── Sharing Handlers ───────────────────────────────────
-
-	private static async Task<IResult> ShareMealPlan(
-		ShareMealPlanRequest request,
-		HttpContext httpContext,
-		ICommandHandler<ShareMealPlanCommand, MealPlanShare> handler,
-		CancellationToken cancellationToken)
-	{
-		var userId = GetUserId(httpContext);
-		if (userId is null)
-			return Results.Unauthorized();
-
-		if (!Enum.TryParse<SharePermission>(request.Permission, true, out var permission))
-			return Results.BadRequest($"Invalid permission: {request.Permission}. Use 'ReadOnly' or 'ReadWrite'.");
-
-		var command = new ShareMealPlanCommand(userId, request.Email, request.WeekStart, permission);
-		var result = await handler.HandleAsync(command, cancellationToken);
-		return result.Match(
-			onSuccess: share => Results.Created($"/api/meal-plans/shares/{share.Id}",
-				MealPlanShareResponse.FromDomain(share)),
-			onFailure: error => error.Code switch
-			{
-				ErrorCodes.NotFound => Results.NotFound(error.Message),
-				ErrorCodes.ValidationFailed => Results.BadRequest(error.Message),
-				_ => Results.Problem(error.Message, statusCode: 500)
-			});
-	}
-
-	private static async Task<IResult> GetSharesForMealPlan(
-		HttpContext httpContext,
-		IQueryHandler<GetSharesForMealPlanQuery, List<ShareWithRecipientInfo>> handler,
-		CancellationToken cancellationToken,
-		string weekStart)
-	{
-		var userId = GetUserId(httpContext);
-		if (userId is null)
-			return Results.Unauthorized();
-
-		var result = await handler.HandleAsync(
-			new GetSharesForMealPlanQuery(userId, weekStart), cancellationToken);
-		return result.Match(
-			onSuccess: shares => Results.Ok(shares.Select(s =>
-				MealPlanShareResponse.FromDomain(s.Share, s.RecipientName, s.RecipientEmail)).ToList()),
-			onFailure: error => Results.Problem(error.Message, statusCode: 500));
-	}
-
-	private static async Task<IResult> RevokeMealPlanShare(
-		string shareId,
-		HttpContext httpContext,
-		ICommandHandler<RevokeMealPlanShareCommand, Unit> handler,
-		CancellationToken cancellationToken)
-	{
-		var userId = GetUserId(httpContext);
-		if (userId is null)
-			return Results.Unauthorized();
-
-		var result = await handler.HandleAsync(
-			new RevokeMealPlanShareCommand(userId, shareId), cancellationToken);
-		return result.Match(
-			onSuccess: _ => Results.NoContent(),
-			onFailure: error => error.Code switch
-			{
-				ErrorCodes.NotFound => Results.NotFound(error.Message),
-				_ => Results.Problem(error.Message, statusCode: 500)
-			});
-	}
-
-	private static async Task<IResult> GetSharedWithMe(
-		HttpContext httpContext,
-		IQueryHandler<GetSharedWithMeQuery, List<SharedMealPlanResult>> handler,
-		CancellationToken cancellationToken,
-		string weekStart)
-	{
-		var userId = GetUserId(httpContext);
-		if (userId is null)
-			return Results.Unauthorized();
-
-		var result = await handler.HandleAsync(
-			new GetSharedWithMeQuery(userId, weekStart), cancellationToken);
-		return result.Match(
-			onSuccess: plans => Results.Ok(plans.Select(p => new SharedMealPlanResponse(
-				ShareId: p.Share.Id,
-				OwnerUserId: p.Share.OwnerUserId,
-				OwnerName: p.OwnerName,
-				OwnerEmail: p.OwnerEmail,
-				Permission: p.Share.Permission.ToString(),
-				MealPlan: MealPlanResponse.FromDomain(p.MealPlan)
-			)).ToList()),
-			onFailure: error => Results.Problem(error.Message, statusCode: 500));
-	}
-
-	private static async Task<IResult> DismissSharedMealPlan(
-		string shareId,
-		HttpContext httpContext,
-		ICommandHandler<DismissSharedMealPlanCommand, Unit> handler,
-		CancellationToken cancellationToken)
-	{
-		var userId = GetUserId(httpContext);
-		if (userId is null)
-			return Results.Unauthorized();
-
-		var result = await handler.HandleAsync(
-			new DismissSharedMealPlanCommand(userId, shareId), cancellationToken);
-		return result.Match(
-			onSuccess: _ => Results.NoContent(),
-			onFailure: error => error.Code switch
-			{
-				ErrorCodes.NotFound => Results.NotFound(error.Message),
-				_ => Results.Problem(error.Message, statusCode: 500)
-			});
 	}
 }

@@ -12,9 +12,9 @@ namespace MealPlanner.Api.Features.Catalogue.Commands;
 /// the data into a new <see cref="RecipeEntity"/>. Returns a domain
 /// <see cref="Recipe"/> (mirrors <see cref="CreateRecipeCommand"/>).
 /// Blocks duplicates via the unique partial index on
-/// <c>(UserId, CatalogueRecipeId)</c>.
+/// <c>(FamilyGroupId, CatalogueRecipeId)</c>.
 /// </summary>
-public record AddCatalogueRecipeToUserCommand(Guid CatalogueRecipeId, string UserId)
+public record AddCatalogueRecipeToUserCommand(Guid CatalogueRecipeId, Guid FamilyGroupId, string ContributedByUserId)
 	: ICommand<Recipe>;
 
 public class AddCatalogueRecipeToUserCommandHandler(MealPlannerDbContext db)
@@ -24,7 +24,7 @@ public class AddCatalogueRecipeToUserCommandHandler(MealPlannerDbContext db)
 		AddCatalogueRecipeToUserCommand command,
 		CancellationToken cancellationToken = default)
 	{
-		if (string.IsNullOrWhiteSpace(command.UserId))
+		if (string.IsNullOrWhiteSpace(command.ContributedByUserId))
 		{
 			return Result<Recipe>.Failure(
 				new Error(ErrorCodes.ValidationFailed, "User identifier is required."));
@@ -44,7 +44,7 @@ public class AddCatalogueRecipeToUserCommandHandler(MealPlannerDbContext db)
 			var alreadyAdded = await db.Recipes
 				.AsNoTracking()
 				.AnyAsync(
-					r => r.UserId == command.UserId && r.CatalogueRecipeId == catalogueEntity.Id,
+					r => r.FamilyGroupId == command.FamilyGroupId && r.CatalogueRecipeId == catalogueEntity.Id,
 					cancellationToken);
 
 			if (alreadyAdded)
@@ -57,7 +57,8 @@ public class AddCatalogueRecipeToUserCommandHandler(MealPlannerDbContext db)
 			var recipe = new RecipeEntity
 			{
 				Id = Guid.NewGuid(),
-				UserId = command.UserId,
+				FamilyGroupId = command.FamilyGroupId,
+				ContributedByUserId = command.ContributedByUserId,
 				Name = catalogueEntity.Name,
 				Description = catalogueEntity.Description,
 				Servings = catalogueEntity.Servings,
@@ -109,7 +110,8 @@ public class AddCatalogueRecipeToUserCommandHandler(MealPlannerDbContext db)
 	internal static Recipe MapToRecipe(RecipeEntity entity) =>
 		new(
 			Id: entity.Id.ToString(),
-			UserId: entity.UserId,
+			FamilyGroupId: entity.FamilyGroupId.ToString(),
+			ContributedByUserId: entity.ContributedByUserId,
 			Name: entity.Name,
 			Description: entity.Description,
 			Servings: entity.Servings,

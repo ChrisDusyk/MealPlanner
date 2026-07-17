@@ -9,7 +9,8 @@ namespace MealPlanner.Api.Features.Recipes.Commands;
 /// Command to create a new recipe.
 /// </summary>
 public record CreateRecipeCommand(
-	string UserId,
+	Guid FamilyGroupId,
+	string ContributedByUserId,
 	string Name,
 	string Description,
 	int Servings,
@@ -41,7 +42,8 @@ public class CreateRecipeCommandHandler(MealPlannerDbContext db)
 			var entity = new RecipeEntity
 			{
 				Id = Guid.NewGuid(),
-				UserId = command.UserId,
+				FamilyGroupId = command.FamilyGroupId,
+				ContributedByUserId = command.ContributedByUserId,
 				Name = command.Name,
 				Description = command.Description,
 				Servings = command.Servings,
@@ -74,7 +76,8 @@ public class CreateRecipeCommandHandler(MealPlannerDbContext db)
 	internal static Recipe MapToRecipe(RecipeEntity entity) =>
 		new(
 			Id: entity.Id.ToString(),
-			UserId: entity.UserId,
+			FamilyGroupId: entity.FamilyGroupId.ToString(),
+			ContributedByUserId: entity.ContributedByUserId,
 			Name: entity.Name,
 			Description: entity.Description,
 			Servings: entity.Servings,

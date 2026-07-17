@@ -7,9 +7,10 @@ using Microsoft.EntityFrameworkCore;
 namespace MealPlanner.Api.Features.MealPlans.Queries;
 
 /// <summary>
-/// Query to retrieve a meal plan for a given week. Auto-creates an empty plan if none exists.
+/// Query to retrieve a family's meal plan for a given week. Auto-creates an
+/// empty plan if none exists.
 /// </summary>
-public record GetMealPlanQuery(string UserId, DateOnly WeekStart) : IQuery<MealPlan>;
+public record GetMealPlanQuery(Guid FamilyGroupId, DateOnly WeekStart) : IQuery<MealPlan>;
 
 /// <summary>
 /// Handles retrieving (or auto-creating) a weekly meal plan.
@@ -34,7 +35,9 @@ public class GetMealPlanQueryHandler(MealPlannerDbContext db)
 			var weekStartStr = weekStart.ToString("yyyy-MM-dd");
 
 			var entity = await db.MealPlans
-				.FirstOrDefaultAsync(p => p.UserId == query.UserId && p.WeekStart == weekStartStr, cancellationToken);
+				.FirstOrDefaultAsync(
+					p => p.FamilyGroupId == query.FamilyGroupId && p.WeekStart == weekStartStr,
+					cancellationToken);
 
 			if (entity is not null)
 				return Result<MealPlan>.Success(MapToDomain(entity));
@@ -44,7 +47,7 @@ public class GetMealPlanQueryHandler(MealPlannerDbContext db)
 			entity = new MealPlanEntity
 			{
 				Id = Guid.NewGuid(),
-				UserId = query.UserId,
+				FamilyGroupId = query.FamilyGroupId,
 				WeekStart = weekStartStr,
 				Days = WeekDays.Select(day => new DayPlanData
 				{
@@ -60,7 +63,6 @@ public class GetMealPlanQueryHandler(MealPlannerDbContext db)
 
 			db.MealPlans.Add(entity);
 			await db.SaveChangesAsync(cancellationToken);
-			await PropagateAutoSharesFromFriendPreferencesAsync(db, query.UserId, weekStartStr, cancellationToken);
 			return Result<MealPlan>.Success(MapToDomain(entity));
 		}
 		catch (Exception ex)
@@ -83,7 +85,7 @@ public class GetMealPlanQueryHandler(MealPlannerDbContext db)
 	internal static MealPlan MapToDomain(MealPlanEntity entity) =>
 		new(
 			Id: entity.Id.ToString(),
-			UserId: entity.UserId,
+			FamilyGroupId: entity.FamilyGroupId.ToString(),
 			WeekStart: DateOnly.ParseExact(entity.WeekStart, "yyyy-MM-dd"),
 			Days: entity.Days.Select(d => new DayPlan(
 				Day: Enum.Parse<DayOfWeek>(d.Day, ignoreCase: true),
@@ -99,88 +101,4 @@ public class GetMealPlanQueryHandler(MealPlannerDbContext db)
 			CreatedAt: entity.CreatedAt,
 			UpdatedAt: entity.UpdatedAt
 		);
-
-	internal static MealPlanShare MapShareToDomain(MealPlanShareEntity entity) =>
-		new(
-			Id: entity.Id.ToString(),
-			OwnerUserId: entity.OwnerUserId,
-			SharedWithUserId: entity.SharedWithUserId,
-			WeekStart: entity.WeekStart,
-			Permission: Enum.Parse<SharePermission>(entity.Permission),
-			SharedAt: entity.SharedAt,
-			DismissedByRecipient: entity.DismissedByRecipient
-		);
-
-	private static async Task PropagateAutoSharesFromFriendPreferencesAsync(
-		MealPlannerDbContext db,
-		string ownerUserId,
-		string weekStart,
-		CancellationToken cancellationToken)
-	{
-		var enabledPreferences = await db.FriendAutoSharePreferences
-			.Where(p => p.UserId == ownerUserId && p.AutoShareMealPlans)
-			.ToListAsync(cancellationToken);
-
-		if (enabledPreferences.Count == 0)
-			return;
-
-		var preferredFriendUserIds = enabledPreferences
-			.Select(p => p.FriendUserId)
-			.Where(id => !string.IsNullOrWhiteSpace(id))
-			.Distinct(StringComparer.Ordinal)
-			.ToList();
-
-		if (preferredFriendUserIds.Count == 0)
-			return;
-
-		// Ensure auto-share is only propagated to current friends, not stale preference entries.
-		var activeFriendships = await db.Friendships
-			.Where(f =>
-				(f.UserAId == ownerUserId && preferredFriendUserIds.Contains(f.UserBId)) ||
-				(f.UserBId == ownerUserId && preferredFriendUserIds.Contains(f.UserAId)))
-			.ToListAsync(cancellationToken);
-
-		var activeFriendUserIds = activeFriendships
-			.Select(f => f.UserAId == ownerUserId ? f.UserBId : f.UserAId)
-			.Where(id => !string.IsNullOrWhiteSpace(id))
-			.ToHashSet(StringComparer.Ordinal);
-
-		var activePreferredFriendUserIds = preferredFriendUserIds
-			.Where(activeFriendUserIds.Contains)
-			.ToList();
-
-		if (activePreferredFriendUserIds.Count == 0)
-			return;
-
-		var existingShares = await db.MealPlanShares
-			.Where(s =>
-				s.OwnerUserId == ownerUserId &&
-				s.WeekStart == weekStart &&
-				activePreferredFriendUserIds.Contains(s.SharedWithUserId))
-			.ToListAsync(cancellationToken);
-
-		var alreadySharedWith = existingShares
-			.Select(s => s.SharedWithUserId)
-			.ToHashSet(StringComparer.Ordinal);
-
-		var newShares = activePreferredFriendUserIds
-			.Where(friendUserId => !alreadySharedWith.Contains(friendUserId))
-			.Select(friendUserId => new MealPlanShareEntity
-			{
-				Id = Guid.NewGuid(),
-				OwnerUserId = ownerUserId,
-				SharedWithUserId = friendUserId,
-				WeekStart = weekStart,
-				Permission = nameof(SharePermission.ReadWrite),
-				SharedAt = DateTime.UtcNow,
-				DismissedByRecipient = false
-			})
-			.ToList();
-
-		if (newShares.Count == 0)
-			return;
-
-		db.MealPlanShares.AddRange(newShares);
-		await db.SaveChangesAsync(cancellationToken);
-	}
 }

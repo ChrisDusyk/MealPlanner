@@ -16,7 +16,7 @@ public enum MealPlanRealtimeEventType
 
 public record MealPlanUpdatedEvent(
 	string EventType,
-	string OwnerUserId,
+	string FamilyGroupId,
 	string WeekStart,
 	MealPlanResponse MealPlan,
 	string ChangedByUserId,
@@ -26,7 +26,7 @@ public record MealPlanUpdatedEvent(
 public interface IMealPlanRealtimeNotifier
 {
 	Task PublishMealPlanUpdatedAsync(
-		string ownerUserId,
+		Guid familyGroupId,
 		DateOnly weekStart,
 		MealPlan updatedPlan,
 		string changedByUserId,
@@ -41,7 +41,7 @@ public sealed class MealPlanRealtimeNotifier(
 	: IMealPlanRealtimeNotifier
 {
 	public async Task PublishMealPlanUpdatedAsync(
-		string ownerUserId,
+		Guid familyGroupId,
 		DateOnly weekStart,
 		MealPlan updatedPlan,
 		string changedByUserId,
@@ -51,13 +51,13 @@ public sealed class MealPlanRealtimeNotifier(
 		try
 		{
 			var weekStartString = GetMealPlanQueryHandler.NormalizeToMonday(weekStart).ToString("yyyy-MM-dd");
-			var shares = await db.MealPlanShares
-				.Where(s => s.OwnerUserId == ownerUserId
-					&& s.WeekStart == weekStartString
-					&& !s.DismissedByRecipient)
+			var memberIds = await db.FamilyGroupMembers
+				.AsNoTracking()
+				.Where(m => m.FamilyGroupId == familyGroupId)
+				.Select(m => m.UserId)
 				.ToListAsync(cancellationToken);
-			var recipients = shares.Select(s => s.SharedWithUserId)
-				.Append(ownerUserId)
+
+			var recipients = memberIds
 				.Where(id => !string.IsNullOrWhiteSpace(id))
 				.Distinct(StringComparer.Ordinal)
 				.ToArray();
@@ -67,7 +67,7 @@ public sealed class MealPlanRealtimeNotifier(
 
 			var payload = new MealPlanUpdatedEvent(
 				EventType: eventType.ToString(),
-				OwnerUserId: ownerUserId,
+				FamilyGroupId: familyGroupId.ToString(),
 				WeekStart: weekStartString,
 				MealPlan: MealPlanResponse.FromDomain(updatedPlan),
 				ChangedByUserId: changedByUserId,
@@ -80,8 +80,8 @@ public sealed class MealPlanRealtimeNotifier(
 		catch (Exception ex)
 		{
 			logger.LogWarning(ex,
-				"Failed to publish meal plan realtime update for owner {OwnerUserId} and week {WeekStart}",
-				ownerUserId,
+				"Failed to publish meal plan realtime update for family {FamilyGroupId} and week {WeekStart}",
+				familyGroupId,
 				weekStart.ToString("yyyy-MM-dd"));
 		}
 	}

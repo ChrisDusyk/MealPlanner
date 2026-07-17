@@ -16,7 +16,7 @@ public enum GroceryListRealtimeEventType
 
 public record GroceryListUpdatedEvent(
 	string EventType,
-	string OwnerUserId,
+	string FamilyGroupId,
 	string WeekStart,
 	GroceryListResponse GroceryList,
 	string ChangedByUserId,
@@ -26,7 +26,7 @@ public record GroceryListUpdatedEvent(
 public interface IGroceryListRealtimeNotifier
 {
 	Task PublishListUpdatedAsync(
-		string ownerUserId,
+		Guid familyGroupId,
 		DateOnly weekStart,
 		GroceryList updatedList,
 		string changedByUserId,
@@ -41,7 +41,7 @@ public sealed class GroceryListRealtimeNotifier(
 	: IGroceryListRealtimeNotifier
 {
 	public async Task PublishListUpdatedAsync(
-		string ownerUserId,
+		Guid familyGroupId,
 		DateOnly weekStart,
 		GroceryList updatedList,
 		string changedByUserId,
@@ -51,13 +51,13 @@ public sealed class GroceryListRealtimeNotifier(
 		try
 		{
 			var weekStartString = GroceryListHelpers.NormalizeToMonday(weekStart).ToString("yyyy-MM-dd");
-			var shares = await db.GroceryListShares
-				.Where(s => s.OwnerUserId == ownerUserId
-					&& s.WeekStart == weekStartString
-					&& !s.DismissedByRecipient)
+			var memberIds = await db.FamilyGroupMembers
+				.AsNoTracking()
+				.Where(m => m.FamilyGroupId == familyGroupId)
+				.Select(m => m.UserId)
 				.ToListAsync(cancellationToken);
-			var recipients = shares.Select(s => s.SharedWithUserId)
-				.Append(ownerUserId)
+
+			var recipients = memberIds
 				.Where(id => !string.IsNullOrWhiteSpace(id))
 				.Distinct(StringComparer.Ordinal)
 				.ToArray();
@@ -67,7 +67,7 @@ public sealed class GroceryListRealtimeNotifier(
 
 			var payload = new GroceryListUpdatedEvent(
 				EventType: eventType.ToString(),
-				OwnerUserId: ownerUserId,
+				FamilyGroupId: familyGroupId.ToString(),
 				WeekStart: weekStartString,
 				GroceryList: GroceryListResponse.FromDomain(updatedList),
 				ChangedByUserId: changedByUserId,
@@ -80,8 +80,8 @@ public sealed class GroceryListRealtimeNotifier(
 		catch (Exception ex)
 		{
 			logger.LogWarning(ex,
-				"Failed to publish grocery list realtime update for owner {OwnerUserId} and week {WeekStart}",
-				ownerUserId,
+				"Failed to publish grocery list realtime update for family {FamilyGroupId} and week {WeekStart}",
+				familyGroupId,
 				weekStart.ToString("yyyy-MM-dd"));
 		}
 	}

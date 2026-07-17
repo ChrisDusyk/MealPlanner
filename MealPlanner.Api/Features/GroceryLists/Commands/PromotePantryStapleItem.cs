@@ -10,7 +10,7 @@ namespace MealPlanner.Api.Features.GroceryLists.Commands;
 /// Moves the item from PantryStapleItems to Items at the specified index.
 /// </summary>
 public record PromotePantryStapleItemCommand(
-	string UserId,
+	Guid FamilyGroupId,
 	DateOnly WeekStart,
 	int ItemIndex
 ) : ICommand<GroceryList>;
@@ -30,7 +30,7 @@ public class PromotePantryStapleItemCommandHandler(MealPlannerDbContext db)
 			var weekStartStr = GroceryListHelpers.NormalizeToMonday(command.WeekStart)
 				.ToString("yyyy-MM-dd");
 			var entity = await db.GroceryLists
-				.FirstOrDefaultAsync(g => g.UserId == command.UserId && g.WeekStart == weekStartStr, cancellationToken);
+				.FirstOrDefaultAsync(g => g.FamilyGroupId == command.FamilyGroupId && g.WeekStart == weekStartStr, cancellationToken);
 
 			if (entity is null)
 			{

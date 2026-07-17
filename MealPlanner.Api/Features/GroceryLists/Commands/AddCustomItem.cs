@@ -1,24 +1,19 @@
 using MealPlanner.Api.Data;
 using MealPlanner.Api.Data.Entities;
 using MealPlanner.Api.Features.GroceryLists.Models;
-using MealPlanner.Api.Features.MealPlans.Models;
 using MealPlanner.Api.Shared;
 using Microsoft.EntityFrameworkCore;
 
 namespace MealPlanner.Api.Features.GroceryLists.Commands;
 
 /// <summary>
-/// Command to add a custom item to an existing grocery list.
+/// Command to add a custom item to the family's grocery list for a week.
 /// </summary>
 public record AddCustomItemCommand(
-	string RequestingUserId,
+	Guid FamilyGroupId,
 	DateOnly WeekStart,
-	string ItemName,
-	string? OwnerUserId = null
-) : ICommand<GroceryList>
-{
-	public string EffectiveOwnerUserId => OwnerUserId ?? RequestingUserId;
-}
+	string ItemName
+) : ICommand<GroceryList>;
 
 /// <summary>
 /// Adds a user-provided custom item to the grocery list.
@@ -41,33 +36,10 @@ public class AddCustomItemCommandHandler(MealPlannerDbContext db)
 
 			var weekStartStr = GroceryListHelpers.NormalizeToMonday(command.WeekStart).ToString("yyyy-MM-dd");
 
-			if (!string.IsNullOrEmpty(command.OwnerUserId)
-			    && command.OwnerUserId != command.RequestingUserId)
-			{
-				var share = await db.GroceryListShares.FirstOrDefaultAsync(
-					s => s.OwnerUserId == command.OwnerUserId
-						&& s.SharedWithUserId == command.RequestingUserId
-						&& s.WeekStart == weekStartStr
-						&& !s.DismissedByRecipient,
-					cancellationToken);
-				if (share is null)
-				{
-					return Result<GroceryList>.Failure(
-						new Error(ErrorCodes.ValidationFailed,
-							"You do not have access to this grocery list."));
-				}
-
-				if (!Enum.TryParse<SharePermission>(share.Permission, true, out var permission)
-				    || permission != SharePermission.ReadWrite)
-				{
-					return Result<GroceryList>.Failure(
-						new Error(ErrorCodes.ValidationFailed,
-							"You only have read-only access to this grocery list."));
-				}
-			}
-
 			var entity = await db.GroceryLists
-				.FirstOrDefaultAsync(g => g.UserId == command.EffectiveOwnerUserId && g.WeekStart == weekStartStr, cancellationToken);
+				.FirstOrDefaultAsync(
+					g => g.FamilyGroupId == command.FamilyGroupId && g.WeekStart == weekStartStr,
+					cancellationToken);
 
 			if (entity is null)
 			{

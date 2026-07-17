@@ -10,7 +10,7 @@ namespace MealPlanner.Api.Features.MealPlans.Commands;
 /// Command to remove a single item from a day+category slot by its index.
 /// </summary>
 public record RemoveSlotItemCommand(
-	string UserId,
+	Guid FamilyGroupId,
 	DateOnly WeekStart,
 	DayOfWeek Day,
 	MealCategory Category,
@@ -33,7 +33,7 @@ public class RemoveSlotItemCommandHandler(MealPlannerDbContext db)
 			var weekStartStr = weekStart.ToString("yyyy-MM-dd");
 
 			var entity = await db.MealPlans
-				.FirstOrDefaultAsync(p => p.UserId == command.UserId && p.WeekStart == weekStartStr, cancellationToken);
+				.FirstOrDefaultAsync(p => p.FamilyGroupId == command.FamilyGroupId && p.WeekStart == weekStartStr, cancellationToken);
 
 			if (entity is null)
 				return Result<MealPlan>.Failure(

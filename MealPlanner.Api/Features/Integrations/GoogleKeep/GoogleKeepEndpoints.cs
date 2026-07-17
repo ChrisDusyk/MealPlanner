@@ -113,6 +113,7 @@ public static class GoogleKeepEndpoints
 		ExportGroceryListToGoogleKeepRequest request,
 		HttpContext httpContext,
 		ICommandHandler<ExportGroceryListToGoogleKeepCommand, GoogleKeepExportResult> handler,
+		MealPlanner.Api.Features.Families.IFamilyContextResolver familyResolver,
 		CancellationToken cancellationToken)
 	{
 		var userId = GetUserId(httpContext);
@@ -122,8 +123,12 @@ public static class GoogleKeepEndpoints
 		if (!DateOnly.TryParseExact(request.WeekStart, "yyyy-MM-dd", out var weekStart))
 			return Results.BadRequest("weekStart must be a valid date in yyyy-MM-dd format.");
 
+		var familyResult = await familyResolver.ResolveAsync(userId, cancellationToken);
+		if (!familyResult.IsSuccess)
+			return Results.Problem(familyResult.Error!.Message, statusCode: 500);
+
 		var result = await handler.HandleAsync(
-			new ExportGroceryListToGoogleKeepCommand(userId, weekStart, request.ForceNewNote),
+			new ExportGroceryListToGoogleKeepCommand(userId, familyResult.Value!.FamilyGroupId, weekStart, request.ForceNewNote),
 			cancellationToken);
 
 		return result.Match(
