@@ -28,6 +28,14 @@ public class CreateRecipeCommandHandler(MealPlannerDbContext db)
 		CreateRecipeCommand command,
 		CancellationToken cancellationToken = default)
 	{
+		if (command.FamilyGroupId == Guid.Empty)
+			return Result<Recipe>.Failure(
+				new Error(ErrorCodes.ValidationFailed, "Family group ID is required."));
+
+		if (string.IsNullOrWhiteSpace(command.ContributedByUserId))
+			return Result<Recipe>.Failure(
+				new Error(ErrorCodes.ValidationFailed, "Contributor user ID is required."));
+
 		if (string.IsNullOrWhiteSpace(command.Name))
 			return Result<Recipe>.Failure(
 				new Error(ErrorCodes.ValidationFailed, "Recipe name is required."));

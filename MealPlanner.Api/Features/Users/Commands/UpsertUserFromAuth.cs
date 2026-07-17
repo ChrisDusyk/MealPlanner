@@ -80,7 +80,11 @@ public class UpsertUserFromAuthCommandHandler(MealPlannerDbContext db)
 			await db.SaveChangesAsync(cancellationToken);
 
 			// Every user always belongs to a family group; provision the
-			// single-member personal family eagerly on first sync.
+			// single-member personal family eagerly on first sync. The
+			// unique index on FamilyGroupMembers.UserId is the source of
+			// truth: if a concurrent sync request won the race and already
+			// created the membership, treat that as success rather than a
+			// failure.
 			var hasFamily = await db.FamilyGroupMembers
 				.AsNoTracking()
 				.AnyAsync(m => m.UserId == command.AuthUserId, cancellationToken);
@@ -88,7 +92,16 @@ public class UpsertUserFromAuthCommandHandler(MealPlannerDbContext db)
 			{
 				await Families.FamilyProvisioning.CreatePersonalFamilyAsync(
 					db, command.AuthUserId, cancellationToken);
-				await db.SaveChangesAsync(cancellationToken);
+				try
+				{
+					await db.SaveChangesAsync(cancellationToken);
+				}
+				catch (DbUpdateException ex) when (IsUniqueIndexViolation(ex))
+				{
+					// Another request provisioned the family first; discard
+					// our local (untracked) entities and continue.
+					db.ChangeTracker.Clear();
+				}
 			}
 
 			return Result<User>.Success(UserMapper.ToDomain(entity));
@@ -101,4 +114,15 @@ public class UpsertUserFromAuthCommandHandler(MealPlannerDbContext db)
 	}
 
 	internal static User MapToDomain(UserEntity entity) => UserMapper.ToDomain(entity);
+
+	private static bool IsUniqueIndexViolation(DbUpdateException ex)
+	{
+		// Npgsql throws a PostgresException with SqlState 23505 for unique
+		// violations. Match by name to avoid taking a Npgsql package reference
+		// in tests.
+		var inner = ex.InnerException;
+		return inner is not null
+		       && inner.GetType().Name == "PostgresException"
+		       && (inner.GetType().GetProperty("SqlState")?.GetValue(inner) as string) == "23505";
+	}
 }

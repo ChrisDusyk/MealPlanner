@@ -111,7 +111,14 @@ describe('GroceryListRealtimeClient', () => {
 			eventType: 'ItemToggled',
 			familyGroupId: 'family-1',
 			weekStart: '2026-02-23',
-			groceryList: { id: 'list-1', userId: 'owner-1', weekStart: '2026-02-23', items: [] },
+			groceryList: {
+				id: 'list-1',
+				weekStart: '2026-02-23',
+				items: [],
+				pantryStapleItems: [],
+				createdAt: '2026-02-25T00:00:00Z',
+				updatedAt: '2026-02-25T00:00:00Z'
+			},
 			changedByUserId: 'guest-1',
 			occurredAt: '2026-02-25T00:00:00Z'
 		};

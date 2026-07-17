@@ -20,6 +20,30 @@ public class CreateRecipeTests
 	}
 
 	[Fact]
+	public async Task HandleAsync_ReturnsValidationFailure_WhenFamilyGroupIdIsEmpty()
+	{
+		var handler = new CreateRecipeCommandHandler(TestDbContextFactory.CreateContext());
+		var command = new CreateRecipeCommand(Guid.Empty, "u1", "Chili", "desc", 1, Option<string>.None(), []);
+
+		var result = await handler.HandleAsync(command, TestContext.Current.CancellationToken);
+
+		Assert.False(result.IsSuccess);
+		Assert.Equal(ErrorCodes.ValidationFailed, result.Error?.Code);
+	}
+
+	[Fact]
+	public async Task HandleAsync_ReturnsValidationFailure_WhenContributedByUserIdIsMissing()
+	{
+		var handler = new CreateRecipeCommandHandler(TestDbContextFactory.CreateContext());
+		var command = new CreateRecipeCommand(TestIds.Family("u1"), " ", "Chili", "desc", 1, Option<string>.None(), []);
+
+		var result = await handler.HandleAsync(command, TestContext.Current.CancellationToken);
+
+		Assert.False(result.IsSuccess);
+		Assert.Equal(ErrorCodes.ValidationFailed, result.Error?.Code);
+	}
+
+	[Fact]
 	public async Task HandleAsync_CreatesRecipe_WhenCommandValid()
 	{
 		var handler = new CreateRecipeCommandHandler(TestDbContextFactory.CreateContext());
