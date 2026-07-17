@@ -12,7 +12,7 @@ public class RemoveSlotItemTests
 	private static MealPlanEntity BasePlan() => new()
 	{
 		Id = Guid.NewGuid(),
-		UserId = "u1",
+		FamilyGroupId = TestIds.Family("u1"),
 		WeekStart = "2026-02-23",
 		Days =
 		[
@@ -37,7 +37,7 @@ public class RemoveSlotItemTests
 	{
 		var handler = new RemoveSlotItemCommandHandler(TestDbContextFactory.CreateContext());
 		var result = await handler.HandleAsync(
-			new RemoveSlotItemCommand("u1", new DateOnly(2026, 2, 23), DayOfWeek.Monday, MealCategory.Breakfast, 0),
+			new RemoveSlotItemCommand(TestIds.Family("u1"), new DateOnly(2026, 2, 23), DayOfWeek.Monday, MealCategory.Breakfast, 0),
 			TestContext.Current.CancellationToken);
 
 		Assert.False(result.IsSuccess);
@@ -51,7 +51,7 @@ public class RemoveSlotItemTests
 
 		var handler = new RemoveSlotItemCommandHandler(context);
 		var result = await handler.HandleAsync(
-			new RemoveSlotItemCommand("u1", new DateOnly(2026, 2, 23), DayOfWeek.Monday, MealCategory.Breakfast, 5),
+			new RemoveSlotItemCommand(TestIds.Family("u1"), new DateOnly(2026, 2, 23), DayOfWeek.Monday, MealCategory.Breakfast, 5),
 			TestContext.Current.CancellationToken);
 
 		Assert.False(result.IsSuccess);
@@ -65,7 +65,7 @@ public class RemoveSlotItemTests
 
 		var handler = new RemoveSlotItemCommandHandler(context);
 		var result = await handler.HandleAsync(
-			new RemoveSlotItemCommand("u1", new DateOnly(2026, 2, 23), DayOfWeek.Monday, MealCategory.Breakfast, 0),
+			new RemoveSlotItemCommand(TestIds.Family("u1"), new DateOnly(2026, 2, 23), DayOfWeek.Monday, MealCategory.Breakfast, 0),
 			TestContext.Current.CancellationToken);
 
 		Assert.True(result.IsSuccess);
@@ -83,7 +83,7 @@ public class RemoveSlotItemTests
 		{
 			var handler = new RemoveSlotItemCommandHandler(removeContext);
 			var result = await handler.HandleAsync(
-				new RemoveSlotItemCommand("u1", new DateOnly(2026, 2, 23), DayOfWeek.Monday, MealCategory.Breakfast, 0),
+				new RemoveSlotItemCommand(TestIds.Family("u1"), new DateOnly(2026, 2, 23), DayOfWeek.Monday, MealCategory.Breakfast, 0),
 				TestContext.Current.CancellationToken);
 
 			Assert.True(result.IsSuccess);
@@ -91,7 +91,7 @@ public class RemoveSlotItemTests
 
 		using var reloadContext = TestDbContextFactory.CreateContext(databaseName: databaseName);
 		var reloadedPlan = await reloadContext.MealPlans.FirstAsync(
-			p => p.UserId == "u1" && p.WeekStart == "2026-02-23",
+			p => p.FamilyGroupId == TestIds.Family("u1") && p.WeekStart == "2026-02-23",
 			TestContext.Current.CancellationToken);
 
 		var monday = reloadedPlan.Days.First(d => d.Day == "Monday");
@@ -107,7 +107,7 @@ public class RemoveSlotItemTests
 
 		var handler = new RemoveSlotItemCommandHandler(context);
 		var result = await handler.HandleAsync(
-			new RemoveSlotItemCommand("u1", new DateOnly(2026, 2, 23), DayOfWeek.Monday, MealCategory.Breakfast, 0),
+			new RemoveSlotItemCommand(TestIds.Family("u1"), new DateOnly(2026, 2, 23), DayOfWeek.Monday, MealCategory.Breakfast, 0),
 			TestContext.Current.CancellationToken);
 
 		Assert.False(result.IsSuccess);

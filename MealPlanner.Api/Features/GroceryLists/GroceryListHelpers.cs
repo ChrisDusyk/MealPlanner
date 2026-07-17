@@ -1,5 +1,4 @@
 using MealPlanner.Api.Data.Entities;
-using MealPlanner.Api.Features.MealPlans.Models;
 using MealPlanner.Api.Features.GroceryLists.Models;
 
 namespace MealPlanner.Api.Features.GroceryLists;
@@ -12,7 +11,7 @@ internal static class GroceryListHelpers
 	internal static GroceryList MapToDomain(GroceryListEntity entity) =>
 		new(
 			Id: entity.Id.ToString(),
-			UserId: entity.UserId,
+			FamilyGroupId: entity.FamilyGroupId.ToString(),
 			WeekStart: DateOnly.ParseExact(entity.WeekStart, "yyyy-MM-dd"),
 			Items: entity.Items.Select(i => new GroceryListItem(
 				Name: i.Name,
@@ -31,22 +30,6 @@ internal static class GroceryListHelpers
 			CreatedAt: entity.CreatedAt,
 			UpdatedAt: entity.UpdatedAt
 		);
-
-	internal static GroceryListShare MapShareToDomain(GroceryListShareEntity entity)
-	{
-		if (!Enum.TryParse<SharePermission>(entity.Permission, ignoreCase: true, out var permission))
-			permission = SharePermission.ReadOnly;
-
-		return new GroceryListShare(
-			Id: entity.Id.ToString(),
-			OwnerUserId: entity.OwnerUserId,
-			SharedWithUserId: entity.SharedWithUserId,
-			WeekStart: entity.WeekStart,
-			Permission: permission,
-			SharedAt: entity.SharedAt,
-			DismissedByRecipient: entity.DismissedByRecipient
-		);
-	}
 
 	/// <summary>
 	/// Returns the Monday of the week containing <paramref name="date"/>.

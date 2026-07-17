@@ -17,7 +17,8 @@ public class GetRecipeByIdTests
 			db.Recipes.Add(new RecipeEntity
 			{
 				Id = id,
-				UserId = "u1",
+				FamilyGroupId = TestIds.Family("u1"),
+				ContributedByUserId = "u1",
 				Name = "Soup",
 				Description = "Warm",
 				Servings = 2,
@@ -32,7 +33,7 @@ public class GetRecipeByIdTests
 		});
 
 		var handler = new GetRecipeByIdQueryHandler(context);
-		var result = await handler.HandleAsync(new GetRecipeByIdQuery(id.ToString(), "u1"), TestContext.Current.CancellationToken);
+		var result = await handler.HandleAsync(new GetRecipeByIdQuery(id.ToString(), TestIds.Family("u1")), TestContext.Current.CancellationToken);
 
 		Assert.True(result.IsSuccess);
 		Assert.NotNull(result.Value);
@@ -44,7 +45,7 @@ public class GetRecipeByIdTests
 	public async Task HandleAsync_ReturnsNotFound_WhenRecipeMissing()
 	{
 		var handler = new GetRecipeByIdQueryHandler(TestDbContextFactory.CreateContext());
-		var result = await handler.HandleAsync(new GetRecipeByIdQuery(Guid.NewGuid().ToString(), "u1"), TestContext.Current.CancellationToken);
+		var result = await handler.HandleAsync(new GetRecipeByIdQuery(Guid.NewGuid().ToString(), TestIds.Family("u1")), TestContext.Current.CancellationToken);
 
 		Assert.False(result.IsSuccess);
 		Assert.Equal(ErrorCodes.NotFound, result.Error?.Code);
@@ -60,7 +61,8 @@ public class GetRecipeByIdTests
 			db.Recipes.Add(new RecipeEntity
 			{
 				Id = id,
-				UserId = "u2",
+				FamilyGroupId = TestIds.Family("u2"),
+				ContributedByUserId = "u2",
 				Name = "Soup",
 				Description = "Warm",
 				Servings = 1,
@@ -71,7 +73,7 @@ public class GetRecipeByIdTests
 		});
 
 		var handler = new GetRecipeByIdQueryHandler(context);
-		var result = await handler.HandleAsync(new GetRecipeByIdQuery(id.ToString(), "u1"), TestContext.Current.CancellationToken);
+		var result = await handler.HandleAsync(new GetRecipeByIdQuery(id.ToString(), TestIds.Family("u1")), TestContext.Current.CancellationToken);
 
 		Assert.False(result.IsSuccess);
 		Assert.Equal(ErrorCodes.Unauthorized, result.Error?.Code);
@@ -84,7 +86,7 @@ public class GetRecipeByIdTests
 		context.Dispose();
 
 		var handler = new GetRecipeByIdQueryHandler(context);
-		var result = await handler.HandleAsync(new GetRecipeByIdQuery(Guid.NewGuid().ToString(), "u1"), TestContext.Current.CancellationToken);
+		var result = await handler.HandleAsync(new GetRecipeByIdQuery(Guid.NewGuid().ToString(), TestIds.Family("u1")), TestContext.Current.CancellationToken);
 
 		Assert.False(result.IsSuccess);
 		Assert.Equal(ErrorCodes.DatabaseError, result.Error?.Code);

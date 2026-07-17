@@ -15,7 +15,7 @@ public enum CatalogueSort
 /// Browse the published catalogue. Used by the My Recipes browse modal.
 /// </summary>
 public record BrowseCatalogueQuery(
-	string UserId,
+	Guid FamilyGroupId,
 	string? Search,
 	IReadOnlyList<string> TagSlugs,
 	CatalogueSort Sort,
@@ -68,7 +68,7 @@ public class BrowseCatalogueQueryHandler(MealPlannerDbContext db)
 			var ids = entities.Select(e => e.Id).ToList();
 			var alreadyAddedIds = await db.Recipes
 				.AsNoTracking()
-				.Where(r => r.UserId == query.UserId
+				.Where(r => r.FamilyGroupId == query.FamilyGroupId
 				            && r.CatalogueRecipeId != null
 				            && ids.Contains(r.CatalogueRecipeId.Value))
 				.Select(r => r.CatalogueRecipeId!.Value)

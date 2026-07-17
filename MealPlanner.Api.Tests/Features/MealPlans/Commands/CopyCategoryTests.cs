@@ -11,7 +11,7 @@ public class CopyCategoryTests
 	private static MealPlanEntity PlanWithSourceItems() => new()
 	{
 		Id = Guid.NewGuid(),
-		UserId = "u1",
+		FamilyGroupId = TestIds.Family("u1"),
 		WeekStart = "2026-02-23",
 		Days =
 		[
@@ -45,7 +45,7 @@ public class CopyCategoryTests
 	private static MealPlanEntity PlanWithLowerCaseSlotKeys() => new()
 	{
 		Id = Guid.NewGuid(),
-		UserId = "u1",
+		FamilyGroupId = TestIds.Family("u1"),
 		WeekStart = "2026-02-23",
 		Days =
 		[
@@ -81,7 +81,7 @@ public class CopyCategoryTests
 	{
 		var handler = new CopyCategoryCommandHandler(TestDbContextFactory.CreateContext());
 		var result = await handler.HandleAsync(
-			new CopyCategoryCommand("u1", new DateOnly(2026, 2, 23), DayOfWeek.Monday, MealCategory.Breakfast, []),
+			new CopyCategoryCommand(TestIds.Family("u1"), new DateOnly(2026, 2, 23), DayOfWeek.Monday, MealCategory.Breakfast, []),
 			TestContext.Current.CancellationToken);
 
 		Assert.False(result.IsSuccess);
@@ -93,7 +93,7 @@ public class CopyCategoryTests
 	{
 		var handler = new CopyCategoryCommandHandler(TestDbContextFactory.CreateContext());
 		var result = await handler.HandleAsync(
-			new CopyCategoryCommand("u1", new DateOnly(2026, 2, 23), DayOfWeek.Monday, MealCategory.Breakfast, [DayOfWeek.Tuesday]),
+			new CopyCategoryCommand(TestIds.Family("u1"), new DateOnly(2026, 2, 23), DayOfWeek.Monday, MealCategory.Breakfast, [DayOfWeek.Tuesday]),
 			TestContext.Current.CancellationToken);
 
 		Assert.False(result.IsSuccess);
@@ -107,7 +107,7 @@ public class CopyCategoryTests
 
 		var handler = new CopyCategoryCommandHandler(context);
 		var result = await handler.HandleAsync(
-			new CopyCategoryCommand("u1", new DateOnly(2026, 2, 23), DayOfWeek.Monday, MealCategory.Breakfast, [DayOfWeek.Tuesday]),
+			new CopyCategoryCommand(TestIds.Family("u1"), new DateOnly(2026, 2, 23), DayOfWeek.Monday, MealCategory.Breakfast, [DayOfWeek.Tuesday]),
 			TestContext.Current.CancellationToken);
 
 		Assert.True(result.IsSuccess);
@@ -124,7 +124,7 @@ public class CopyCategoryTests
 
 		var handler = new CopyCategoryCommandHandler(context);
 		var result = await handler.HandleAsync(
-			new CopyCategoryCommand("u1", new DateOnly(2026, 2, 23), DayOfWeek.Wednesday, MealCategory.Lunch, [DayOfWeek.Thursday]),
+			new CopyCategoryCommand(TestIds.Family("u1"), new DateOnly(2026, 2, 23), DayOfWeek.Wednesday, MealCategory.Lunch, [DayOfWeek.Thursday]),
 			TestContext.Current.CancellationToken);
 
 		Assert.True(result.IsSuccess);
@@ -142,7 +142,7 @@ public class CopyCategoryTests
 
 		var handler = new CopyCategoryCommandHandler(context);
 		var result = await handler.HandleAsync(
-			new CopyCategoryCommand("u1", new DateOnly(2026, 2, 23), DayOfWeek.Monday, MealCategory.Breakfast, [DayOfWeek.Tuesday]),
+			new CopyCategoryCommand(TestIds.Family("u1"), new DateOnly(2026, 2, 23), DayOfWeek.Monday, MealCategory.Breakfast, [DayOfWeek.Tuesday]),
 			TestContext.Current.CancellationToken);
 
 		Assert.False(result.IsSuccess);

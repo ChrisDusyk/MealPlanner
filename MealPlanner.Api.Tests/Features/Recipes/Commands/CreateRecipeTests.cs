@@ -11,7 +11,31 @@ public class CreateRecipeTests
 	public async Task HandleAsync_ReturnsValidationFailure_WhenNameIsMissing()
 	{
 		var handler = new CreateRecipeCommandHandler(TestDbContextFactory.CreateContext());
-		var command = new CreateRecipeCommand("u1", " ", "desc", 1, Option<string>.None(), []);
+		var command = new CreateRecipeCommand(TestIds.Family("u1"), "u1", " ", "desc", 1, Option<string>.None(), []);
+
+		var result = await handler.HandleAsync(command, TestContext.Current.CancellationToken);
+
+		Assert.False(result.IsSuccess);
+		Assert.Equal(ErrorCodes.ValidationFailed, result.Error?.Code);
+	}
+
+	[Fact]
+	public async Task HandleAsync_ReturnsValidationFailure_WhenFamilyGroupIdIsEmpty()
+	{
+		var handler = new CreateRecipeCommandHandler(TestDbContextFactory.CreateContext());
+		var command = new CreateRecipeCommand(Guid.Empty, "u1", "Chili", "desc", 1, Option<string>.None(), []);
+
+		var result = await handler.HandleAsync(command, TestContext.Current.CancellationToken);
+
+		Assert.False(result.IsSuccess);
+		Assert.Equal(ErrorCodes.ValidationFailed, result.Error?.Code);
+	}
+
+	[Fact]
+	public async Task HandleAsync_ReturnsValidationFailure_WhenContributedByUserIdIsMissing()
+	{
+		var handler = new CreateRecipeCommandHandler(TestDbContextFactory.CreateContext());
+		var command = new CreateRecipeCommand(TestIds.Family("u1"), " ", "Chili", "desc", 1, Option<string>.None(), []);
 
 		var result = await handler.HandleAsync(command, TestContext.Current.CancellationToken);
 
@@ -24,6 +48,7 @@ public class CreateRecipeTests
 	{
 		var handler = new CreateRecipeCommandHandler(TestDbContextFactory.CreateContext());
 		var command = new CreateRecipeCommand(
+			TestIds.Family("u1"),
 			"u1",
 			"Chili",
 			"Spicy",
@@ -35,7 +60,8 @@ public class CreateRecipeTests
 
 		Assert.True(result.IsSuccess);
 		Assert.NotNull(result.Value);
-		Assert.Equal("u1", result.Value!.UserId);
+		Assert.Equal(TestIds.Family("u1").ToString(), result.Value!.FamilyGroupId);
+		Assert.Equal("u1", result.Value.ContributedByUserId);
 		Assert.Equal("Chili", result.Value.Name);
 		Assert.True(result.Value.SourceUrl.HasValue);
 		Assert.Equal(2, result.Value.Ingredients.Count);
@@ -48,7 +74,7 @@ public class CreateRecipeTests
 		context.Dispose();
 
 		var handler = new CreateRecipeCommandHandler(context);
-		var command = new CreateRecipeCommand("u1", "Chili", "Spicy", 1, Option<string>.None(), []);
+		var command = new CreateRecipeCommand(TestIds.Family("u1"), "u1", "Chili", "Spicy", 1, Option<string>.None(), []);
 		var result = await handler.HandleAsync(command, TestContext.Current.CancellationToken);
 
 		Assert.False(result.IsSuccess);

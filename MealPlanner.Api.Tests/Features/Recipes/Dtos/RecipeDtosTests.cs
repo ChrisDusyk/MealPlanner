@@ -1,3 +1,4 @@
+using MealPlanner.Api.Tests.TestUtilities;
 using MealPlanner.Api.Features.Recipes.Dtos;
 using MealPlanner.Api.Features.Recipes.Models;
 using MealPlanner.Api.Shared;
@@ -59,6 +60,7 @@ public class RecipeDtosTests
 	{
 		var recipe = new Recipe(
 			"r1",
+			TestIds.Family("u1").ToString(),
 			"u1",
 			"Bread",
 			"Baked",
@@ -81,6 +83,7 @@ public class RecipeDtosTests
 	{
 		var recipe = new Recipe(
 			"r1",
+			TestIds.Family("u1").ToString(),
 			"u1",
 			"Bread",
 			"Baked",

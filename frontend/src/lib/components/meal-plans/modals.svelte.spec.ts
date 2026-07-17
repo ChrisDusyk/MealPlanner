@@ -3,7 +3,6 @@ import { describe, expect, it, vi } from 'vitest';
 import { render } from 'vitest-browser-svelte';
 import AddItemModal from './AddItemModal.svelte';
 import CopyModal from './CopyModal.svelte';
-import ShareModal from './ShareModal.svelte';
 
 describe('meal-plan modals accessibility', () => {
 	it('renders AddItemModal with accessible dialog semantics', async () => {
@@ -113,23 +112,4 @@ describe('meal-plan modals accessibility', () => {
 		await expect.element(closeButton).toHaveFocus();
 	});
 
-	it('closes ShareModal when Escape is pressed', async () => {
-		const onClose = vi.fn();
-
-		render(ShareModal, {
-			open: true,
-			weekStart: '2026-02-23',
-			shares: [],
-			onShare: vi.fn(async () => null),
-			onRevoke: vi.fn(async () => undefined),
-			onClose
-		});
-
-		const dialog = page.getByRole('dialog', { name: 'Share Meal Plan' });
-		await expect.element(dialog).toBeInTheDocument();
-
-		const dialogEl = document.querySelector('[role="dialog"]');
-		dialogEl?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
-		expect(onClose).toHaveBeenCalledTimes(1);
-	});
 });

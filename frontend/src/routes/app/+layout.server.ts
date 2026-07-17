@@ -1,6 +1,7 @@
 import { redirect } from '@sveltejs/kit';
 import type { LayoutServerLoad } from './$types';
 import { requireAuthenticatedSession } from '$lib/auth/guards';
+import { getIncomingFamilyInvitations, type FamilyInvitationResponse } from '$lib/api/familyApi';
 
 export const load: LayoutServerLoad = async (event) => {
 	const rawSession = await event.locals.auth();
@@ -19,7 +20,19 @@ export const load: LayoutServerLoad = async (event) => {
 		throw redirect(303, '/app/onboarding');
 	}
 
+	// Pending family invitations surface as a banner on every app page.
+	// Failures are non-fatal — the app works without the banner.
+	let familyInvitations: FamilyInvitationResponse[] = [];
+	if (session.accessToken) {
+		try {
+			familyInvitations = await getIncomingFamilyInvitations(session.accessToken, event.fetch);
+		} catch (err) {
+			console.error('Failed to load family invitations:', err);
+		}
+	}
+
 	return {
-		session
+		session,
+		familyInvitations
 	};
 };

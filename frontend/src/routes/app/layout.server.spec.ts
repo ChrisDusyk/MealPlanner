@@ -15,6 +15,7 @@ function createEvent(
 		parent: vi.fn().mockResolvedValue({
 			appUser: options.appUser ?? null
 		}),
+		fetch: vi.fn().mockRejectedValue(new Error('network unavailable in tests')),
 		url: new URL(`http://localhost${options.pathname ?? '/app'}`)
 	} as unknown as Parameters<typeof load>[0];
 }
@@ -51,7 +52,7 @@ describe('app layout auth guard', () => {
 		});
 		const result = await load(event);
 
-		expect(result).toEqual({ session });
+		expect(result).toEqual({ session, familyInvitations: [] });
 	});
 
 	it('redirects to onboarding when the app user has not completed it yet', async () => {
@@ -75,6 +76,6 @@ describe('app layout auth guard', () => {
 		});
 
 		const result = await load(event);
-		expect(result).toEqual({ session });
+		expect(result).toEqual({ session, familyInvitations: [] });
 	});
 });

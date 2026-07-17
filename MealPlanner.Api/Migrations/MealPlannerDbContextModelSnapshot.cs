@@ -19,7 +19,7 @@ namespace MealPlanner.Api.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.7")
+                .HasAnnotation("ProductVersion", "10.0.8")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -119,26 +119,43 @@ namespace MealPlanner.Api.Migrations
                     b.ToTable("catalogue_tags", (string)null);
                 });
 
-            modelBuilder.Entity("MealPlanner.Api.Data.Entities.FriendAutoSharePreferenceEntity", b =>
+            modelBuilder.Entity("MealPlanner.Api.Data.Entities.FamilyGroupEntity", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<bool>("AutoShareGroceryLists")
-                        .HasColumnType("boolean");
-
-                    b.Property<bool>("AutoShareMealPlans")
-                        .HasColumnType("boolean");
-
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<string>("FriendUserId")
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("OwnerUserId")
                         .IsRequired()
                         .HasColumnType("text");
 
                     b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OwnerUserId");
+
+                    b.ToTable("family_groups", (string)null);
+                });
+
+            modelBuilder.Entity("MealPlanner.Api.Data.Entities.FamilyGroupMemberEntity", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("FamilyGroupId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("JoinedAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("UserId")
@@ -147,13 +164,15 @@ namespace MealPlanner.Api.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("UserId", "FriendUserId")
+                    b.HasIndex("FamilyGroupId");
+
+                    b.HasIndex("UserId")
                         .IsUnique();
 
-                    b.ToTable("friend_auto_share_preferences", (string)null);
+                    b.ToTable("family_group_members", (string)null);
                 });
 
-            modelBuilder.Entity("MealPlanner.Api.Data.Entities.FriendRequestEntity", b =>
+            modelBuilder.Entity("MealPlanner.Api.Data.Entities.FamilyInvitationEntity", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -162,45 +181,25 @@ namespace MealPlanner.Api.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<string>("RecipientUserId")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("RequesterUserId")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("RequesterUserId", "RecipientUserId")
-                        .IsUnique();
-
-                    b.ToTable("friend_requests", (string)null);
-                });
-
-            modelBuilder.Entity("MealPlanner.Api.Data.Entities.FriendshipEntity", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
+                    b.Property<Guid>("FamilyGroupId")
                         .HasColumnType("uuid");
 
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("UserAId")
+                    b.Property<string>("InviteeUserId")
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<string>("UserBId")
+                    b.Property<string>("InviterUserId")
                         .IsRequired()
                         .HasColumnType("text");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("UserAId", "UserBId")
+                    b.HasIndex("InviteeUserId");
+
+                    b.HasIndex("FamilyGroupId", "InviteeUserId")
                         .IsUnique();
 
-                    b.ToTable("friendships", (string)null);
+                    b.ToTable("family_invitations", (string)null);
                 });
 
             modelBuilder.Entity("MealPlanner.Api.Data.Entities.GoogleIntegrationConnectionEntity", b =>
@@ -271,6 +270,9 @@ namespace MealPlanner.Api.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<Guid>("FamilyGroupId")
+                        .HasColumnType("uuid");
+
                     b.Property<List<GroceryListItemData>>("Items")
                         .IsRequired()
                         .HasColumnType("jsonb");
@@ -282,17 +284,13 @@ namespace MealPlanner.Api.Migrations
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<string>("UserId")
-                        .IsRequired()
-                        .HasColumnType("text");
-
                     b.Property<string>("WeekStart")
                         .IsRequired()
                         .HasColumnType("text");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("UserId", "WeekStart")
+                    b.HasIndex("FamilyGroupId", "WeekStart")
                         .IsUnique();
 
                     b.ToTable("grocery_lists", (string)null);
@@ -341,42 +339,6 @@ namespace MealPlanner.Api.Migrations
                     b.ToTable("grocery_list_export_links", (string)null);
                 });
 
-            modelBuilder.Entity("MealPlanner.Api.Data.Entities.GroceryListShareEntity", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<bool>("DismissedByRecipient")
-                        .HasColumnType("boolean");
-
-                    b.Property<string>("OwnerUserId")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("Permission")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<DateTime>("SharedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("SharedWithUserId")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("WeekStart")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("OwnerUserId", "SharedWithUserId", "WeekStart")
-                        .IsUnique();
-
-                    b.ToTable("grocery_list_shares", (string)null);
-                });
-
             modelBuilder.Entity("MealPlanner.Api.Data.Entities.MealPlanEntity", b =>
                 {
                     b.Property<Guid>("Id")
@@ -390,59 +352,22 @@ namespace MealPlanner.Api.Migrations
                         .IsRequired()
                         .HasColumnType("jsonb");
 
+                    b.Property<Guid>("FamilyGroupId")
+                        .HasColumnType("uuid");
+
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<string>("UserId")
-                        .IsRequired()
-                        .HasColumnType("text");
-
                     b.Property<string>("WeekStart")
                         .IsRequired()
                         .HasColumnType("text");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("UserId", "WeekStart")
+                    b.HasIndex("FamilyGroupId", "WeekStart")
                         .IsUnique();
 
                     b.ToTable("meal_plans", (string)null);
-                });
-
-            modelBuilder.Entity("MealPlanner.Api.Data.Entities.MealPlanShareEntity", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<bool>("DismissedByRecipient")
-                        .HasColumnType("boolean");
-
-                    b.Property<string>("OwnerUserId")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("Permission")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<DateTime>("SharedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("SharedWithUserId")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("WeekStart")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("OwnerUserId", "SharedWithUserId", "WeekStart")
-                        .IsUnique();
-
-                    b.ToTable("meal_plan_shares", (string)null);
                 });
 
             modelBuilder.Entity("MealPlanner.Api.Data.Entities.RecipeEntity", b =>
@@ -454,12 +379,19 @@ namespace MealPlanner.Api.Migrations
                     b.Property<Guid?>("CatalogueRecipeId")
                         .HasColumnType("uuid");
 
+                    b.Property<string>("ContributedByUserId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("Description")
                         .IsRequired()
                         .HasColumnType("text");
+
+                    b.Property<Guid>("FamilyGroupId")
+                        .HasColumnType("uuid");
 
                     b.Property<List<IngredientData>>("Ingredients")
                         .IsRequired()
@@ -478,15 +410,11 @@ namespace MealPlanner.Api.Migrations
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<string>("UserId")
-                        .IsRequired()
-                        .HasColumnType("text");
-
                     b.HasKey("Id");
 
-                    b.HasIndex("UserId");
+                    b.HasIndex("FamilyGroupId");
 
-                    b.HasIndex("UserId", "CatalogueRecipeId")
+                    b.HasIndex("FamilyGroupId", "CatalogueRecipeId")
                         .IsUnique()
                         .HasFilter("\"CatalogueRecipeId\" IS NOT NULL");
 
@@ -550,6 +478,42 @@ namespace MealPlanner.Api.Migrations
                     b.Navigation("CatalogueRecipe");
 
                     b.Navigation("Tag");
+                });
+
+            modelBuilder.Entity("MealPlanner.Api.Data.Entities.FamilyGroupMemberEntity", b =>
+                {
+                    b.HasOne("MealPlanner.Api.Data.Entities.FamilyGroupEntity", null)
+                        .WithMany()
+                        .HasForeignKey("FamilyGroupId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("MealPlanner.Api.Data.Entities.FamilyInvitationEntity", b =>
+                {
+                    b.HasOne("MealPlanner.Api.Data.Entities.FamilyGroupEntity", null)
+                        .WithMany()
+                        .HasForeignKey("FamilyGroupId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("MealPlanner.Api.Data.Entities.GroceryListEntity", b =>
+                {
+                    b.HasOne("MealPlanner.Api.Data.Entities.FamilyGroupEntity", null)
+                        .WithMany()
+                        .HasForeignKey("FamilyGroupId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("MealPlanner.Api.Data.Entities.MealPlanEntity", b =>
+                {
+                    b.HasOne("MealPlanner.Api.Data.Entities.FamilyGroupEntity", null)
+                        .WithMany()
+                        .HasForeignKey("FamilyGroupId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("MealPlanner.Api.Data.Entities.CatalogueRecipeEntity", b =>

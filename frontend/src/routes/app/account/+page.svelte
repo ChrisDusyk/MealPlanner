@@ -1,9 +1,7 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
-	import { onMount } from 'svelte';
 	import { getContext } from 'svelte';
-	import type { FriendRequestSummary, FriendSummary } from '$lib/api/friendsApi';
-	import { FriendsRealtimeClient } from '$lib/realtime/friendsRealtime';
+	import type { FamilyInvitationResponse, MyFamilyResponse } from '$lib/api/familyApi';
 	import type { ActionData, PageData } from './$types';
 	import { APP_USER_CONTEXT_KEY, type AppUserContextValue } from '$lib/context/appUserContext';
 
@@ -13,22 +11,30 @@
 
 	let submitting = $state(false);
 	let successMessage = $state('');
-	let friendActionError = $state('');
-	let friendActionSuccess = $state('');
-	let sendingFriendRequest = $state(false);
-	let processingRequestId = $state('');
-	let removingFriendUserId = $state('');
-	let savingFriendPreferenceUserId = $state('');
-	let requestEmail = $state('');
-	const realtimeClient = new FriendsRealtimeClient();
-	// svelte-ignore state_referenced_locally
-	let friends = $state<FriendSummary[]>(data.friends ?? []);
-	// svelte-ignore state_referenced_locally
-	let incomingFriendRequests = $state<FriendRequestSummary[]>(data.incomingFriendRequests ?? []);
-	// svelte-ignore state_referenced_locally
-	let outgoingFriendRequests = $state<FriendRequestSummary[]>(data.outgoingFriendRequests ?? []);
 	// svelte-ignore state_referenced_locally
 	let name = $state(data.appUser?.name ?? data.session?.user?.name ?? '');
+
+	// ── Family state ──
+	// svelte-ignore state_referenced_locally
+	let family = $state<MyFamilyResponse | null>(data.family ?? null);
+	// svelte-ignore state_referenced_locally
+	let incomingInvitations = $state<FamilyInvitationResponse[]>(data.incomingInvitations ?? []);
+	let familyActionError = $state('');
+	let familyActionSuccess = $state('');
+	let inviteEmail = $state('');
+	let familyName = $state('');
+	let renamingFamily = $state(false);
+	let sendingInvite = $state(false);
+	let processingInvitationId = $state('');
+	let removingMemberUserId = $state('');
+	let transferTargetUserId = $state('');
+	let transferring = $state(false);
+	let leaving = $state(false);
+	let deleting = $state(false);
+
+	$effect(() => {
+		familyName = family?.name ?? '';
+	});
 
 	function handleEnhance() {
 		submitting = true;
@@ -45,184 +51,157 @@
 		};
 	}
 
-	async function refreshFriends(): Promise<void> {
-		const response = await fetch('/app/account/friends');
+	async function familyAction(body: Record<string, string>): Promise<unknown> {
+		const response = await fetch('/app/account/family', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify(body)
+		});
+		const payload = await response.json().catch(() => ({}));
+		if (!response.ok) {
+			throw new Error(payload?.error || 'Family action failed.');
+		}
+		return payload;
+	}
+
+	async function refreshFamily(): Promise<void> {
+		const response = await fetch('/app/account/family');
 		if (!response.ok) {
 			const body = await response.json().catch(() => ({}));
-			throw new Error(body?.error || 'Failed to refresh friends data.');
+			throw new Error(body?.error || 'Failed to refresh family data.');
 		}
-
 		const payload = await response.json();
-		friends = payload.friends ?? [];
-		incomingFriendRequests = payload.incoming ?? [];
-		outgoingFriendRequests = payload.outgoing ?? [];
+		family = payload.family ?? null;
+		incomingInvitations = payload.incoming ?? [];
 	}
 
-	async function sendFriendRequest(event: SubmitEvent): Promise<void> {
-		event.preventDefault();
-		friendActionError = '';
-		friendActionSuccess = '';
+	function resetFamilyMessages(): void {
+		familyActionError = '';
+		familyActionSuccess = '';
+	}
 
-		const email = requestEmail.trim();
-		if (!email) {
-			friendActionError = 'Email is required.';
+	async function runFamilyAction(
+		action: () => Promise<void>,
+		successText: string
+	): Promise<void> {
+		resetFamilyMessages();
+		try {
+			await action();
+			familyActionSuccess = successText;
+		} catch (error) {
+			familyActionError = error instanceof Error ? error.message : 'Family action failed.';
+		}
+	}
+
+	async function renameCurrentFamily(event: SubmitEvent): Promise<void> {
+		event.preventDefault();
+		const trimmed = familyName.trim();
+		if (!trimmed) {
+			familyActionError = 'Family name is required.';
 			return;
 		}
-
-		sendingFriendRequest = true;
-		try {
-			const response = await fetch('/app/account/friends', {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json'
-				},
-				body: JSON.stringify({ action: 'send', email })
-			});
-
-			const body = await response.json().catch(() => ({}));
-			if (!response.ok) {
-				friendActionError = body.error || 'Failed to send friend request.';
-				return;
-			}
-
-			requestEmail = '';
-			friendActionSuccess =
-				body.status === 'Accepted'
-					? 'Friend request matched an existing request and was accepted.'
-					: 'Friend request sent.';
-			await refreshFriends();
-		} catch (error) {
-			friendActionError = error instanceof Error ? error.message : 'Failed to send friend request.';
-		} finally {
-			sendingFriendRequest = false;
-		}
+		renamingFamily = true;
+		await runFamilyAction(async () => {
+			family = (await familyAction({ action: 'rename', name: trimmed })) as MyFamilyResponse;
+		}, 'Family renamed.');
+		renamingFamily = false;
 	}
 
-	async function respondToFriendRequest(
-		requestId: string,
-		action: 'accept' | 'reject'
+	async function sendInvitation(event: SubmitEvent): Promise<void> {
+		event.preventDefault();
+		const email = inviteEmail.trim();
+		if (!email) {
+			familyActionError = 'Email is required.';
+			return;
+		}
+		sendingInvite = true;
+		await runFamilyAction(async () => {
+			await familyAction({ action: 'invite', email });
+			inviteEmail = '';
+			await refreshFamily();
+		}, 'Invitation sent.');
+		sendingInvite = false;
+	}
+
+	async function cancelInvitation(invitationId: string): Promise<void> {
+		processingInvitationId = invitationId;
+		await runFamilyAction(async () => {
+			await familyAction({ action: 'cancel-invitation', invitationId });
+			await refreshFamily();
+		}, 'Invitation cancelled.');
+		processingInvitationId = '';
+	}
+
+	async function respondToInvitation(
+		invitationId: string,
+		action: 'accept-invitation' | 'decline-invitation'
 	): Promise<void> {
-		friendActionError = '';
-		friendActionSuccess = '';
-		processingRequestId = requestId;
-
-		try {
-			const response = await fetch('/app/account/friends', {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json'
-				},
-				body: JSON.stringify({ action, requestId })
-			});
-
-			const body = await response.json().catch(() => ({}));
-			if (!response.ok) {
-				friendActionError = body.error || 'Failed to update friend request.';
-				return;
-			}
-
-			friendActionSuccess =
-				action === 'accept' ? 'Friend request accepted.' : 'Friend request rejected.';
-			await refreshFriends();
-		} catch (error) {
-			friendActionError =
-				error instanceof Error ? error.message : 'Failed to update friend request.';
-		} finally {
-			processingRequestId = '';
-		}
+		processingInvitationId = invitationId;
+		await runFamilyAction(
+			async () => {
+				await familyAction({ action, invitationId });
+				await refreshFamily();
+			},
+			action === 'accept-invitation' ? 'You joined the family.' : 'Invitation declined.'
+		);
+		processingInvitationId = '';
 	}
 
-	async function removeFriendship(friendUserId: string): Promise<void> {
-		friendActionError = '';
-		friendActionSuccess = '';
-		removingFriendUserId = friendUserId;
-
-		try {
-			const response = await fetch(
-				`/app/account/friends?friendUserId=${encodeURIComponent(friendUserId)}`,
-				{ method: 'DELETE' }
-			);
-			const body = await response.json().catch(() => ({}));
-			if (!response.ok) {
-				friendActionError = body.error || 'Failed to remove friend.';
-				return;
-			}
-
-			friendActionSuccess = 'Friend removed.';
-			await refreshFriends();
-		} catch (error) {
-			friendActionError = error instanceof Error ? error.message : 'Failed to remove friend.';
-		} finally {
-			removingFriendUserId = '';
+	async function removeMember(memberUserId: string): Promise<void> {
+		if (!confirm('Remove this member? They will get their own personal family with copies of the recipes they contributed.')) {
+			return;
 		}
+		removingMemberUserId = memberUserId;
+		await runFamilyAction(async () => {
+			family = (await familyAction({ action: 'remove-member', memberUserId })) as MyFamilyResponse;
+		}, 'Member removed.');
+		removingMemberUserId = '';
 	}
 
-	async function updateFriendPreference(
-		friend: FriendSummary,
-		updates: Partial<Pick<FriendSummary, 'autoShareMealPlans' | 'autoShareGroceryLists'>>
-	): Promise<void> {
-		friendActionError = '';
-		friendActionSuccess = '';
-		savingFriendPreferenceUserId = friend.userId;
-
-		const payload = {
-			friendUserId: friend.userId,
-			autoShareMealPlans: updates.autoShareMealPlans ?? friend.autoShareMealPlans,
-			autoShareGroceryLists: updates.autoShareGroceryLists ?? friend.autoShareGroceryLists
-		};
-
-		try {
-			const response = await fetch('/app/account/friends', {
-				method: 'PATCH',
-				headers: {
-					'Content-Type': 'application/json'
-				},
-				body: JSON.stringify(payload)
-			});
-
-			const body = await response.json().catch(() => ({}));
-			if (!response.ok) {
-				friendActionError = body.error || 'Failed to update sharing preferences.';
-				return;
-			}
-
-			friends = friends.map((item) =>
-				item.userId === friend.userId
-					? {
-							...item,
-							autoShareMealPlans: body.autoShareMealPlans,
-							autoShareGroceryLists: body.autoShareGroceryLists
-						}
-					: item
-			);
-			friendActionSuccess = 'Sharing preferences updated.';
-		} catch (error) {
-			friendActionError =
-				error instanceof Error ? error.message : 'Failed to update sharing preferences.';
-		} finally {
-			savingFriendPreferenceUserId = '';
+	async function transferOwnership(event: SubmitEvent): Promise<void> {
+		event.preventDefault();
+		if (!transferTargetUserId) {
+			familyActionError = 'Choose a member to transfer ownership to.';
+			return;
 		}
+		if (!confirm('Transfer ownership of this family? You will remain a member but lose owner controls.')) {
+			return;
+		}
+		transferring = true;
+		await runFamilyAction(async () => {
+			family = (await familyAction({
+				action: 'transfer-ownership',
+				newOwnerUserId: transferTargetUserId
+			})) as MyFamilyResponse;
+			transferTargetUserId = '';
+		}, 'Ownership transferred.');
+		transferring = false;
 	}
 
-	onMount(() => {
-		let disposed = false;
+	async function leaveCurrentFamily(): Promise<void> {
+		if (!confirm('Leave this family? You will get your own personal family with copies of the recipes you contributed.')) {
+			return;
+		}
+		leaving = true;
+		await runFamilyAction(async () => {
+			family = (await familyAction({ action: 'leave' })) as MyFamilyResponse;
+		}, 'You left the family.');
+		leaving = false;
+	}
 
-		void realtimeClient
-			.start(() => {
-				if (disposed) return;
-				void refreshFriends().catch(() => {
-					// Keep local UI stable if a transient refresh fails.
-				});
-			})
-			.catch((error) => {
-				console.error('Failed to start friends realtime connection', error);
-			});
+	async function deleteCurrentFamily(): Promise<void> {
+		if (!confirm('Delete this family? The shared meal plans and grocery lists will be removed, and every member will get their own personal family with copies of the recipes they contributed.')) {
+			return;
+		}
+		deleting = true;
+		await runFamilyAction(async () => {
+			family = (await familyAction({ action: 'delete' })) as MyFamilyResponse;
+		}, 'Family deleted.');
+		deleting = false;
+	}
 
-		return () => {
-			disposed = true;
-			void realtimeClient.stop();
-		};
-	});
+	const otherMembers = $derived((family?.members ?? []).filter((member) => !member.isOwner));
+	const hasOtherMembers = $derived(otherMembers.length > 0);
 </script>
 
 <svelte:head>
@@ -232,7 +211,7 @@
 <div class="mx-auto max-w-3xl">
 	<div class="mb-8">
 		<h1 class="font-display text-2xl font-bold text-charcoal sm:text-3xl">Account</h1>
-		<p class="mt-1 text-charcoal/70">Manage your profile settings for Simple Meal Planner.</p>
+		<p class="mt-1 text-charcoal/70">Manage your profile and family for Simple Meal Planner.</p>
 	</div>
 
 	<section
@@ -292,162 +271,247 @@
 
 	<section
 		class="mt-6 rounded-2xl border border-green-200/60 bg-white p-6 shadow-sm"
-		aria-labelledby="friends-section-heading"
+		aria-labelledby="family-section-heading"
 	>
 		<div class="mb-5">
-			<h2 id="friends-section-heading" class="font-display text-lg font-semibold text-charcoal">
-				Friends
+			<h2 id="family-section-heading" class="font-display text-lg font-semibold text-charcoal">
+				Family
 			</h2>
 			<p class="mt-1 text-sm text-charcoal/60">
-				Send requests by email and manage pending requests and friends.
+				Your family shares one meal plan, grocery list, and recipe library.
 			</p>
 		</div>
 
-		<form class="mb-4 flex flex-col gap-3 sm:flex-row" onsubmit={sendFriendRequest}>
-			<label for="friend-request-email" class="sr-only">Friend email</label>
-			<input
-				id="friend-request-email"
-				type="email"
-				required
-				bind:value={requestEmail}
-				placeholder="friend@example.com"
-				class="w-full rounded-lg border border-green-200 bg-white px-3 py-2 text-sm text-charcoal shadow-sm transition-colors focus:border-green-400 focus:ring-1 focus:ring-green-400 focus:outline-none"
-			/>
-			<button
-				type="submit"
-				disabled={sendingFriendRequest}
-				class="rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50"
-			>
-				{sendingFriendRequest ? 'Sending...' : 'Send Request'}
-			</button>
-		</form>
-
-		{#if friendActionError}
+		{#if familyActionError}
 			<p
 				class="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"
 				role="alert"
 			>
-				{friendActionError}
+				{familyActionError}
 			</p>
 		{/if}
 
-		{#if friendActionSuccess}
+		{#if familyActionSuccess}
 			<p
 				class="mb-4 rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700"
 				role="status"
 			>
-				{friendActionSuccess}
+				{familyActionSuccess}
 			</p>
 		{/if}
 
-		<div class="flex flex-col gap-4">
-			<div class="rounded-xl border border-green-100 p-4">
-				<h3 class="font-display text-sm font-semibold text-charcoal">Friends</h3>
-				{#if friends.length === 0}
-					<p class="mt-2 text-sm text-charcoal/60">No friends yet.</p>
-				{:else}
+		{#if incomingInvitations.length > 0}
+			<div class="mb-4 rounded-xl border border-amber-200 bg-amber-50 p-4">
+				<h3 class="font-display text-sm font-semibold text-charcoal">Family Invitations</h3>
+				<p class="mt-1 text-xs text-charcoal/60">
+					Accepting an invitation moves you to that family. Your current family's meal plans stay
+					behind, and recipes you contributed come with you.
+				</p>
+				<ul class="mt-3 space-y-2">
+					{#each incomingInvitations as invitation (invitation.id)}
+						<li
+							class="flex flex-col gap-2 rounded-lg border border-amber-200 bg-white px-3 py-2 sm:flex-row sm:items-center sm:justify-between"
+						>
+							<div>
+								<p class="text-sm font-semibold text-charcoal">{invitation.familyName}</p>
+								<p class="text-xs text-charcoal/60">Invited by {invitation.inviterName}</p>
+							</div>
+							<div class="flex gap-2">
+								<button
+									type="button"
+									onclick={() => respondToInvitation(invitation.id, 'accept-invitation')}
+									disabled={processingInvitationId === invitation.id}
+									class="rounded-md bg-green-600 px-3 py-1 text-xs font-semibold text-white transition-colors hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50"
+								>
+									Accept
+								</button>
+								<button
+									type="button"
+									onclick={() => respondToInvitation(invitation.id, 'decline-invitation')}
+									disabled={processingInvitationId === invitation.id}
+									class="rounded-md border border-red-200 px-3 py-1 text-xs font-semibold text-red-700 transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+								>
+									Decline
+								</button>
+							</div>
+						</li>
+					{/each}
+				</ul>
+			</div>
+		{/if}
+
+		{#if family}
+			{#if family.isOwner}
+				<form class="mb-4 flex flex-col gap-3 sm:flex-row" onsubmit={renameCurrentFamily}>
+					<label for="family-name" class="sr-only">Family name</label>
+					<input
+						id="family-name"
+						type="text"
+						required
+						bind:value={familyName}
+						placeholder="Family name"
+						class="w-full rounded-lg border border-green-200 bg-white px-3 py-2 text-sm text-charcoal shadow-sm transition-colors focus:border-green-400 focus:ring-1 focus:ring-green-400 focus:outline-none"
+					/>
+					<button
+						type="submit"
+						disabled={renamingFamily}
+						class="rounded-lg border border-green-300 px-4 py-2 text-sm font-semibold text-green-700 shadow-sm transition-colors hover:bg-green-50 disabled:cursor-not-allowed disabled:opacity-50"
+					>
+						{renamingFamily ? 'Renaming...' : 'Rename'}
+					</button>
+				</form>
+			{:else}
+				<p class="mb-4 text-sm font-semibold text-charcoal">{family.name}</p>
+			{/if}
+
+			<div class="flex flex-col gap-4">
+				<div class="rounded-xl border border-green-100 p-4">
+					<h3 class="font-display text-sm font-semibold text-charcoal">Members</h3>
 					<ul class="mt-3 space-y-2">
-						{#each friends as friend (friend.userId)}
-							<li class="rounded-lg border border-green-100 bg-green-50/50 px-3 py-2">
-								<div class="flex items-start justify-between gap-2">
-									<div class="space-y-2">
-										<p class="text-sm font-semibold text-charcoal">{friend.name}</p>
-										<p class="text-xs text-charcoal/60">{friend.email ?? 'No email on profile'}</p>
-										<div class="space-y-1">
-											<label class="flex items-center gap-2 text-xs text-charcoal/80">
-												<input
-													type="checkbox"
-													checked={friend.autoShareMealPlans}
-													disabled={savingFriendPreferenceUserId === friend.userId}
-													onchange={(event) =>
-														updateFriendPreference(friend, {
-															autoShareMealPlans: (event.currentTarget as HTMLInputElement).checked
-														})}
-													class="h-4 w-4 rounded border-green-300 text-green-600 focus:ring-green-500"
-												/>
-												<span>Auto-share new meal plans</span>
-											</label>
-											<label class="flex items-center gap-2 text-xs text-charcoal/80">
-												<input
-													type="checkbox"
-													checked={friend.autoShareGroceryLists}
-													disabled={savingFriendPreferenceUserId === friend.userId}
-													onchange={(event) =>
-														updateFriendPreference(friend, {
-															autoShareGroceryLists: (event.currentTarget as HTMLInputElement)
-																.checked
-														})}
-													class="h-4 w-4 rounded border-green-300 text-green-600 focus:ring-green-500"
-												/>
-												<span>Auto-share new grocery lists</span>
-											</label>
+						{#each family.members as member (member.userId)}
+							<li
+								class="flex items-center justify-between gap-2 rounded-lg border border-green-100 bg-green-50/50 px-3 py-2"
+							>
+								<div>
+									<p class="text-sm font-semibold text-charcoal">
+										{member.name}
+										{#if member.isOwner}
+											<span
+												class="ml-1 rounded-full bg-green-600 px-2 py-0.5 text-[10px] font-semibold text-white"
+											>
+												Owner
+											</span>
+										{/if}
+									</p>
+									<p class="text-xs text-charcoal/60">{member.email ?? 'No email on profile'}</p>
+								</div>
+								{#if family.isOwner && !member.isOwner}
+									<button
+										type="button"
+										onclick={() => removeMember(member.userId)}
+										disabled={removingMemberUserId === member.userId}
+										class="rounded-md border border-red-200 px-2 py-1 text-xs font-semibold text-red-700 transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+									>
+										{removingMemberUserId === member.userId ? 'Removing...' : 'Remove'}
+									</button>
+								{/if}
+							</li>
+						{/each}
+					</ul>
+				</div>
+
+				{#if family.isOwner}
+					<div class="rounded-xl border border-green-100 p-4">
+						<h3 class="font-display text-sm font-semibold text-charcoal">Invite Someone</h3>
+						<p class="mt-1 text-xs text-charcoal/60">
+							They need a Simple Meal Planner account with this email.
+						</p>
+						<form class="mt-3 flex flex-col gap-3 sm:flex-row" onsubmit={sendInvitation}>
+							<label for="invite-email" class="sr-only">Invitee email</label>
+							<input
+								id="invite-email"
+								type="email"
+								required
+								bind:value={inviteEmail}
+								placeholder="partner@example.com"
+								class="w-full rounded-lg border border-green-200 bg-white px-3 py-2 text-sm text-charcoal shadow-sm transition-colors focus:border-green-400 focus:ring-1 focus:ring-green-400 focus:outline-none"
+							/>
+							<button
+								type="submit"
+								disabled={sendingInvite}
+								class="rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50"
+							>
+								{sendingInvite ? 'Sending...' : 'Send Invite'}
+							</button>
+						</form>
+
+						{#if family.pendingInvitations.length > 0}
+							<ul class="mt-3 space-y-2">
+								{#each family.pendingInvitations as invitation (invitation.id)}
+									<li
+										class="flex items-center justify-between gap-2 rounded-lg border border-green-100 bg-white px-3 py-2"
+									>
+										<div>
+											<p class="text-sm font-semibold text-charcoal">{invitation.inviteeName}</p>
+											<p class="text-xs text-charcoal/60">
+												{invitation.inviteeEmail ?? 'No email on profile'} · Pending
+											</p>
 										</div>
-									</div>
-									<button
-										type="button"
-										onclick={() => removeFriendship(friend.userId)}
-										disabled={removingFriendUserId === friend.userId}
-										class="rounded-md border border-red-200 px-2 py-1 text-xs font-semibold text-red-700 transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
-									>
-										{removingFriendUserId === friend.userId ? 'Removing...' : 'Remove'}
-									</button>
-								</div>
-							</li>
-						{/each}
-					</ul>
+										<button
+											type="button"
+											onclick={() => cancelInvitation(invitation.id)}
+											disabled={processingInvitationId === invitation.id}
+											class="rounded-md border border-red-200 px-2 py-1 text-xs font-semibold text-red-700 transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+										>
+											{processingInvitationId === invitation.id ? 'Cancelling...' : 'Cancel'}
+										</button>
+									</li>
+								{/each}
+							</ul>
+						{/if}
+					</div>
 				{/if}
-			</div>
 
-			<div class="rounded-xl border border-green-100 p-4">
-				<h3 class="font-display text-sm font-semibold text-charcoal">Incoming Requests</h3>
-				{#if incomingFriendRequests.length === 0}
-					<p class="mt-2 text-sm text-charcoal/60">No incoming requests.</p>
-				{:else}
-					<ul class="mt-3 space-y-2">
-						{#each incomingFriendRequests as request (request.requestId)}
-							<li class="rounded-lg border border-green-100 bg-white px-3 py-2">
-								<p class="text-sm font-semibold text-charcoal">{request.name}</p>
-								<p class="text-xs text-charcoal/60">{request.email ?? 'No email on profile'}</p>
-								<div class="mt-2 flex gap-2">
-									<button
-										type="button"
-										onclick={() => respondToFriendRequest(request.requestId, 'accept')}
-										disabled={processingRequestId === request.requestId}
-										class="rounded-md bg-green-600 px-2 py-1 text-xs font-semibold text-white transition-colors hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50"
-									>
-										Accept
-									</button>
-									<button
-										type="button"
-										onclick={() => respondToFriendRequest(request.requestId, 'reject')}
-										disabled={processingRequestId === request.requestId}
-										class="rounded-md border border-red-200 px-2 py-1 text-xs font-semibold text-red-700 transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
-									>
-										Reject
-									</button>
-								</div>
-							</li>
-						{/each}
-					</ul>
+				{#if family.isOwner && hasOtherMembers}
+					<div class="rounded-xl border border-green-100 p-4">
+						<h3 class="font-display text-sm font-semibold text-charcoal">Transfer Ownership</h3>
+						<p class="mt-1 text-xs text-charcoal/60">
+							Hand owner controls to another member. Required before you can leave the family.
+						</p>
+						<form class="mt-3 flex flex-col gap-3 sm:flex-row" onsubmit={transferOwnership}>
+							<label for="transfer-target" class="sr-only">New owner</label>
+							<select
+								id="transfer-target"
+								bind:value={transferTargetUserId}
+								class="w-full rounded-lg border border-green-200 bg-white px-3 py-2 text-sm text-charcoal shadow-sm transition-colors focus:border-green-400 focus:ring-1 focus:ring-green-400 focus:outline-none"
+							>
+								<option value="" disabled>Choose a member</option>
+								{#each otherMembers as member (member.userId)}
+									<option value={member.userId}>{member.name}</option>
+								{/each}
+							</select>
+							<button
+								type="submit"
+								disabled={transferring}
+								class="rounded-lg border border-green-300 px-4 py-2 text-sm font-semibold text-green-700 shadow-sm transition-colors hover:bg-green-50 disabled:cursor-not-allowed disabled:opacity-50"
+							>
+								{transferring ? 'Transferring...' : 'Transfer'}
+							</button>
+						</form>
+					</div>
 				{/if}
-			</div>
 
-			<div class="rounded-xl border border-green-100 p-4">
-				<h3 class="font-display text-sm font-semibold text-charcoal">Outgoing Requests</h3>
-				{#if outgoingFriendRequests.length === 0}
-					<p class="mt-2 text-sm text-charcoal/60">No outgoing requests.</p>
-				{:else}
-					<ul class="mt-3 space-y-2">
-						{#each outgoingFriendRequests as request (request.requestId)}
-							<li class="rounded-lg border border-green-100 bg-white px-3 py-2">
-								<p class="text-sm font-semibold text-charcoal">{request.name}</p>
-								<p class="text-xs text-charcoal/60">{request.email ?? 'No email on profile'}</p>
-								<p class="mt-1 text-xs text-charcoal/50">Pending</p>
-							</li>
-						{/each}
-					</ul>
-				{/if}
+				<div class="rounded-xl border border-red-100 p-4">
+					<h3 class="font-display text-sm font-semibold text-red-700">Danger Zone</h3>
+					<div class="mt-3 flex flex-col gap-2 sm:flex-row">
+						{#if !family.isOwner}
+							<button
+								type="button"
+								onclick={leaveCurrentFamily}
+								disabled={leaving}
+								class="rounded-lg border border-red-200 px-4 py-2 text-sm font-semibold text-red-700 transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+							>
+								{leaving ? 'Leaving...' : 'Leave Family'}
+							</button>
+						{/if}
+						{#if family.isOwner && hasOtherMembers}
+							<button
+								type="button"
+								onclick={deleteCurrentFamily}
+								disabled={deleting}
+								class="rounded-lg border border-red-200 px-4 py-2 text-sm font-semibold text-red-700 transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+							>
+								{deleting ? 'Deleting...' : 'Delete Family'}
+							</button>
+						{/if}
+						{#if family.isOwner && !hasOtherMembers}
+							<p class="text-xs text-charcoal/60">
+								This is your personal family. Invite someone to start planning together.
+							</p>
+						{/if}
+					</div>
+				</div>
 			</div>
-		</div>
+		{/if}
 	</section>
 </div>

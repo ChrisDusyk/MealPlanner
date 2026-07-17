@@ -11,7 +11,7 @@ namespace MealPlanner.Api.Features.Recipes.Commands;
 /// </summary>
 public record UpdateRecipeCommand(
 	string Id,
-	string UserId,
+	Guid FamilyGroupId,
 	string Name,
 	string Description,
 	int Servings,
@@ -50,7 +50,7 @@ public class UpdateRecipeCommandHandler(MealPlannerDbContext db)
 				return Result<Recipe>.Failure(
 					new Error(ErrorCodes.NotFound, $"Recipe with ID '{command.Id}' was not found."));
 
-			if (entity.UserId != command.UserId)
+			if (entity.FamilyGroupId != command.FamilyGroupId)
 				return Result<Recipe>.Failure(
 					new Error(ErrorCodes.Unauthorized, "You do not have permission to update this recipe."));
 
@@ -83,7 +83,8 @@ public class UpdateRecipeCommandHandler(MealPlannerDbContext db)
 	internal static Recipe MapToRecipe(RecipeEntity entity) =>
 		new(
 			Id: entity.Id.ToString(),
-			UserId: entity.UserId,
+			FamilyGroupId: entity.FamilyGroupId.ToString(),
+			ContributedByUserId: entity.ContributedByUserId,
 			Name: entity.Name,
 			Description: entity.Description,
 			Servings: entity.Servings,

@@ -11,7 +11,7 @@ namespace MealPlanner.Api.Features.MealPlans.Commands;
 /// Command to copy all items from one day+category to the same category on multiple target days.
 /// </summary>
 public record CopyCategoryCommand(
-	string UserId,
+	Guid FamilyGroupId,
 	DateOnly WeekStart,
 	DayOfWeek SourceDay,
 	MealCategory Category,
@@ -38,7 +38,7 @@ public class CopyCategoryCommandHandler(MealPlannerDbContext db)
 			var weekStartStr = weekStart.ToString("yyyy-MM-dd");
 
 			var entity = await db.MealPlans
-				.FirstOrDefaultAsync(p => p.UserId == command.UserId && p.WeekStart == weekStartStr, cancellationToken);
+				.FirstOrDefaultAsync(p => p.FamilyGroupId == command.FamilyGroupId && p.WeekStart == weekStartStr, cancellationToken);
 
 			if (entity is null)
 				return Result<MealPlan>.Failure(

@@ -9,7 +9,7 @@ import type { MealPlanResponse } from '$lib/api/mealPlanApi';
 
 export interface MealPlanUpdatedEvent {
 	eventType: string;
-	ownerUserId: string;
+	familyGroupId: string;
 	weekStart: string;
 	mealPlan: MealPlanResponse;
 	changedByUserId: string;

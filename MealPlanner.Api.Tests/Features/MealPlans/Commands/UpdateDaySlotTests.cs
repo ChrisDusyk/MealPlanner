@@ -12,7 +12,7 @@ public class UpdateDaySlotTests
 	private static MealPlanEntity ExistingPlan() => new()
 	{
 		Id = Guid.NewGuid(),
-		UserId = "u1",
+		FamilyGroupId = TestIds.Family("u1"),
 		WeekStart = "2026-02-23",
 		Days =
 		[
@@ -39,8 +39,7 @@ public class UpdateDaySlotTests
 
 		var handler = new UpdateDaySlotCommandHandler(context);
 		var result = await handler.HandleAsync(
-			new UpdateDaySlotCommand(
-				"u1",
+			new UpdateDaySlotCommand(TestIds.Family("u1"),
 				new DateOnly(2026, 2, 23),
 				DayOfWeek.Monday,
 				MealCategory.Breakfast,
@@ -64,8 +63,7 @@ public class UpdateDaySlotTests
 		{
 			var handler = new UpdateDaySlotCommandHandler(updateContext);
 			var result = await handler.HandleAsync(
-				new UpdateDaySlotCommand(
-					"u1",
+				new UpdateDaySlotCommand(TestIds.Family("u1"),
 					new DateOnly(2026, 2, 23),
 					DayOfWeek.Monday,
 					MealCategory.Breakfast,
@@ -77,7 +75,7 @@ public class UpdateDaySlotTests
 
 		using var reloadContext = TestDbContextFactory.CreateContext(databaseName: databaseName);
 		var reloadedPlan = await reloadContext.MealPlans.FirstAsync(
-			p => p.UserId == "u1" && p.WeekStart == "2026-02-23",
+			p => p.FamilyGroupId == TestIds.Family("u1") && p.WeekStart == "2026-02-23",
 			TestContext.Current.CancellationToken);
 
 		var monday = reloadedPlan.Days.First(d => d.Day == "Monday");
@@ -98,7 +96,7 @@ public class UpdateDaySlotTests
 
 		var handler = new UpdateDaySlotCommandHandler(context);
 		var result = await handler.HandleAsync(
-			new UpdateDaySlotCommand("u1", new DateOnly(2026, 2, 23), DayOfWeek.Monday, MealCategory.Breakfast, []),
+			new UpdateDaySlotCommand(TestIds.Family("u1"), new DateOnly(2026, 2, 23), DayOfWeek.Monday, MealCategory.Breakfast, []),
 			TestContext.Current.CancellationToken);
 
 		Assert.False(result.IsSuccess);
@@ -110,8 +108,7 @@ public class UpdateDaySlotTests
 	{
 		var handler = new UpdateDaySlotCommandHandler(TestDbContextFactory.CreateContext());
 		var result = await handler.HandleAsync(
-			new UpdateDaySlotCommand(
-				"u1",
+			new UpdateDaySlotCommand(TestIds.Family("u1"),
 				new DateOnly(2026, 2, 23),
 				DayOfWeek.Monday,
 				MealCategory.Breakfast,
@@ -130,7 +127,7 @@ public class UpdateDaySlotTests
 
 		var handler = new UpdateDaySlotCommandHandler(context);
 		var result = await handler.HandleAsync(
-			new UpdateDaySlotCommand("u1", new DateOnly(2026, 2, 23), DayOfWeek.Monday, MealCategory.Breakfast, []),
+			new UpdateDaySlotCommand(TestIds.Family("u1"), new DateOnly(2026, 2, 23), DayOfWeek.Monday, MealCategory.Breakfast, []),
 			TestContext.Current.CancellationToken);
 
 		Assert.False(result.IsSuccess);

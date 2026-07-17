@@ -57,24 +57,5 @@ public class UserHandlerMappersTests
 		Assert.False(user.Email.HasValue);
 	}
 
-	[Fact]
-	public void GetFriendsForUser_MapToSummary_MapsUserDocument()
-	{
-		var summary = GetFriendsForUserQueryHandler.MapToSummary(CreateEntity("pal@example.com"), null);
 
-		Assert.Equal("auth0|123", summary.UserId);
-		Assert.Equal("Pat", summary.Name);
-		Assert.Equal("pal@example.com", summary.Email);
-		Assert.False(summary.AutoShareMealPlans);
-		Assert.False(summary.AutoShareGroceryLists);
-	}
-
-	[Fact]
-	public void SendFriendRequestByEmail_NormalizePair_OrdersLexicographically()
-	{
-		var normalized = SendFriendRequestByEmailCommandHandler.NormalizePair("auth0|z", "auth0|a");
-
-		Assert.Equal("auth0|a", normalized.UserAId);
-		Assert.Equal("auth0|z", normalized.UserBId);
-	}
 }

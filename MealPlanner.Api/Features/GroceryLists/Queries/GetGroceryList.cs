@@ -8,7 +8,7 @@ namespace MealPlanner.Api.Features.GroceryLists.Queries;
 /// <summary>
 /// Query to retrieve an existing grocery list for a given user and week.
 /// </summary>
-public record GetGroceryListQuery(string UserId, DateOnly WeekStart) : IQuery<GroceryList>;
+public record GetGroceryListQuery(Guid FamilyGroupId, DateOnly WeekStart) : IQuery<GroceryList>;
 
 /// <summary>
 /// Handles retrieving a grocery list from the database.
@@ -25,7 +25,7 @@ public class GetGroceryListQueryHandler(MealPlannerDbContext db)
 		{
 			var weekStartStr = GroceryListHelpers.NormalizeToMonday(query.WeekStart).ToString("yyyy-MM-dd");
 			var entity = await db.GroceryLists
-				.FirstOrDefaultAsync(g => g.UserId == query.UserId && g.WeekStart == weekStartStr, cancellationToken);
+				.FirstOrDefaultAsync(g => g.FamilyGroupId == query.FamilyGroupId && g.WeekStart == weekStartStr, cancellationToken);
 
 			if (entity is null)
 			{

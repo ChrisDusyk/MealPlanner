@@ -109,7 +109,7 @@ describe('MealPlanRealtimeClient', () => {
 
 		const event = {
 			eventType: 'DaySlotUpdated',
-			ownerUserId: 'owner-1',
+			familyGroupId: 'family-1',
 			weekStart: '2026-02-23',
 			mealPlan: {
 				id: 'plan-1',

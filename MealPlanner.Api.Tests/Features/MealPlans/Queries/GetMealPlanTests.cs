@@ -17,7 +17,7 @@ public class GetMealPlanTests
 			db.MealPlans.Add(new MealPlanEntity
 			{
 				Id = id,
-				UserId = "u1",
+				FamilyGroupId = TestIds.Family("u1"),
 				WeekStart = "2026-02-23",
 				Days =
 				[
@@ -39,7 +39,7 @@ public class GetMealPlanTests
 		});
 
 		var handler = new GetMealPlanQueryHandler(context);
-		var result = await handler.HandleAsync(new GetMealPlanQuery("u1", new DateOnly(2026, 2, 25)), TestContext.Current.CancellationToken);
+		var result = await handler.HandleAsync(new GetMealPlanQuery(TestIds.Family("u1"), new DateOnly(2026, 2, 25)), TestContext.Current.CancellationToken);
 
 		Assert.True(result.IsSuccess);
 		Assert.NotNull(result.Value);
@@ -52,7 +52,7 @@ public class GetMealPlanTests
 	{
 		var context = TestDbContextFactory.CreateContext();
 		var handler = new GetMealPlanQueryHandler(context);
-		var result = await handler.HandleAsync(new GetMealPlanQuery("u1", new DateOnly(2026, 2, 26)), TestContext.Current.CancellationToken);
+		var result = await handler.HandleAsync(new GetMealPlanQuery(TestIds.Family("u1"), new DateOnly(2026, 2, 26)), TestContext.Current.CancellationToken);
 
 		Assert.True(result.IsSuccess);
 		Assert.NotNull(result.Value);
@@ -60,37 +60,6 @@ public class GetMealPlanTests
 		Assert.Equal(7, context.MealPlans.Single().Days.Count);
 	}
 
-	[Fact]
-	public async Task HandleAsync_CreatesShares_WhenAutoSharePreferenceEnabledForActiveFriend()
-	{
-		var context = TestDbContextFactory.CreateContext(seed: db =>
-		{
-			db.FriendAutoSharePreferences.Add(new FriendAutoSharePreferenceEntity
-			{
-				Id = Guid.NewGuid(),
-				UserId = "u1",
-				FriendUserId = "u2",
-				AutoShareMealPlans = true,
-				AutoShareGroceryLists = false,
-				CreatedAt = DateTime.UtcNow,
-				UpdatedAt = DateTime.UtcNow
-			});
-
-			db.Friendships.Add(new FriendshipEntity
-			{
-				Id = Guid.NewGuid(),
-				UserAId = "u1",
-				UserBId = "u2",
-				CreatedAt = DateTime.UtcNow
-			});
-		});
-
-		var handler = new GetMealPlanQueryHandler(context);
-		var result = await handler.HandleAsync(new GetMealPlanQuery("u1", new DateOnly(2026, 2, 26)), TestContext.Current.CancellationToken);
-
-		Assert.True(result.IsSuccess);
-		Assert.Single(context.MealPlanShares.Where(s => s.SharedWithUserId == "u2"));
-	}
 
 	[Fact]
 	public async Task HandleAsync_ReturnsDatabaseError_WhenContextDisposed()
@@ -99,7 +68,7 @@ public class GetMealPlanTests
 		context.Dispose();
 
 		var handler = new GetMealPlanQueryHandler(context);
-		var result = await handler.HandleAsync(new GetMealPlanQuery("u1", new DateOnly(2026, 2, 23)), TestContext.Current.CancellationToken);
+		var result = await handler.HandleAsync(new GetMealPlanQuery(TestIds.Family("u1"), new DateOnly(2026, 2, 23)), TestContext.Current.CancellationToken);
 
 		Assert.False(result.IsSuccess);
 		Assert.Equal(ErrorCodes.DatabaseError, result.Error?.Code);

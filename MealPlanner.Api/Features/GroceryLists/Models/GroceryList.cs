@@ -17,7 +17,7 @@ public record GroceryListItem(
 /// </summary>
 public record GroceryList(
 	string Id,
-	string UserId,
+	string FamilyGroupId,
 	DateOnly WeekStart,
 	List<GroceryListItem> Items,
 	List<GroceryListItem> PantryStapleItems,

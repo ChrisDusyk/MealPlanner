@@ -11,7 +11,7 @@ namespace MealPlanner.Api.Features.MealPlans.Commands;
 /// Command to set the items for a specific day and meal category within a weekly plan.
 /// </summary>
 public record UpdateDaySlotCommand(
-	string UserId,
+	Guid FamilyGroupId,
 	DateOnly WeekStart,
 	DayOfWeek Day,
 	MealCategory Category,
@@ -39,20 +39,20 @@ public class UpdateDaySlotCommandHandler(MealPlannerDbContext db)
 
 			// Ensure the plan exists (auto-create via GetMealPlan query logic)
 			var entity = await db.MealPlans
-				.FirstOrDefaultAsync(p => p.UserId == command.UserId && p.WeekStart == weekStartStr, cancellationToken);
+				.FirstOrDefaultAsync(p => p.FamilyGroupId == command.FamilyGroupId && p.WeekStart == weekStartStr, cancellationToken);
 
 			if (entity is null)
 			{
 				// Auto-create by piggybacking on the query handler
 				var queryHandler = new GetMealPlanQueryHandler(db);
 				var createResult = await queryHandler.HandleAsync(
-					new GetMealPlanQuery(command.UserId, weekStart), cancellationToken);
+					new GetMealPlanQuery(command.FamilyGroupId, weekStart), cancellationToken);
 
 				if (!createResult.IsSuccess)
 					return createResult;
 
 				entity = await db.MealPlans
-					.FirstOrDefaultAsync(p => p.UserId == command.UserId && p.WeekStart == weekStartStr, cancellationToken);
+					.FirstOrDefaultAsync(p => p.FamilyGroupId == command.FamilyGroupId && p.WeekStart == weekStartStr, cancellationToken);
 			}
 
 			if (entity is null)

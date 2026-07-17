@@ -7,7 +7,6 @@ import {
 	deleteGroceryList,
 	promotePantryStapleItem
 } from '$lib/api/groceryListApi';
-import { getGroceryListsSharedWithMe, type SharedGroceryListResponse } from '$lib/api/sharingApi';
 import type { GroceryListResponse } from '$lib/api/groceryListApi';
 import type { PageServerLoad, Actions } from './$types';
 import { error, fail } from '@sveltejs/kit';
@@ -33,7 +32,6 @@ export const load: PageServerLoad = async ({ parent, fetch, url }) => {
 	const weekStart = url.searchParams.get('weekStart') ?? getCurrentWeekMonday();
 
 	let groceryList: GroceryListResponse | null = null;
-	let sharedWithMe: SharedGroceryListResponse[] = [];
 
 	try {
 		groceryList = await fetchGroceryList(session.accessToken, weekStart, fetch);
@@ -48,16 +46,8 @@ export const load: PageServerLoad = async ({ parent, fetch, url }) => {
 		}
 	}
 
-	try {
-		sharedWithMe = await getGroceryListsSharedWithMe(session.accessToken, weekStart, fetch);
-	} catch {
-		// Non-fatal: shared lists failing should not break the page
-		sharedWithMe = [];
-	}
-
 	return {
 		groceryList,
-		sharedWithMe,
 		weekStart
 	};
 };

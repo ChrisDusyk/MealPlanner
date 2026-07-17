@@ -21,7 +21,7 @@ public class GoogleKeepClientTests
 	{
 		var list = new GroceryList(
 			Id: "g1",
-			UserId: "auth0|u1",
+			FamilyGroupId: TestIds.Family("u1").ToString(),
 			WeekStart: new DateOnly(2026, 3, 23),
 			Items: [new GroceryListItem("Milk", 1, "L", false, [])],
 			PantryStapleItems: [new GroceryListItem("Salt", 1, "tsp", false, [])],

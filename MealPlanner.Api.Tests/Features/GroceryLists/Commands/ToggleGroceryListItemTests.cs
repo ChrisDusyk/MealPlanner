@@ -11,7 +11,7 @@ public class ToggleGroceryListItemTests
 	public async Task HandleAsync_ReturnsNotFound_WhenListMissing()
 	{
 		var handler = new ToggleGroceryListItemCommandHandler(TestDbContextFactory.CreateContext());
-		var result = await handler.HandleAsync(new ToggleGroceryListItemCommand("u1", new DateOnly(2026, 2, 23), 0), TestContext.Current.CancellationToken);
+		var result = await handler.HandleAsync(new ToggleGroceryListItemCommand(TestIds.Family("u1"), new DateOnly(2026, 2, 23), 0), TestContext.Current.CancellationToken);
 
 		Assert.False(result.IsSuccess);
 		Assert.Equal(ErrorCodes.NotFound, result.Error?.Code);
@@ -25,7 +25,7 @@ public class ToggleGroceryListItemTests
 			db.GroceryLists.Add(new GroceryListEntity
 			{
 				Id = Guid.NewGuid(),
-				UserId = "u1",
+				FamilyGroupId = TestIds.Family("u1"),
 				WeekStart = "2026-02-23",
 				Items = [],
 				PantryStapleItems = [],
@@ -35,7 +35,7 @@ public class ToggleGroceryListItemTests
 		});
 
 		var handler = new ToggleGroceryListItemCommandHandler(context);
-		var result = await handler.HandleAsync(new ToggleGroceryListItemCommand("u1", new DateOnly(2026, 2, 23), 5), TestContext.Current.CancellationToken);
+		var result = await handler.HandleAsync(new ToggleGroceryListItemCommand(TestIds.Family("u1"), new DateOnly(2026, 2, 23), 5), TestContext.Current.CancellationToken);
 
 		Assert.False(result.IsSuccess);
 		Assert.Equal(ErrorCodes.ValidationFailed, result.Error?.Code);
@@ -50,7 +50,7 @@ public class ToggleGroceryListItemTests
 			db.GroceryLists.Add(new GroceryListEntity
 			{
 				Id = id,
-				UserId = "u1",
+				FamilyGroupId = TestIds.Family("u1"),
 				WeekStart = "2026-02-23",
 				Items = [new GroceryListItemData { Name = "Rice", Quantity = 1, Unit = "kg", IsChecked = false, SourceRecipeNames = [] }],
 				PantryStapleItems = [],
@@ -60,7 +60,7 @@ public class ToggleGroceryListItemTests
 		});
 
 		var handler = new ToggleGroceryListItemCommandHandler(context);
-		var result = await handler.HandleAsync(new ToggleGroceryListItemCommand("u1", new DateOnly(2026, 2, 23), 0), TestContext.Current.CancellationToken);
+		var result = await handler.HandleAsync(new ToggleGroceryListItemCommand(TestIds.Family("u1"), new DateOnly(2026, 2, 23), 0), TestContext.Current.CancellationToken);
 
 		Assert.True(result.IsSuccess);
 		var entity = await context.GroceryLists.FindAsync([id], TestContext.Current.CancellationToken);
@@ -75,7 +75,7 @@ public class ToggleGroceryListItemTests
 		context.Dispose();
 
 		var handler = new ToggleGroceryListItemCommandHandler(context);
-		var result = await handler.HandleAsync(new ToggleGroceryListItemCommand("u1", new DateOnly(2026, 2, 23), 0), TestContext.Current.CancellationToken);
+		var result = await handler.HandleAsync(new ToggleGroceryListItemCommand(TestIds.Family("u1"), new DateOnly(2026, 2, 23), 0), TestContext.Current.CancellationToken);
 
 		Assert.False(result.IsSuccess);
 		Assert.Equal(ErrorCodes.DatabaseError, result.Error?.Code);

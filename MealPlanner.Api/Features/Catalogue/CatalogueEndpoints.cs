@@ -1,6 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
 using MealPlanner.Api.Features.Auth;
+using MealPlanner.Api.Features.Families;
 using MealPlanner.Api.Features.Catalogue.Commands;
 using MealPlanner.Api.Features.Catalogue.Dtos;
 using MealPlanner.Api.Features.Catalogue.Models;
@@ -36,6 +37,7 @@ public static class CatalogueEndpoints
 	private static async Task<IResult> BrowseCatalogue(
 		HttpContext httpContext,
 		IQueryHandler<BrowseCatalogueQuery, IReadOnlyList<CatalogueRecipeListItem>> handler,
+		IFamilyContextResolver familyResolver,
 		CancellationToken cancellationToken,
 		string? search = null,
 		string? tags = null,
@@ -46,6 +48,10 @@ public static class CatalogueEndpoints
 		var userId = GetUserId(httpContext);
 		if (userId is null) return Results.Unauthorized();
 
+		var familyResult = await familyResolver.ResolveAsync(userId, cancellationToken);
+		if (!familyResult.IsSuccess)
+			return Results.Problem(familyResult.Error!.Message, statusCode: 500);
+
 		var tagSlugs = string.IsNullOrWhiteSpace(tags)
 			? Array.Empty<string>()
 			: tags.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
@@ -53,7 +59,7 @@ public static class CatalogueEndpoints
 			? CatalogueSort.Popular
 			: CatalogueSort.Recent;
 
-		var query = new BrowseCatalogueQuery(userId, search, tagSlugs, sortValue, skip, take);
+		var query = new BrowseCatalogueQuery(familyResult.Value!.FamilyGroupId, search, tagSlugs, sortValue, skip, take);
 		var result = await handler.HandleAsync(query, cancellationToken);
 		return result.Match(
 			onSuccess: items => Results.Ok(items.Select(CatalogueRecipeListItemResponse.FromDomain).ToList()),
@@ -64,12 +70,18 @@ public static class CatalogueEndpoints
 		Guid id,
 		HttpContext httpContext,
 		IQueryHandler<GetCatalogueRecipeByIdQuery, (CatalogueRecipe Recipe, bool AlreadyAdded)> handler,
+		IFamilyContextResolver familyResolver,
 		CancellationToken cancellationToken)
 	{
 		var userId = GetUserId(httpContext);
 		if (userId is null) return Results.Unauthorized();
 
-		var result = await handler.HandleAsync(new GetCatalogueRecipeByIdQuery(id, userId), cancellationToken);
+		var familyResult = await familyResolver.ResolveAsync(userId, cancellationToken);
+		if (!familyResult.IsSuccess)
+			return Results.Problem(familyResult.Error!.Message, statusCode: 500);
+
+		var result = await handler.HandleAsync(
+			new GetCatalogueRecipeByIdQuery(id, familyResult.Value!.FamilyGroupId), cancellationToken);
 		return result.Match(
 			onSuccess: tuple => Results.Ok(CatalogueRecipeResponse.FromDomain(tuple.Recipe, tuple.AlreadyAdded)),
 			onFailure: error => error.Code == ErrorCodes.NotFound
@@ -91,13 +103,18 @@ public static class CatalogueEndpoints
 		Guid id,
 		HttpContext httpContext,
 		ICommandHandler<AddCatalogueRecipeToUserCommand, Recipe> handler,
+		IFamilyContextResolver familyResolver,
 		CancellationToken cancellationToken)
 	{
 		var userId = GetUserId(httpContext);
 		if (userId is null) return Results.Unauthorized();
 
+		var familyResult = await familyResolver.ResolveAsync(userId, cancellationToken);
+		if (!familyResult.IsSuccess)
+			return Results.Problem(familyResult.Error!.Message, statusCode: 500);
+
 		var result = await handler.HandleAsync(
-			new AddCatalogueRecipeToUserCommand(id, userId), cancellationToken);
+			new AddCatalogueRecipeToUserCommand(id, familyResult.Value!.FamilyGroupId, userId), cancellationToken);
 		return result.Match(
 			onSuccess: recipe => Results.Created(
 				$"/api/recipes/{recipe.Id}",

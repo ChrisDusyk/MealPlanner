@@ -1,4 +1,5 @@
 using MealPlanner.Api.Data.Entities;
+using MealPlanner.Api.Tests.TestUtilities;
 using MealPlanner.Api.Features.Catalogue.Queries;
 using MealPlanner.Api.Features.Recipes.Models;
 using MealPlanner.Api.Shared;
@@ -44,7 +45,7 @@ public class BrowseCatalogueTests
 
 		var handler = new BrowseCatalogueQueryHandler(db);
 		var result = await handler.HandleAsync(
-			new BrowseCatalogueQuery("u1", null, [], CatalogueSort.Recent, 0, 50),
+			new BrowseCatalogueQuery(TestIds.Family("u1"), null, [], CatalogueSort.Recent, 0, 50),
 			TestContext.Current.CancellationToken);
 
 		Assert.True(result.IsSuccess);
@@ -64,7 +65,7 @@ public class BrowseCatalogueTests
 
 		var handler = new BrowseCatalogueQueryHandler(db);
 		var result = await handler.HandleAsync(
-			new BrowseCatalogueQuery("u1", "tofu", [], CatalogueSort.Recent, 0, 50),
+			new BrowseCatalogueQuery(TestIds.Family("u1"), "tofu", [], CatalogueSort.Recent, 0, 50),
 			TestContext.Current.CancellationToken);
 
 		Assert.True(result.IsSuccess);
@@ -87,7 +88,7 @@ public class BrowseCatalogueTests
 
 		var handler = new BrowseCatalogueQueryHandler(db);
 		var result = await handler.HandleAsync(
-			new BrowseCatalogueQuery("u1", null, ["vegan"], CatalogueSort.Recent, 0, 50),
+			new BrowseCatalogueQuery(TestIds.Family("u1"), null, ["vegan"], CatalogueSort.Recent, 0, 50),
 			TestContext.Current.CancellationToken);
 
 		Assert.True(result.IsSuccess);
@@ -108,7 +109,7 @@ public class BrowseCatalogueTests
 
 		var handler = new BrowseCatalogueQueryHandler(db);
 		var result = await handler.HandleAsync(
-			new BrowseCatalogueQuery("u1", null, [], CatalogueSort.Popular, 0, 50),
+			new BrowseCatalogueQuery(TestIds.Family("u1"), null, [], CatalogueSort.Popular, 0, 50),
 			TestContext.Current.CancellationToken);
 
 		Assert.True(result.IsSuccess);
@@ -126,7 +127,8 @@ public class BrowseCatalogueTests
 			ctx.Recipes.Add(new RecipeEntity
 			{
 				Id = Guid.NewGuid(),
-				UserId = "u1",
+				FamilyGroupId = TestIds.Family("u1"),
+				ContributedByUserId = "u1",
 				Name = "Curry",
 				Description = "",
 				Servings = 1,
@@ -138,10 +140,10 @@ public class BrowseCatalogueTests
 
 		var handler = new BrowseCatalogueQueryHandler(db);
 		var asUser = await handler.HandleAsync(
-			new BrowseCatalogueQuery("u1", null, [], CatalogueSort.Recent, 0, 50),
+			new BrowseCatalogueQuery(TestIds.Family("u1"), null, [], CatalogueSort.Recent, 0, 50),
 			TestContext.Current.CancellationToken);
 		var asOther = await handler.HandleAsync(
-			new BrowseCatalogueQuery("u2", null, [], CatalogueSort.Recent, 0, 50),
+			new BrowseCatalogueQuery(TestIds.Family("u2"), null, [], CatalogueSort.Recent, 0, 50),
 			TestContext.Current.CancellationToken);
 
 		Assert.True(asUser.Value![0].AlreadyAdded);
@@ -155,7 +157,7 @@ public class BrowseCatalogueTests
 		ctx.Dispose();
 		var handler = new BrowseCatalogueQueryHandler(ctx);
 		var result = await handler.HandleAsync(
-			new BrowseCatalogueQuery("u1", null, [], CatalogueSort.Recent, 0, 50),
+			new BrowseCatalogueQuery(TestIds.Family("u1"), null, [], CatalogueSort.Recent, 0, 50),
 			TestContext.Current.CancellationToken);
 		Assert.False(result.IsSuccess);
 		Assert.Equal(ErrorCodes.DatabaseError, result.Error?.Code);

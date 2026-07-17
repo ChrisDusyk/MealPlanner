@@ -9,7 +9,7 @@ namespace MealPlanner.Api.Features.Recipes.Queries;
 /// <summary>
 /// Query to retrieve a single recipe by its ID.
 /// </summary>
-public record GetRecipeByIdQuery(string Id, string UserId) : IQuery<Recipe>;
+public record GetRecipeByIdQuery(string Id, Guid FamilyGroupId) : IQuery<Recipe>;
 
 /// <summary>
 /// Handles retrieving a single recipe by ID.
@@ -34,7 +34,7 @@ public class GetRecipeByIdQueryHandler(MealPlannerDbContext db)
 				return Result<Recipe>.Failure(
 					new Error(ErrorCodes.NotFound, $"Recipe with ID '{query.Id}' was not found."));
 
-			if (entity.UserId != query.UserId)
+			if (entity.FamilyGroupId != query.FamilyGroupId)
 				return Result<Recipe>.Failure(
 					new Error(ErrorCodes.Unauthorized, "You do not have permission to view this recipe."));
 
@@ -50,7 +50,8 @@ public class GetRecipeByIdQueryHandler(MealPlannerDbContext db)
 	internal static Recipe MapToRecipe(RecipeEntity entity) =>
 		new(
 			Id: entity.Id.ToString(),
-			UserId: entity.UserId,
+			FamilyGroupId: entity.FamilyGroupId.ToString(),
+			ContributedByUserId: entity.ContributedByUserId,
 			Name: entity.Name,
 			Description: entity.Description,
 			Servings: entity.Servings,

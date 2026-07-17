@@ -5,7 +5,6 @@
 	import { SvelteURLSearchParams } from 'svelte/reactivity';
 	import type { MealSlotItem, MealPlanResponse } from '$lib/api/mealPlanApi';
 	import type { Recipe } from '$lib/api/recipeApi';
-	import type { MealPlanShareResponse, SharedMealPlanResponse } from '$lib/api/sharingApi';
 	import {
 		MealPlanRealtimeClient,
 		type MealPlanUpdatedEvent
@@ -14,8 +13,6 @@
 	import MealPlanGrid from '$lib/components/meal-plans/MealPlanGrid.svelte';
 	import AddItemModal from '$lib/components/meal-plans/AddItemModal.svelte';
 	import CopyModal from '$lib/components/meal-plans/CopyModal.svelte';
-	import ShareModal from '$lib/components/meal-plans/ShareModal.svelte';
-	import SharedMealPlanCard from '$lib/components/meal-plans/SharedMealPlanCard.svelte';
 	import { toast } from '$lib/stores/toast.svelte';
 	import type { PageData } from './$types';
 
@@ -30,10 +27,6 @@
 	let mealPlan: MealPlanResponse = $state(data.mealPlan);
 	// svelte-ignore state_referenced_locally
 	let recipes: Recipe[] = $state(data.recipes);
-	// svelte-ignore state_referenced_locally
-	let sharedWithMe: SharedMealPlanResponse[] = $state(data.sharedWithMe);
-	// svelte-ignore state_referenced_locally
-	let myShares: MealPlanShareResponse[] = $state(data.myShares);
 
 	// Re-sync when server data changes (e.g. week navigation)
 	$effect(() => {
@@ -41,8 +34,6 @@
 		void serverVersion;
 		mealPlan = data.mealPlan;
 		recipes = data.recipes;
-		sharedWithMe = data.sharedWithMe;
-		myShares = data.myShares;
 		currentUserId = data.appUser?.authUserId ?? null;
 	});
 
@@ -55,16 +46,8 @@
 	let copyModalDay = $state('');
 	let copyModalCategory = $state('');
 
-	let shareModalOpen = $state(false);
-
-	// Track which shared plan is being edited (null = editing own plan)
-	let editingSharedPlan: { ownerUserId: string; shareId: string } | null = $state(null);
-
 	// Promise chain for slot mutations (prevents out-of-order response overwrites)
 	let pendingSlotUpdate: Promise<void> = Promise.resolve();
-
-	// Shared-with-me section collapsed state
-	let sharedSectionOpen = $state(true);
 
 	let generateGroceryListLoading = $state(false);
 	const realtimeClient = new MealPlanRealtimeClient();
@@ -76,26 +59,12 @@
 			return;
 		}
 
-		if (currentUserId && event.ownerUserId === currentUserId) {
-			mealPlan = event.mealPlan;
+		// Skip our own edits — optimistic updates already applied them.
+		if (currentUserId && event.changedByUserId === currentUserId) {
+			return;
 		}
 
-		let sharedPlanUpdated = false;
-		const nextSharedWithMe = sharedWithMe.map((shared) => {
-			if (shared.ownerUserId === event.ownerUserId) {
-				sharedPlanUpdated = true;
-				return {
-					...shared,
-					mealPlan: event.mealPlan
-				};
-			}
-
-			return shared;
-		});
-
-		if (sharedPlanUpdated) {
-			sharedWithMe = nextSharedWithMe;
-		}
+		mealPlan = event.mealPlan;
 	}
 
 	onMount(() => {
@@ -155,43 +124,9 @@
 	// ── Add Item ──
 
 	function handleOpenAdd(day: string, category: string) {
-		editingSharedPlan = null;
 		addModalDay = day;
 		addModalCategory = category;
 		addModalOpen = true;
-	}
-
-	/** Get the effective meal plan being edited (own or shared) */
-	function getActivePlan(): MealPlanResponse {
-		if (editingSharedPlan) {
-			const shared = sharedWithMe.find((s) => s.shareId === editingSharedPlan!.shareId);
-			if (!shared) {
-				editingSharedPlan = null;
-				return mealPlan;
-			}
-			return shared.mealPlan;
-		}
-		return mealPlan;
-	}
-
-	/** Build query params, appending onBehalfOf when editing a shared plan */
-	function buildParams(base: Record<string, string>): URLSearchParams {
-		const params = new SvelteURLSearchParams(base);
-		if (editingSharedPlan) {
-			params.set('onBehalfOf', editingSharedPlan.ownerUserId);
-		}
-		return params;
-	}
-
-	/** Update the correct plan (own or shared) after a successful mutation */
-	function applyUpdatedPlan(updated: MealPlanResponse) {
-		if (editingSharedPlan) {
-			sharedWithMe = sharedWithMe.map((s) =>
-				s.shareId === editingSharedPlan!.shareId ? { ...s, mealPlan: updated } : s
-			);
-		} else {
-			mealPlan = updated;
-		}
 	}
 
 	function queueSlotMutation(mutation: () => Promise<void>): Promise<void> {
@@ -203,8 +138,7 @@
 	}
 
 	async function handleAddItem(item: MealSlotItem) {
-		const plan = getActivePlan();
-		const dayPlan = plan.days.find((d) => d.day === addModalDay);
+		const dayPlan = mealPlan.days.find((d) => d.day === addModalDay);
 		if (!dayPlan) return;
 
 		// Optimistic update
@@ -214,8 +148,8 @@
 
 		await queueSlotMutation(async () => {
 			try {
-				const params = buildParams({
-					weekStart: plan.weekStart,
+				const params = new SvelteURLSearchParams({
+					weekStart: mealPlan.weekStart,
 					day: addModalDay,
 					category: addModalCategory
 				});
@@ -226,8 +160,7 @@
 				});
 
 				if (!res.ok) throw new Error('Failed to save');
-				const updated: MealPlanResponse = await res.json();
-				applyUpdatedPlan(updated);
+				mealPlan = await res.json();
 			} catch {
 				// Revert
 				dayPlan.slots[addModalCategory] = currentItems;
@@ -239,8 +172,7 @@
 	// ── Remove Item ──
 
 	async function handleRemoveItem(day: string, category: string, index: number) {
-		const plan = getActivePlan();
-		const dayPlan = plan.days.find((d) => d.day === day);
+		const dayPlan = mealPlan.days.find((d) => d.day === day);
 		if (!dayPlan) return;
 
 		const currentItems = [...(dayPlan.slots[category] ?? [])];
@@ -250,8 +182,8 @@
 		dayPlan.slots[category] = newItems;
 
 		try {
-			const params = buildParams({
-				weekStart: plan.weekStart,
+			const params = new SvelteURLSearchParams({
+				weekStart: mealPlan.weekStart,
 				day,
 				category,
 				itemIndex: index.toString()
@@ -261,8 +193,7 @@
 			});
 
 			if (!res.ok) throw new Error('Failed to remove');
-			const updated: MealPlanResponse = await res.json();
-			applyUpdatedPlan(updated);
+			mealPlan = await res.json();
 		} catch {
 			// Revert
 			dayPlan.slots[category] = currentItems;
@@ -278,8 +209,7 @@
 		index: number,
 		servings: number
 	) {
-		const plan = getActivePlan();
-		const dayPlan = plan.days.find((d) => d.day === day);
+		const dayPlan = mealPlan.days.find((d) => d.day === day);
 		if (!dayPlan) return;
 
 		const currentItems = [...(dayPlan.slots[category] ?? [])];
@@ -295,8 +225,8 @@
 
 		await queueSlotMutation(async () => {
 			try {
-				const params = buildParams({
-					weekStart: plan.weekStart,
+				const params = new SvelteURLSearchParams({
+					weekStart: mealPlan.weekStart,
 					day,
 					category
 				});
@@ -307,8 +237,7 @@
 				});
 
 				if (!res.ok) throw new Error('Failed to update servings');
-				const updated: MealPlanResponse = await res.json();
-				applyUpdatedPlan(updated);
+				mealPlan = await res.json();
 			} catch {
 				// Revert
 				dayPlan.slots[category] = currentItems;
@@ -320,7 +249,6 @@
 	// ── Copy Category ──
 
 	function handleOpenCopy(day: string, category: string) {
-		editingSharedPlan = null;
 		copyModalDay = day;
 		copyModalCategory = category;
 		copyModalOpen = true;
@@ -330,16 +258,15 @@
 		// Wait for queued slot updates (e.g. servings change) to persist
 		await pendingSlotUpdate;
 
-		const plan = getActivePlan();
 		// Optimistic update: copy source items to targets
-		const sourceDayPlan = plan.days.find((d) => d.day === copyModalDay);
+		const sourceDayPlan = mealPlan.days.find((d) => d.day === copyModalDay);
 		if (!sourceDayPlan) return;
 
 		const sourceItems = sourceDayPlan.slots[copyModalCategory] ?? [];
 		const backups: Record<string, MealSlotItem[]> = {};
 
 		for (const td of targetDays) {
-			const targetDayPlan = plan.days.find((d) => d.day === td);
+			const targetDayPlan = mealPlan.days.find((d) => d.day === td);
 			if (targetDayPlan) {
 				backups[td] = [...(targetDayPlan.slots[copyModalCategory] ?? [])];
 				targetDayPlan.slots[copyModalCategory] = [...sourceItems];
@@ -347,7 +274,7 @@
 		}
 
 		try {
-			const params = buildParams({ weekStart: plan.weekStart });
+			const params = new SvelteURLSearchParams({ weekStart: mealPlan.weekStart });
 			const res = await fetch(`/app/meal-plans?${params}`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
@@ -359,116 +286,19 @@
 			});
 
 			if (!res.ok) throw new Error('Failed to copy');
-			const updated: MealPlanResponse = await res.json();
-			applyUpdatedPlan(updated);
+			mealPlan = await res.json();
 			toast.show(
 				`Copied ${copyModalCategory} from ${copyModalDay} to ${targetDays.length} ${targetDays.length === 1 ? 'day' : 'days'}`
 			);
 		} catch {
 			// Revert
 			for (const td of targetDays) {
-				const targetDayPlan = plan.days.find((d) => d.day === td);
+				const targetDayPlan = mealPlan.days.find((d) => d.day === td);
 				if (targetDayPlan && backups[td]) {
 					targetDayPlan.slots[copyModalCategory] = backups[td];
 				}
 			}
 			toast.show('Failed to copy. Please try again.', 'error');
-		}
-	}
-
-	// ── Shared Plan Edit Wrappers ──
-
-	function handleSharedOpenAdd(ownerUserId: string, shareId: string) {
-		return (day: string, category: string) => {
-			editingSharedPlan = { ownerUserId, shareId };
-			addModalDay = day;
-			addModalCategory = category;
-			addModalOpen = true;
-		};
-	}
-
-	function handleSharedRemove(ownerUserId: string, shareId: string) {
-		return (day: string, category: string, index: number) => {
-			editingSharedPlan = { ownerUserId, shareId };
-			handleRemoveItem(day, category, index);
-		};
-	}
-
-	function handleSharedOpenCopy(ownerUserId: string, shareId: string) {
-		return (day: string, category: string) => {
-			editingSharedPlan = { ownerUserId, shareId };
-			copyModalDay = day;
-			copyModalCategory = category;
-			copyModalOpen = true;
-		};
-	}
-
-	function handleSharedUpdateServings(ownerUserId: string, shareId: string) {
-		return (day: string, category: string, index: number, servings: number) => {
-			editingSharedPlan = { ownerUserId, shareId };
-			handleUpdateServings(day, category, index, servings);
-		};
-	}
-
-	// ── Sharing ──
-
-	async function handleShare(email: string, permission: string): Promise<string | null> {
-		try {
-			const params = new URLSearchParams();
-			const res = await fetch(`/app/meal-plans/sharing?${params}`, {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					email,
-					weekStart: mealPlan.weekStart,
-					permission
-				})
-			});
-
-			if (!res.ok) {
-				const body = await res.json();
-				return body.error ?? 'Failed to share meal plan.';
-			}
-
-			// Refresh the shares list
-			const sharesRes = await fetch(
-				`/app/meal-plans/sharing?type=my-shares&weekStart=${mealPlan.weekStart}`
-			);
-			if (sharesRes.ok) myShares = await sharesRes.json();
-
-			toast.show(`Meal plan shared with ${email}`);
-			return null;
-		} catch (err) {
-			return err instanceof Error ? err.message : 'Failed to share meal plan.';
-		}
-	}
-
-	async function handleRevoke(shareId: string) {
-		try {
-			const res = await fetch(`/app/meal-plans/sharing?shareId=${shareId}`, {
-				method: 'DELETE'
-			});
-			if (!res.ok) throw new Error('Failed to revoke');
-
-			myShares = myShares.filter((s) => s.id !== shareId);
-			toast.show('Share revoked');
-		} catch {
-			toast.show('Failed to revoke share.', 'error');
-		}
-	}
-
-	async function handleDismiss(shareId: string) {
-		try {
-			const res = await fetch(`/app/meal-plans/sharing?action=dismiss&shareId=${shareId}`, {
-				method: 'POST'
-			});
-			if (!res.ok) throw new Error('Failed to dismiss');
-
-			sharedWithMe = sharedWithMe.filter((s) => s.shareId !== shareId);
-			editingSharedPlan = null;
-			toast.show('Shared plan dismissed');
-		} catch {
-			toast.show('Failed to dismiss shared plan.', 'error');
 		}
 	}
 </script>
@@ -483,7 +313,7 @@
 		<div>
 			<h1 class="font-display text-2xl font-bold text-charcoal sm:text-3xl">Meal Plans</h1>
 			<p class="mt-1 text-charcoal/80">
-				Plan your weekly meals — drag recipes into slots and copy across days.
+				Plan your family's weekly meals — everyone in your family sees and edits the same plan.
 			</p>
 		</div>
 		<div class="flex flex-wrap items-center gap-2">
@@ -508,28 +338,6 @@
 					/>
 				</svg>
 				{generateGroceryListLoading ? 'Generating…' : 'Generate Grocery List'}
-			</button>
-
-			<button
-				type="button"
-				onclick={() => (shareModalOpen = true)}
-				class="flex min-h-10 items-center gap-1.5 rounded-lg bg-charcoal/5 px-3 py-2 text-sm font-medium text-charcoal transition-colors hover:bg-charcoal/10"
-			>
-				<svg
-					xmlns="http://www.w3.org/2000/svg"
-					class="h-4 w-4"
-					fill="none"
-					viewBox="0 0 24 24"
-					stroke="currentColor"
-					stroke-width="2"
-				>
-					<path
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						d="M7.217 10.907a2.25 2.25 0 100 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186l9.566-5.314m-9.566 7.5l9.566 5.314m0 0a2.25 2.25 0 103.935 2.186 2.25 2.25 0 00-3.935-2.186zm0-12.814a2.25 2.25 0 103.933-2.185 2.25 2.25 0 00-3.933 2.185z"
-					/>
-				</svg>
-				Share
 			</button>
 		</div>
 	</div>
@@ -565,74 +373,4 @@
 		onConfirm={handleCopyConfirm}
 		onClose={() => (copyModalOpen = false)}
 	/>
-
-	<!-- Share Modal -->
-	<ShareModal
-		open={shareModalOpen}
-		weekStart={mealPlan.weekStart}
-		shares={myShares}
-		onShare={handleShare}
-		onRevoke={handleRevoke}
-		onClose={() => (shareModalOpen = false)}
-	/>
-
-	<!-- Shared with me section -->
-	{#if sharedWithMe.length > 0}
-		<div class="mt-8">
-			<button
-				type="button"
-				onclick={() => (sharedSectionOpen = !sharedSectionOpen)}
-				aria-expanded={sharedSectionOpen}
-				aria-controls="shared-meal-plans"
-				aria-label="Toggle shared meal plans section"
-				class="mb-3 flex min-h-10 items-center gap-2 text-left"
-			>
-				<svg
-					xmlns="http://www.w3.org/2000/svg"
-					class="h-4 w-4 text-charcoal/60 transition-transform {sharedSectionOpen
-						? 'rotate-180'
-						: ''}"
-					fill="none"
-					viewBox="0 0 24 24"
-					stroke="currentColor"
-					stroke-width="2"
-				>
-					<path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
-				</svg>
-				<h2 class="font-display text-lg font-semibold text-charcoal">Shared with me</h2>
-				<span class="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-semibold text-blue-600">
-					{sharedWithMe.length}
-				</span>
-			</button>
-
-			{#if sharedSectionOpen}
-				<div id="shared-meal-plans" class="flex flex-col gap-3">
-					{#each sharedWithMe as shared (shared.shareId)}
-						<SharedMealPlanCard
-							shareId={shared.shareId}
-							ownerUserId={shared.ownerUserId}
-							ownerName={shared.ownerName}
-							ownerEmail={shared.ownerEmail}
-							permission={shared.permission}
-							mealPlan={shared.mealPlan}
-							onDismiss={handleDismiss}
-							onAdd={shared.permission === 'ReadWrite'
-								? handleSharedOpenAdd(shared.ownerUserId, shared.shareId)
-								: undefined}
-							onRemove={shared.permission === 'ReadWrite'
-								? handleSharedRemove(shared.ownerUserId, shared.shareId)
-								: undefined}
-							onCopy={shared.permission === 'ReadWrite'
-								? handleSharedOpenCopy(shared.ownerUserId, shared.shareId)
-								: undefined}
-							onUpdateServings={shared.permission === 'ReadWrite'
-								? handleSharedUpdateServings(shared.ownerUserId, shared.shareId)
-								: undefined}
-						/>
-					{/each}
-				</div>
-			{/if}
-		</div>
-	{/if}
-
 </div>

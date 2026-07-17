@@ -11,7 +11,7 @@ public class PromotePantryStapleItemTests
 	public async Task HandleAsync_ReturnsNotFound_WhenListMissing()
 	{
 		var handler = new PromotePantryStapleItemCommandHandler(TestDbContextFactory.CreateContext());
-		var result = await handler.HandleAsync(new PromotePantryStapleItemCommand("u1", new DateOnly(2026, 2, 23), 0), TestContext.Current.CancellationToken);
+		var result = await handler.HandleAsync(new PromotePantryStapleItemCommand(TestIds.Family("u1"), new DateOnly(2026, 2, 23), 0), TestContext.Current.CancellationToken);
 
 		Assert.False(result.IsSuccess);
 		Assert.Equal(ErrorCodes.NotFound, result.Error?.Code);
@@ -25,7 +25,7 @@ public class PromotePantryStapleItemTests
 			db.GroceryLists.Add(new GroceryListEntity
 			{
 				Id = Guid.NewGuid(),
-				UserId = "u1",
+				FamilyGroupId = TestIds.Family("u1"),
 				WeekStart = "2026-02-23",
 				Items = [],
 				PantryStapleItems = [new GroceryListItemData { Name = "Salt", Quantity = 1, Unit = "tsp", IsChecked = false, SourceRecipeNames = ["Pasta"] }],
@@ -35,7 +35,7 @@ public class PromotePantryStapleItemTests
 		});
 
 		var handler = new PromotePantryStapleItemCommandHandler(context);
-		var result = await handler.HandleAsync(new PromotePantryStapleItemCommand("u1", new DateOnly(2026, 2, 23), 5), TestContext.Current.CancellationToken);
+		var result = await handler.HandleAsync(new PromotePantryStapleItemCommand(TestIds.Family("u1"), new DateOnly(2026, 2, 23), 5), TestContext.Current.CancellationToken);
 
 		Assert.False(result.IsSuccess);
 		Assert.Equal(ErrorCodes.ValidationFailed, result.Error?.Code);
@@ -49,7 +49,7 @@ public class PromotePantryStapleItemTests
 			db.GroceryLists.Add(new GroceryListEntity
 			{
 				Id = Guid.NewGuid(),
-				UserId = "u1",
+				FamilyGroupId = TestIds.Family("u1"),
 				WeekStart = "2026-02-23",
 				Items = [],
 				PantryStapleItems = [new GroceryListItemData { Name = "Salt", Quantity = 1, Unit = "tsp", IsChecked = false, SourceRecipeNames = [] }],
@@ -59,7 +59,7 @@ public class PromotePantryStapleItemTests
 		});
 
 		var handler = new PromotePantryStapleItemCommandHandler(context);
-		var result = await handler.HandleAsync(new PromotePantryStapleItemCommand("u1", new DateOnly(2026, 2, 23), -1), TestContext.Current.CancellationToken);
+		var result = await handler.HandleAsync(new PromotePantryStapleItemCommand(TestIds.Family("u1"), new DateOnly(2026, 2, 23), -1), TestContext.Current.CancellationToken);
 
 		Assert.False(result.IsSuccess);
 		Assert.Equal(ErrorCodes.ValidationFailed, result.Error?.Code);
@@ -74,7 +74,7 @@ public class PromotePantryStapleItemTests
 			db.GroceryLists.Add(new GroceryListEntity
 			{
 				Id = id,
-				UserId = "u1",
+				FamilyGroupId = TestIds.Family("u1"),
 				WeekStart = "2026-02-23",
 				Items = [new GroceryListItemData { Name = "Tomato", Quantity = 2, Unit = "pcs", IsChecked = false, SourceRecipeNames = ["Pasta"] }],
 				PantryStapleItems =
@@ -88,7 +88,7 @@ public class PromotePantryStapleItemTests
 		});
 
 		var handler = new PromotePantryStapleItemCommandHandler(context);
-		var result = await handler.HandleAsync(new PromotePantryStapleItemCommand("u1", new DateOnly(2026, 2, 23), 0), TestContext.Current.CancellationToken);
+		var result = await handler.HandleAsync(new PromotePantryStapleItemCommand(TestIds.Family("u1"), new DateOnly(2026, 2, 23), 0), TestContext.Current.CancellationToken);
 
 		Assert.True(result.IsSuccess);
 		var entity = await context.GroceryLists.FindAsync([id], TestContext.Current.CancellationToken);
@@ -110,7 +110,7 @@ public class PromotePantryStapleItemTests
 		context.Dispose();
 
 		var handler = new PromotePantryStapleItemCommandHandler(context);
-		var result = await handler.HandleAsync(new PromotePantryStapleItemCommand("u1", new DateOnly(2026, 2, 23), 0), TestContext.Current.CancellationToken);
+		var result = await handler.HandleAsync(new PromotePantryStapleItemCommand(TestIds.Family("u1"), new DateOnly(2026, 2, 23), 0), TestContext.Current.CancellationToken);
 
 		Assert.False(result.IsSuccess);
 		Assert.Equal(ErrorCodes.DatabaseError, result.Error?.Code);

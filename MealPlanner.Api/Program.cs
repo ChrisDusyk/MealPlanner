@@ -12,8 +12,8 @@ using MealPlanner.Api.Features.MealPlans;
 using MealPlanner.Api.Features.MealPlans.Realtime;
 using MealPlanner.Api.Features.Recipes.Import;
 using MealPlanner.Api.Features.Recipes;
+using MealPlanner.Api.Features.Families;
 using MealPlanner.Api.Features.Users;
-using MealPlanner.Api.Features.Users.Realtime;
 using MealPlanner.Api.Shared;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.DataProtection;
@@ -50,7 +50,7 @@ builder.Services.AddSignalR();
 builder.Services.AddSingleton<IUserIdProvider, GroceryListUserIdProvider>();
 builder.Services.AddScoped<IGroceryListRealtimeNotifier, GroceryListRealtimeNotifier>();
 builder.Services.AddScoped<IMealPlanRealtimeNotifier, MealPlanRealtimeNotifier>();
-builder.Services.AddScoped<IFriendsRealtimeNotifier, FriendsRealtimeNotifier>();
+builder.Services.AddScoped<IFamilyContextResolver, FamilyContextResolver>();
 builder.Services.Configure<GoogleIntegrationsOptions>(
 	builder.Configuration.GetSection(GoogleIntegrationsOptions.SectionName));
 var googleIntegrationsSection = builder.Configuration.GetSection(GoogleIntegrationsOptions.SectionName);
@@ -145,8 +145,7 @@ builder.Services.AddAuthentication()
 
 				if (!string.IsNullOrWhiteSpace(accessToken)
 				    && (path.StartsWithSegments(GroceryListHub.HubRoute)
-				        || path.StartsWithSegments(MealPlanHub.HubRoute)
-				        || path.StartsWithSegments(FriendsHub.HubRoute)))
+				        || path.StartsWithSegments(MealPlanHub.HubRoute)))
 				{
 					context.Token = accessToken;
 				}
@@ -211,6 +210,7 @@ app.MapRecipeEndpoints();
 app.MapMealPlanEndpoints();
 app.MapGroceryListEndpoints();
 app.MapUserEndpoints();
+app.MapFamilyEndpoints();
 app.MapGoogleKeepEndpoints();
 app.MapAdminEndpoints();
 app.MapCatalogueEndpoints();
@@ -218,8 +218,6 @@ app.MapAdminCatalogueEndpoints();
 app.MapHub<GroceryListHub>(GroceryListHub.HubRoute)
 	.RequireAuthorization(RbacAuthorization.RequireUserRolePolicy);
 app.MapHub<MealPlanHub>(MealPlanHub.HubRoute)
-	.RequireAuthorization(RbacAuthorization.RequireUserRolePolicy);
-app.MapHub<FriendsHub>(FriendsHub.HubRoute)
 	.RequireAuthorization(RbacAuthorization.RequireUserRolePolicy);
 
 app.Run();

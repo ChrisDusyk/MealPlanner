@@ -1,6 +1,7 @@
 using MealPlanner.Api.Features.Recipes.Commands;
 using MealPlanner.Api.Features.Recipes.Queries;
 using MealPlanner.Api.Data.Entities;
+using MealPlanner.Api.Tests.TestUtilities;
 
 namespace MealPlanner.Api.Tests.Features.Recipes.Mappers;
 
@@ -11,7 +12,8 @@ public class RecipeHandlerMappersTests
 		return new RecipeEntity
 		{
 			Id = Guid.Parse("22222222-2222-2222-2222-222222222222"),
-			UserId = "u1",
+			FamilyGroupId = TestIds.Family("u1"),
+				ContributedByUserId = "u1",
 			Name = "Omelette",
 			Description = "Eggs",
 			Servings = 2,
@@ -34,7 +36,7 @@ public class RecipeHandlerMappersTests
 		Assert.True(recipe.SourceUrl.HasValue);
 		Assert.Equal("https://example.com/o", recipe.SourceUrl.Value);
 		Assert.Equal(2, recipe.Servings);
-		Assert.Equal("u1", recipe.UserId);
+		Assert.Equal("u1", recipe.ContributedByUserId);
 		Assert.Equal(2, recipe.Ingredients.Count);
 		Assert.False(recipe.Ingredients[0].IsPantryStaple);
 		Assert.True(recipe.Ingredients[1].IsPantryStaple);
