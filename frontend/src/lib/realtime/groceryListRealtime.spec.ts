@@ -109,7 +109,7 @@ describe('GroceryListRealtimeClient', () => {
 
 		const event = {
 			eventType: 'ItemToggled',
-			ownerUserId: 'owner-1',
+			familyGroupId: 'family-1',
 			weekStart: '2026-02-23',
 			groceryList: { id: 'list-1', userId: 'owner-1', weekStart: '2026-02-23', items: [] },
 			changedByUserId: 'guest-1',

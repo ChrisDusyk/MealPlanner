@@ -10,6 +10,7 @@ export interface Ingredient {
 
 export interface Recipe {
 	id: string;
+	contributedByUserId?: string;
 	name: string;
 	description: string;
 	servings: number;

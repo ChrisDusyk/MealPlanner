@@ -78,11 +78,9 @@ export async function updateDaySlot(
 	day: string,
 	category: string,
 	items: MealSlotItem[],
-	fetchFn: typeof fetch = fetch,
-	onBehalfOf?: string
+	fetchFn: typeof fetch = fetch
 ): Promise<MealPlanResponse> {
 	const params = new URLSearchParams({ weekStart, day, category });
-	if (onBehalfOf) params.set('onBehalfOf', onBehalfOf);
 	const response = await fetchFn(`${getApiBase()}/api/meal-plans/slots?${params}`, {
 		method: 'PUT',
 		headers: {
@@ -109,11 +107,9 @@ export async function copyCategory(
 	sourceDay: string,
 	category: string,
 	targetDays: string[],
-	fetchFn: typeof fetch = fetch,
-	onBehalfOf?: string
+	fetchFn: typeof fetch = fetch
 ): Promise<MealPlanResponse> {
 	const params = new URLSearchParams({ weekStart });
-	if (onBehalfOf) params.set('onBehalfOf', onBehalfOf);
 	const response = await fetchFn(`${getApiBase()}/api/meal-plans/copy-category?${params}`, {
 		method: 'POST',
 		headers: {
@@ -140,11 +136,9 @@ export async function removeSlotItem(
 	day: string,
 	category: string,
 	itemIndex: number,
-	fetchFn: typeof fetch = fetch,
-	onBehalfOf?: string
+	fetchFn: typeof fetch = fetch
 ): Promise<MealPlanResponse> {
 	const params = new URLSearchParams({ weekStart, day, category });
-	if (onBehalfOf) params.set('onBehalfOf', onBehalfOf);
 	const response = await fetchFn(`${getApiBase()}/api/meal-plans/slots/${itemIndex}?${params}`, {
 		method: 'DELETE',
 		headers: { Authorization: `Bearer ${accessToken}` }

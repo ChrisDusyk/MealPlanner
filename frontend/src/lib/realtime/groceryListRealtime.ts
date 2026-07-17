@@ -9,7 +9,7 @@ import type { GroceryListResponse } from '$lib/api/groceryListApi';
 
 export interface GroceryListUpdatedEvent {
 	eventType: string;
-	ownerUserId: string;
+	familyGroupId: string;
 	weekStart: string;
 	groceryList: GroceryListResponse;
 	changedByUserId: string;

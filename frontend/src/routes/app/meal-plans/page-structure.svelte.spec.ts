@@ -17,6 +17,7 @@ function buildData() {
 			roles: ['user']
 		},
 		appUser: null,
+		familyInvitations: [],
 		mealPlan: {
 			id: 'plan-1',
 			weekStart: '2026-02-23',
@@ -24,9 +25,7 @@ function buildData() {
 			createdAt: new Date().toISOString(),
 			updatedAt: new Date().toISOString()
 		},
-		recipes: [],
-		sharedWithMe: [],
-		myShares: []
+		recipes: []
 	};
 }
 
@@ -42,7 +41,6 @@ describe('meal plans route structure', () => {
 		await expect
 			.element(page.getByRole('button', { name: 'Generate Grocery List' }))
 			.toBeInTheDocument();
-		await expect.element(page.getByRole('button', { name: 'Share' })).toBeInTheDocument();
 		await expect.element(page.getByRole('button', { name: 'Previous week' })).toBeInTheDocument();
 		await expect.element(page.getByRole('button', { name: 'Next week' })).toBeInTheDocument();
 	});
