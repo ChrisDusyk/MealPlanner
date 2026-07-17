@@ -79,6 +79,18 @@ public class UpsertUserFromAuthCommandHandler(MealPlannerDbContext db)
 
 			await db.SaveChangesAsync(cancellationToken);
 
+			// Every user always belongs to a family group; provision the
+			// single-member personal family eagerly on first sync.
+			var hasFamily = await db.FamilyGroupMembers
+				.AsNoTracking()
+				.AnyAsync(m => m.UserId == command.AuthUserId, cancellationToken);
+			if (!hasFamily)
+			{
+				await Families.FamilyProvisioning.CreatePersonalFamilyAsync(
+					db, command.AuthUserId, cancellationToken);
+				await db.SaveChangesAsync(cancellationToken);
+			}
+
 			return Result<User>.Success(UserMapper.ToDomain(entity));
 		}
 		catch (Exception ex)
