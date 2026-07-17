@@ -10,30 +10,40 @@ namespace MealPlanner.Api.Tests.Features.GroceryLists.Realtime;
 public class GroceryListRealtimeNotifierTests
 {
 	[Fact]
-	public async Task PublishListUpdatedAsync_SendsUpdateToOwnerAndActiveRecipients()
+	public async Task PublishListUpdatedAsync_SendsUpdateToAllFamilyMembers()
 	{
+		var familyId = TestIds.Family("fam-1");
 		var context = TestDbContextFactory.CreateContext(seed: db =>
 		{
-			db.GroceryListShares.AddRange(
-				new GroceryListShareEntity
+			db.FamilyGroups.Add(new FamilyGroupEntity
+			{
+				Id = familyId,
+				Name = "Fam",
+				OwnerUserId = "owner-1",
+				CreatedAt = DateTime.UtcNow,
+				UpdatedAt = DateTime.UtcNow
+			});
+			db.FamilyGroupMembers.AddRange(
+				new FamilyGroupMemberEntity
 				{
 					Id = Guid.NewGuid(),
-					OwnerUserId = "owner-1",
-					SharedWithUserId = "guest-1",
-					WeekStart = "2026-02-23",
-					Permission = "ReadWrite",
-					DismissedByRecipient = false,
-					SharedAt = DateTime.UtcNow
+					FamilyGroupId = familyId,
+					UserId = "owner-1",
+					JoinedAt = DateTime.UtcNow
 				},
-				new GroceryListShareEntity
+				new FamilyGroupMemberEntity
 				{
 					Id = Guid.NewGuid(),
-					OwnerUserId = "owner-1",
-					SharedWithUserId = "guest-2",
-					WeekStart = "2026-02-23",
-					Permission = "ReadWrite",
-					DismissedByRecipient = false,
-					SharedAt = DateTime.UtcNow
+					FamilyGroupId = familyId,
+					UserId = "member-1",
+					JoinedAt = DateTime.UtcNow
+				},
+				new FamilyGroupMemberEntity
+				{
+					Id = Guid.NewGuid(),
+					FamilyGroupId = familyId,
+					UserId = "member-2",
+					JoinedAt = DateTime.UtcNow
 				});
 		});
 
@@ -54,34 +64,26 @@ public class GroceryListRealtimeNotifierTests
 
 		var updatedList = new GroceryList(
 			Id: "list-1",
-			UserId: "owner-1",
+			FamilyGroupId: familyId.ToString(),
 			WeekStart: new DateOnly(2026, 2, 23),
-			Items:
-			[
-				new GroceryListItem(
-					Name: "Milk",
-					Quantity: 1,
-					Unit: "L",
-					IsChecked: true,
-					SourceRecipeNames: [])
-			],
+			Items: [new GroceryListItem("Milk", 1, "L", false, [])],
 			PantryStapleItems: [],
 			CreatedAt: DateTime.UtcNow,
 			UpdatedAt: DateTime.UtcNow);
 
 		await notifier.PublishListUpdatedAsync(
-			ownerUserId: "owner-1",
+			familyGroupId: familyId,
 			weekStart: new DateOnly(2026, 2, 23),
 			updatedList: updatedList,
-			changedByUserId: "guest-1",
+			changedByUserId: "member-1",
 			eventType: GroceryListRealtimeEventType.ItemToggled,
 			cancellationToken: TestContext.Current.CancellationToken);
 
 		Assert.NotNull(recipientIds);
 		Assert.Equal(3, recipientIds!.Count);
 		Assert.Contains("owner-1", recipientIds);
-		Assert.Contains("guest-1", recipientIds);
-		Assert.Contains("guest-2", recipientIds);
+		Assert.Contains("member-1", recipientIds);
+		Assert.Contains("member-2", recipientIds);
 
 		clientProxy.Verify(c => c.SendCoreAsync(
 				GroceryListHub.GroceryListUpdatedMethod,

@@ -1,4 +1,5 @@
 using MealPlanner.Api.Data.Entities;
+using MealPlanner.Api.Tests.TestUtilities;
 using MealPlanner.Api.Features.Catalogue.Queries;
 using MealPlanner.Api.Shared;
 
@@ -13,7 +14,7 @@ public class GetCatalogueRecipeByIdTests
 		var handler = new GetCatalogueRecipeByIdQueryHandler(db);
 
 		var result = await handler.HandleAsync(
-			new GetCatalogueRecipeByIdQuery(Guid.NewGuid(), "u1"),
+			new GetCatalogueRecipeByIdQuery(Guid.NewGuid(), TestIds.Family("u1")),
 			TestContext.Current.CancellationToken);
 
 		Assert.False(result.IsSuccess);
@@ -32,7 +33,7 @@ public class GetCatalogueRecipeByIdTests
 
 		var handler = new GetCatalogueRecipeByIdQueryHandler(db);
 		var result = await handler.HandleAsync(
-			new GetCatalogueRecipeByIdQuery(id, "u1"),
+			new GetCatalogueRecipeByIdQuery(id, TestIds.Family("u1")),
 			TestContext.Current.CancellationToken);
 
 		Assert.False(result.IsSuccess);
@@ -53,7 +54,8 @@ public class GetCatalogueRecipeByIdTests
 			ctx.Recipes.Add(new RecipeEntity
 			{
 				Id = Guid.NewGuid(),
-				UserId = "u1",
+				FamilyGroupId = TestIds.Family("u1"),
+				ContributedByUserId = "u1",
 				Name = "Pub",
 				Description = "",
 				Servings = 1,
@@ -65,7 +67,7 @@ public class GetCatalogueRecipeByIdTests
 
 		var handler = new GetCatalogueRecipeByIdQueryHandler(db);
 		var result = await handler.HandleAsync(
-			new GetCatalogueRecipeByIdQuery(id, "u1"),
+			new GetCatalogueRecipeByIdQuery(id, TestIds.Family("u1")),
 			TestContext.Current.CancellationToken);
 
 		Assert.True(result.IsSuccess);

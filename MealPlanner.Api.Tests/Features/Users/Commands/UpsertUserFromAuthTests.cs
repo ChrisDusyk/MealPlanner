@@ -130,6 +130,28 @@ public class UpsertUserFromAuthTests
 	}
 
 	[Fact]
+	public async Task HandleAsync_ProvisionsPersonalFamily_OnFirstSync()
+	{
+		var context = TestDbContextFactory.CreateContext();
+
+		var handler = new UpsertUserFromAuthCommandHandler(context);
+		var result = await handler.HandleAsync(
+			new UpsertUserFromAuthCommand("auth0|new", "Pat", Option<string>.Some("pat@example.com")),
+			TestContext.Current.CancellationToken);
+
+		Assert.True(result.IsSuccess);
+		var family = context.FamilyGroups.Single();
+		Assert.Equal("auth0|new", family.OwnerUserId);
+		Assert.Single(context.FamilyGroupMembers.Where(m => m.UserId == "auth0|new" && m.FamilyGroupId == family.Id));
+
+		// A second sync must not create another family.
+		await handler.HandleAsync(
+			new UpsertUserFromAuthCommand("auth0|new", "Pat", Option<string>.Some("pat@example.com")),
+			TestContext.Current.CancellationToken);
+		Assert.Single(context.FamilyGroups);
+	}
+
+	[Fact]
 	public async Task HandleAsync_ReturnsDatabaseError_WhenDbUnavailable()
 	{
 		var context = TestDbContextFactory.CreateContext();

@@ -1,4 +1,5 @@
 using MealPlanner.Api.Data.Entities;
+using MealPlanner.Api.Tests.TestUtilities;
 using MealPlanner.Api.Features.GroceryLists;
 
 namespace MealPlanner.Api.Tests.Features.GroceryLists.Mappers;
@@ -11,7 +12,7 @@ public class GroceryListHelpersTests
 		var entity = new GroceryListEntity
 		{
 			Id = Guid.Parse("11111111-1111-1111-1111-111111111111"),
-			UserId = "u1",
+			FamilyGroupId = TestIds.Family("u1"),
 			WeekStart = "2026-02-23",
 			Items = [new GroceryListItemData { Name = "Rice", Quantity = 1.5m, Unit = "kg", IsChecked = true, SourceRecipeNames = ["Pilaf"] }],
 			PantryStapleItems = [new GroceryListItemData { Name = "Salt", Quantity = 1m, Unit = "tsp", IsChecked = false, SourceRecipeNames = ["Pasta"] }],
@@ -22,7 +23,7 @@ public class GroceryListHelpersTests
 		var domain = GroceryListHelpers.MapToDomain(entity);
 
 		Assert.Equal("11111111-1111-1111-1111-111111111111", domain.Id);
-		Assert.Equal("u1", domain.UserId);
+		Assert.Equal(TestIds.Family("u1").ToString(), domain.FamilyGroupId);
 		Assert.Equal(new DateOnly(2026, 2, 23), domain.WeekStart);
 		Assert.Single(domain.Items);
 		Assert.True(domain.Items[0].IsChecked);

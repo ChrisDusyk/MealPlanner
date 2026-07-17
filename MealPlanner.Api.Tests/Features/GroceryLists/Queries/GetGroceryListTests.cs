@@ -16,7 +16,7 @@ public class GetGroceryListTests
 			db.GroceryLists.Add(new GroceryListEntity
 			{
 				Id = id,
-				UserId = "u1",
+				FamilyGroupId = TestIds.Family("u1"),
 				WeekStart = "2026-02-23",
 				Items = [new GroceryListItemData { Name = "Rice", Quantity = 1, Unit = "kg", IsChecked = false, SourceRecipeNames = [] }],
 				PantryStapleItems = [],
@@ -26,7 +26,7 @@ public class GetGroceryListTests
 		});
 
 		var handler = new GetGroceryListQueryHandler(context);
-		var result = await handler.HandleAsync(new GetGroceryListQuery("u1", new DateOnly(2026, 2, 25)), TestContext.Current.CancellationToken);
+		var result = await handler.HandleAsync(new GetGroceryListQuery(TestIds.Family("u1"), new DateOnly(2026, 2, 25)), TestContext.Current.CancellationToken);
 
 		Assert.True(result.IsSuccess);
 		Assert.NotNull(result.Value);
@@ -38,7 +38,7 @@ public class GetGroceryListTests
 	public async Task HandleAsync_ReturnsNotFound_WhenMissing()
 	{
 		var handler = new GetGroceryListQueryHandler(TestDbContextFactory.CreateContext());
-		var result = await handler.HandleAsync(new GetGroceryListQuery("u1", new DateOnly(2026, 2, 23)), TestContext.Current.CancellationToken);
+		var result = await handler.HandleAsync(new GetGroceryListQuery(TestIds.Family("u1"), new DateOnly(2026, 2, 23)), TestContext.Current.CancellationToken);
 
 		Assert.False(result.IsSuccess);
 		Assert.NotNull(result.Error);
@@ -52,7 +52,7 @@ public class GetGroceryListTests
 		context.Dispose();
 
 		var handler = new GetGroceryListQueryHandler(context);
-		var result = await handler.HandleAsync(new GetGroceryListQuery("u1", new DateOnly(2026, 2, 23)), TestContext.Current.CancellationToken);
+		var result = await handler.HandleAsync(new GetGroceryListQuery(TestIds.Family("u1"), new DateOnly(2026, 2, 23)), TestContext.Current.CancellationToken);
 
 		Assert.False(result.IsSuccess);
 		Assert.Equal(ErrorCodes.DatabaseError, result.Error?.Code);

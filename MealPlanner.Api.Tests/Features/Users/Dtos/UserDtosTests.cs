@@ -76,39 +76,6 @@ public class UserDtosTests
 		Assert.Equal("pat@example.com", response.Email);
 	}
 
-	[Fact]
-	public void FriendSummaryResponse_FromDomain_MapsExpectedFields()
-	{
-		var summary = new FriendSummary("auth0|friend", "Friend User", "friend@example.com", true, false);
 
-		var response = FriendSummaryResponse.FromDomain(summary);
 
-		Assert.Equal("auth0|friend", response.UserId);
-		Assert.Equal("Friend User", response.Name);
-		Assert.Equal("friend@example.com", response.Email);
-		Assert.True(response.AutoShareMealPlans);
-		Assert.False(response.AutoShareGroceryLists);
-	}
-
-	[Fact]
-	public void FriendRequestSummaryResponse_FromDomain_MapsExpectedFields()
-	{
-		var createdAt = new DateTime(2026, 3, 1, 0, 0, 0, DateTimeKind.Utc);
-		var summary = new FriendRequestSummary("req-1", "auth0|friend", "Friend User", "friend@example.com", createdAt);
-
-		var response = FriendRequestSummaryResponse.FromDomain(summary);
-
-		Assert.Equal("req-1", response.RequestId);
-		Assert.Equal("auth0|friend", response.UserId);
-		Assert.Equal(createdAt, response.CreatedAt);
-	}
-
-	[Fact]
-	public void SendFriendRequestResponse_FromDomain_MapsStatus()
-	{
-		var response = SendFriendRequestResponse.FromDomain(
-			new SendFriendRequestResult(SendFriendRequestStatus.Accepted, "auth0|friend"));
-
-		Assert.Equal("Accepted", response.Status);
-	}
 }

@@ -1,4 +1,5 @@
 using MealPlanner.Api.Data.Entities;
+using MealPlanner.Api.Tests.TestUtilities;
 using MealPlanner.Api.Features.Catalogue.Commands;
 using MealPlanner.Api.Shared;
 
@@ -39,7 +40,7 @@ public class AddCatalogueRecipeToUserTests
 
 		var handler = new AddCatalogueRecipeToUserCommandHandler(ctx);
 		var result = await handler.HandleAsync(
-			new AddCatalogueRecipeToUserCommand(id, "u1"),
+			new AddCatalogueRecipeToUserCommand(id, TestIds.Family("u1"), "u1"),
 			TestContext.Current.CancellationToken);
 
 		Assert.True(result.IsSuccess);
@@ -65,7 +66,8 @@ public class AddCatalogueRecipeToUserTests
 			seedCtx.Recipes.Add(new RecipeEntity
 			{
 				Id = Guid.NewGuid(),
-				UserId = "u1",
+				FamilyGroupId = TestIds.Family("u1"),
+				ContributedByUserId = "u1",
 				Name = "Cat Curry",
 				Description = "",
 				Servings = 1,
@@ -79,7 +81,7 @@ public class AddCatalogueRecipeToUserTests
 
 		var handler = new AddCatalogueRecipeToUserCommandHandler(ctx);
 		var result = await handler.HandleAsync(
-			new AddCatalogueRecipeToUserCommand(id, "u1"),
+			new AddCatalogueRecipeToUserCommand(id, TestIds.Family("u1"), "u1"),
 			TestContext.Current.CancellationToken);
 
 		Assert.False(result.IsSuccess);
@@ -97,7 +99,7 @@ public class AddCatalogueRecipeToUserTests
 
 		var handler = new AddCatalogueRecipeToUserCommandHandler(ctx);
 		var result = await handler.HandleAsync(
-			new AddCatalogueRecipeToUserCommand(id, "u1"),
+			new AddCatalogueRecipeToUserCommand(id, TestIds.Family("u1"), "u1"),
 			TestContext.Current.CancellationToken);
 
 		Assert.False(result.IsSuccess);
@@ -111,7 +113,7 @@ public class AddCatalogueRecipeToUserTests
 		var handler = new AddCatalogueRecipeToUserCommandHandler(ctx);
 
 		var result = await handler.HandleAsync(
-			new AddCatalogueRecipeToUserCommand(Guid.NewGuid(), ""),
+			new AddCatalogueRecipeToUserCommand(Guid.NewGuid(), TestIds.Family(""), ""),
 			TestContext.Current.CancellationToken);
 
 		Assert.False(result.IsSuccess);
@@ -126,7 +128,7 @@ public class AddCatalogueRecipeToUserTests
 
 		var handler = new AddCatalogueRecipeToUserCommandHandler(ctx);
 		var result = await handler.HandleAsync(
-			new AddCatalogueRecipeToUserCommand(Guid.NewGuid(), "u1"),
+			new AddCatalogueRecipeToUserCommand(Guid.NewGuid(), TestIds.Family("u1"), "u1"),
 			TestContext.Current.CancellationToken);
 
 		Assert.False(result.IsSuccess);

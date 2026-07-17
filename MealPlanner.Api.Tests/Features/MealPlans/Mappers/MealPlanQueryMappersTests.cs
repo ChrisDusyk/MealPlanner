@@ -1,4 +1,5 @@
 using MealPlanner.Api.Data.Entities;
+using MealPlanner.Api.Tests.TestUtilities;
 using MealPlanner.Api.Features.MealPlans.Models;
 using MealPlanner.Api.Features.MealPlans.Queries;
 
@@ -22,7 +23,7 @@ public class MealPlanQueryMappersTests
 		var entity = new MealPlanEntity
 		{
 			Id = Guid.Parse("33333333-3333-3333-3333-333333333333"),
-			UserId = "u1",
+			FamilyGroupId = TestIds.Family("u1"),
 			WeekStart = "2026-02-23",
 			Days =
 			[

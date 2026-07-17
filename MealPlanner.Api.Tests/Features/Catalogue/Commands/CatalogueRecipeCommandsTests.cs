@@ -1,4 +1,5 @@
 using MealPlanner.Api.Data.Entities;
+using MealPlanner.Api.Tests.TestUtilities;
 using MealPlanner.Api.Features.Catalogue.Commands;
 using MealPlanner.Api.Features.Recipes.Models;
 using MealPlanner.Api.Shared;
@@ -207,7 +208,7 @@ public class DeleteCatalogueRecipeTests
 			});
 			seed.Recipes.Add(new RecipeEntity
 			{
-				Id = Guid.NewGuid(), UserId = "u1", Name = "X", Description = "", Servings = 1,
+				Id = Guid.NewGuid(), FamilyGroupId = TestIds.Family("u1"), ContributedByUserId = "u1", Name = "X", Description = "", Servings = 1,
 				CatalogueRecipeId = id, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow
 			});
 			await seed.SaveChangesAsync(TestContext.Current.CancellationToken);

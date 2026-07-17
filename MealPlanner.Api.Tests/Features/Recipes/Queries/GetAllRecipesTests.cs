@@ -16,7 +16,8 @@ public class GetAllRecipesTests
 			db.Recipes.Add(new RecipeEntity
 			{
 				Id = Guid.NewGuid(),
-				UserId = "u1",
+				FamilyGroupId = TestIds.Family("u1"),
+				ContributedByUserId = "u1",
 				Name = "Pasta",
 				Description = "Simple",
 				Servings = 2,
@@ -32,7 +33,7 @@ public class GetAllRecipesTests
 		});
 
 		var handler = new GetAllRecipesQueryHandler(context);
-		var result = await handler.HandleAsync(new GetAllRecipesQuery("u1"), TestContext.Current.CancellationToken);
+		var result = await handler.HandleAsync(new GetAllRecipesQuery(TestIds.Family("u1")), TestContext.Current.CancellationToken);
 
 		Assert.True(result.IsSuccess);
 		Assert.Single(result.Value!);
@@ -46,7 +47,7 @@ public class GetAllRecipesTests
 		context.Dispose();
 
 		var handler = new GetAllRecipesQueryHandler(context);
-		var result = await handler.HandleAsync(new GetAllRecipesQuery("u1"), TestContext.Current.CancellationToken);
+		var result = await handler.HandleAsync(new GetAllRecipesQuery(TestIds.Family("u1")), TestContext.Current.CancellationToken);
 
 		Assert.False(result.IsSuccess);
 		Assert.Equal(ErrorCodes.DatabaseError, result.Error?.Code);

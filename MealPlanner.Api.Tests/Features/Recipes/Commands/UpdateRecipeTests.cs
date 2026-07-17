@@ -12,7 +12,7 @@ public class UpdateRecipeTests
 	public async Task HandleAsync_ReturnsValidationFailure_WhenNameIsMissing()
 	{
 		var handler = new UpdateRecipeCommandHandler(TestDbContextFactory.CreateContext());
-		var command = new UpdateRecipeCommand(Guid.NewGuid().ToString(), "u1", " ", "desc", 1, Option<string>.None(), []);
+		var command = new UpdateRecipeCommand(Guid.NewGuid().ToString(), TestIds.Family("u1"), " ", "desc", 1, Option<string>.None(), []);
 
 		var result = await handler.HandleAsync(command, TestContext.Current.CancellationToken);
 
@@ -25,7 +25,7 @@ public class UpdateRecipeTests
 	{
 		var handler = new UpdateRecipeCommandHandler(TestDbContextFactory.CreateContext());
 		var result = await handler.HandleAsync(
-			new UpdateRecipeCommand(Guid.NewGuid().ToString(), "u1", "Updated", "desc", 1, Option<string>.None(), []),
+			new UpdateRecipeCommand(Guid.NewGuid().ToString(), TestIds.Family("u1"), "Updated", "desc", 1, Option<string>.None(), []),
 			TestContext.Current.CancellationToken);
 
 		Assert.False(result.IsSuccess);
@@ -42,7 +42,8 @@ public class UpdateRecipeTests
 			db.Recipes.Add(new RecipeEntity
 			{
 				Id = id,
-				UserId = "u2",
+				FamilyGroupId = TestIds.Family("u2"),
+				ContributedByUserId = "u2",
 				Name = "Old",
 				Description = "old",
 				Servings = 1,
@@ -54,7 +55,7 @@ public class UpdateRecipeTests
 
 		var handler = new UpdateRecipeCommandHandler(context);
 		var result = await handler.HandleAsync(
-			new UpdateRecipeCommand(id.ToString(), "u1", "Updated", "desc", 1, Option<string>.None(), []),
+			new UpdateRecipeCommand(id.ToString(), TestIds.Family("u1"), "Updated", "desc", 1, Option<string>.None(), []),
 			TestContext.Current.CancellationToken);
 
 		Assert.False(result.IsSuccess);
@@ -71,7 +72,8 @@ public class UpdateRecipeTests
 			db.Recipes.Add(new RecipeEntity
 			{
 				Id = id,
-				UserId = "u1",
+				FamilyGroupId = TestIds.Family("u1"),
+				ContributedByUserId = "u1",
 				Name = "Old",
 				Description = "old",
 				Servings = 2,
@@ -83,9 +85,8 @@ public class UpdateRecipeTests
 
 		var handler = new UpdateRecipeCommandHandler(context);
 		var result = await handler.HandleAsync(
-			new UpdateRecipeCommand(
-				id.ToString(),
-				"u1",
+			new UpdateRecipeCommand(id.ToString(),
+				TestIds.Family("u1"),
 				"New Name",
 				"New Desc",
 				6,
@@ -108,7 +109,7 @@ public class UpdateRecipeTests
 
 		var handler = new UpdateRecipeCommandHandler(context);
 		var result = await handler.HandleAsync(
-			new UpdateRecipeCommand(Guid.NewGuid().ToString(), "u1", "Name", "desc", 1, Option<string>.None(), []),
+			new UpdateRecipeCommand(Guid.NewGuid().ToString(), TestIds.Family("u1"), "Name", "desc", 1, Option<string>.None(), []),
 			TestContext.Current.CancellationToken);
 
 		Assert.False(result.IsSuccess);
