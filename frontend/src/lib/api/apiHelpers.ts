@@ -1,3 +1,5 @@
+import { env as publicEnv } from '$env/dynamic/public';
+
 /**
  * Custom error that preserves the HTTP status code from an API response.
  */
@@ -59,6 +61,11 @@ export function getApiBase(): string {
  * Falls back to getApiBase so existing local/dev behavior continues to work.
  */
 export function getPublicApiBase(): string {
+	// Runtime-configurable (adapter-node serializes PUBLIC_* vars to the browser),
+	// so deployments can point the browser at the API without rebuilding the image.
+	const runtimePublicApiUrl = normalizeBaseUrl(publicEnv.PUBLIC_API_URL);
+	if (runtimePublicApiUrl) return runtimePublicApiUrl;
+
 	if (typeof process !== 'undefined') {
 		const explicitPublicApiUrl = normalizeBaseUrl(
 			process.env.API_PUBLIC_URL || process.env.PUBLIC_API_URL
