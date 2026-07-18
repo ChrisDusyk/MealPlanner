@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url';
 import devtoolsJson from 'vite-plugin-devtools-json';
 import tailwindcss from '@tailwindcss/vite';
 import { defineConfig } from 'vitest/config';
@@ -35,6 +36,16 @@ export default defineConfig({
 		projects: [
 			{
 				extends: './vite.config.ts',
+				resolve: {
+					// The SvelteKit client runtime that backs $env/dynamic/public is
+					// absent in Vitest browser mode, so importing the real virtual
+					// module throws; point it at a stub instead.
+					alias: {
+						'$env/dynamic/public': fileURLToPath(
+							new URL('./src/lib/testing/env-dynamic-public.ts', import.meta.url)
+						)
+					}
+				},
 				test: {
 					name: 'client',
 					browser: {
