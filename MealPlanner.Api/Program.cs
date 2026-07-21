@@ -46,6 +46,29 @@ builder.AddNpgsqlDbContext<MealPlannerDbContext>(
 builder.Services.AddOpenApi();
 
 builder.Services.AddCqrsHandlers(typeof(Program).Assembly);
+
+// CORS is required when the browser connects to this API directly across origins
+// (SignalR hub connections from the deployed frontend). Origins are supplied via
+// configuration (e.g. Cors__AllowedOrigins on Railway) as a comma/semicolon
+// separated list; when none are configured no CORS middleware is applied, which
+// keeps local dev (same-origin via the Vite proxy) unchanged. AllowCredentials
+// requires explicit origins because the SignalR JavaScript client sends
+// credentials on negotiate requests by default.
+const string frontendCorsPolicy = "FrontendCors";
+var corsAllowedOrigins = (builder.Configuration["Cors:AllowedOrigins"] ?? string.Empty)
+	.Split([',', ';'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+	.Select(origin => origin.TrimEnd('/'))
+	.ToArray();
+if (corsAllowedOrigins.Length > 0)
+{
+	builder.Services.AddCors(options =>
+		options.AddPolicy(frontendCorsPolicy, policy =>
+			policy.WithOrigins(corsAllowedOrigins)
+				.AllowAnyHeader()
+				.AllowAnyMethod()
+				.AllowCredentials()));
+}
+
 builder.Services.AddSignalR();
 builder.Services.AddSingleton<IUserIdProvider, GroceryListUserIdProvider>();
 builder.Services.AddScoped<IGroceryListRealtimeNotifier, GroceryListRealtimeNotifier>();
@@ -200,6 +223,11 @@ if (app.Environment.IsDevelopment())
 {
 	app.MapOpenApi();
 	app.UseHttpsRedirection();
+}
+
+if (corsAllowedOrigins.Length > 0)
+{
+	app.UseCors(frontendCorsPolicy);
 }
 
 app.UseAuthentication();
