@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createAuth } from './auth-options';
+import { createAuth, resolveCanonicalApex } from './auth-options';
 
 const betterAuthMock = vi.fn((options: unknown) => options);
 
@@ -153,5 +153,41 @@ describe('createAuth cross-subdomain cookie configuration', () => {
 		createAuth([], { allowMissingConnectionString: true });
 
 		expect(advancedFromCall()).toBeUndefined();
+	});
+});
+
+describe('resolveCanonicalApex', () => {
+	const originalAuthUrl = process.env.BETTER_AUTH_URL;
+
+	afterEach(() => {
+		if (originalAuthUrl === undefined) {
+			delete process.env.BETTER_AUTH_URL;
+		} else {
+			process.env.BETTER_AUTH_URL = originalAuthUrl;
+		}
+	});
+
+	it('derives the apex host and origin from BETTER_AUTH_URL', () => {
+		process.env.BETTER_AUTH_URL = 'https://simplemealplanner.ca';
+
+		expect(resolveCanonicalApex()).toEqual({
+			host: 'simplemealplanner.ca',
+			origin: 'https://simplemealplanner.ca'
+		});
+	});
+
+	it('strips a www. host from the configured URL so the apex stays canonical', () => {
+		process.env.BETTER_AUTH_URL = 'https://www.simplemealplanner.ca';
+
+		expect(resolveCanonicalApex()).toEqual({
+			host: 'simplemealplanner.ca',
+			origin: 'https://simplemealplanner.ca'
+		});
+	});
+
+	it('returns null for localhost dev so canonicalisation is a no-op', () => {
+		process.env.BETTER_AUTH_URL = 'http://localhost:3000';
+
+		expect(resolveCanonicalApex()).toBeNull();
 	});
 });

@@ -52,6 +52,19 @@ function resolveAuthOrigin(raw?: string): string {
 }
 
 /**
+ * Local dev hosts (localhost, `*.localhost`, IPv4/IPv6 literals) where
+ * domain-scoped cookies and host canonicalisation should be skipped.
+ */
+function isLocalHostname(hostname: string): boolean {
+	return (
+		hostname === 'localhost' ||
+		hostname.endsWith('.localhost') ||
+		/^\d{1,3}(\.\d{1,3}){3}$/.test(hostname) ||
+		hostname.includes(':')
+	);
+}
+
+/**
  * Resolve the domain used for cross-subdomain session cookies. Returns a
  * leading-dot domain (e.g. `.simplemealplanner.ca`) so the Better Auth session
  * cookie is shared across the apex and every subdomain — a safety net for users
@@ -74,17 +87,42 @@ function resolveCookieDomain(authOrigin: string): string | undefined {
 	}
 
 	// Local dev / IP literals: keep cookies host-only so localhost sign-in works.
-	if (
-		hostname === 'localhost' ||
-		hostname.endsWith('.localhost') ||
-		/^\d{1,3}(\.\d{1,3}){3}$/.test(hostname) ||
-		hostname.includes(':')
-	) {
+	if (isLocalHostname(hostname)) {
 		return undefined;
 	}
 
 	const base = hostname.startsWith('www.') ? hostname.slice(4) : hostname;
 	return `.${base}`;
+}
+
+/**
+ * Resolve the trusted canonical apex the app should live on, derived purely
+ * from configuration (`BETTER_AUTH_URL`). Used by the `www.` → apex redirect in
+ * `hooks.server.ts` so the redirect target is never taken from a client-
+ * influenceable request header (which would be an open redirect). A leading
+ * `www.` on the configured host is stripped so the apex is canonical even if
+ * `BETTER_AUTH_URL` is misconfigured to the `www.` variant.
+ *
+ * Returns `null` for localhost / IP hosts (local dev), where canonicalisation
+ * is a no-op.
+ */
+export function resolveCanonicalApex(): { host: string; origin: string } | null {
+	let url: URL;
+	try {
+		url = new URL(resolveAuthOrigin(process.env.BETTER_AUTH_URL));
+	} catch {
+		return null;
+	}
+
+	if (isLocalHostname(url.hostname)) {
+		return null;
+	}
+
+	if (url.hostname.startsWith('www.')) {
+		url.hostname = url.hostname.slice(4);
+	}
+
+	return { host: url.host, origin: url.origin };
 }
 
 export function tryResolveConnectionString(): string | null {
