@@ -51,6 +51,42 @@ function resolveAuthOrigin(raw?: string): string {
 	}
 }
 
+/**
+ * Resolve the domain used for cross-subdomain session cookies. Returns a
+ * leading-dot domain (e.g. `.simplemealplanner.ca`) so the Better Auth session
+ * cookie is shared across the apex and every subdomain — a safety net for users
+ * who land on `www.` before the canonical-host redirect (see `hooks.server.ts`)
+ * kicks in, and for any future subdomain of the app.
+ *
+ * Returns `undefined` for localhost / IP hosts (local dev) where a
+ * domain-scoped cookie would prevent sign-in. Override the derived value with
+ * BETTER_AUTH_COOKIE_DOMAIN when it is wrong (e.g. multi-part public suffixes).
+ */
+function resolveCookieDomain(authOrigin: string): string | undefined {
+	const explicit = process.env.BETTER_AUTH_COOKIE_DOMAIN?.trim();
+	if (explicit) return explicit;
+
+	let hostname: string;
+	try {
+		hostname = new URL(authOrigin).hostname;
+	} catch {
+		return undefined;
+	}
+
+	// Local dev / IP literals: keep cookies host-only so localhost sign-in works.
+	if (
+		hostname === 'localhost' ||
+		hostname.endsWith('.localhost') ||
+		/^\d{1,3}(\.\d{1,3}){3}$/.test(hostname) ||
+		hostname.includes(':')
+	) {
+		return undefined;
+	}
+
+	const base = hostname.startsWith('www.') ? hostname.slice(4) : hostname;
+	return `.${base}`;
+}
+
 export function tryResolveConnectionString(): string | null {
 	const explicit = process.env.DATABASE_URL?.trim();
 	if (explicit) return explicit;
@@ -140,6 +176,7 @@ export function createAuth(
 	const authOrigin = resolveAuthOrigin(process.env.BETTER_AUTH_URL);
 	const issuer = authOrigin;
 	const audience = process.env.BETTER_AUTH_JWT_AUDIENCE?.trim() || DEFAULT_AUDIENCE;
+	const cookieDomain = resolveCookieDomain(authOrigin);
 	const runtimeSecret = process.env.BETTER_AUTH_SECRET?.trim();
 	const requireEmailVerification = parseBooleanEnv(
 		process.env.BETTER_AUTH_REQUIRE_EMAIL_VERIFICATION,
@@ -163,6 +200,17 @@ export function createAuth(
 			requireEmailVerification
 		},
 		socialProviders,
+		// Share the session cookie across subdomains when running on a real
+		// domain. Omitted for localhost/IP dev, where a domain-scoped cookie
+		// breaks sign-in.
+		advanced: cookieDomain
+			? {
+					crossSubDomainCookies: {
+						enabled: true,
+						domain: cookieDomain
+					}
+				}
+			: undefined,
 		user: {
 			additionalFields: {
 				displayName: { type: 'string', required: false, input: true },
