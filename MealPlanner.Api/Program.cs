@@ -65,7 +65,6 @@ FeatureFlagsOptions.ApplyFlagdConnectionString(featureFlagsOptions, builder.Conf
 
 builder.Services.AddOpenFeature(featureBuilder =>
 	featureBuilder
-		.AddHostedFeatureLifecycle(_ => { })
 		.AddFlagdProvider(flagdOptions =>
 		{
 			flagdOptions.Host = featureFlagsOptions.Host;

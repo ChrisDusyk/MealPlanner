@@ -7,10 +7,7 @@ const FlagdProvider = vi.fn();
 
 vi.mock('$app/environment', () => ({ building: false }));
 vi.mock('@openfeature/server-sdk', () => ({
-	OpenFeature: {
-		setProviderAndWait: (...args: unknown[]) => setProviderAndWait(...args),
-		getClient: (...args: unknown[]) => getClient(...args)
-	}
+	OpenFeature: { setProviderAndWait, getClient }
 }));
 vi.mock('@openfeature/flagd-provider', () => ({ FlagdProvider }));
 

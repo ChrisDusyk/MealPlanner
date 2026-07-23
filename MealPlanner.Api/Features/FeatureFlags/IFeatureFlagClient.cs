@@ -29,7 +29,7 @@ public sealed class OpenFeatureFlagClient : IFeatureFlagClient
 		string? targetingKey = null,
 		CancellationToken cancellationToken = default)
 	{
-		var client = Api.Instance.GetClient();
+		var client = OpenFeature.Api.Instance.GetClient();
 
 		EvaluationContext? context = null;
 		if (!string.IsNullOrWhiteSpace(targetingKey))
