@@ -36,5 +36,17 @@
 				Define the tags that categorise catalogue recipes for browsing and filtering.
 			</p>
 		</a>
+
+		<a
+			href={resolve('/app/admin/feature-flags')}
+			class="group rounded-xl border border-green-200/60 bg-white p-5 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md"
+		>
+			<h2 class="font-display text-lg font-semibold text-charcoal group-hover:text-green-700">
+				Manage feature flags
+			</h2>
+			<p class="mt-1 text-sm text-charcoal/60">
+				Toggle OpenFeature/flagd feature flags without a redeploy.
+			</p>
+		</a>
 	</div>
 </div>

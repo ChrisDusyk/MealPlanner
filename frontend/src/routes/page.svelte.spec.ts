@@ -9,7 +9,8 @@ describe('/+page.svelte', () => {
 			data: {
 				session: null,
 				appUser: null,
-				sessionExpired: false
+				sessionExpired: false,
+				flags: { demoBanner: false }
 			}
 		});
 

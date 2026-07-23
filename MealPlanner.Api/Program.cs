@@ -13,6 +13,7 @@ using MealPlanner.Api.Features.MealPlans.Realtime;
 using MealPlanner.Api.Features.Recipes.Import;
 using MealPlanner.Api.Features.Recipes;
 using MealPlanner.Api.Features.Families;
+using MealPlanner.Api.Features.FeatureFlags;
 using MealPlanner.Api.Features.Users;
 using MealPlanner.Api.Shared;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -20,6 +21,8 @@ using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.IdentityModel.Protocols;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
+using OpenFeature;
+using OpenFeature.DependencyInjection.Providers.Flagd;
 using System.Security.Claims;
 using System.Threading.RateLimiting;
 
@@ -46,6 +49,30 @@ builder.AddNpgsqlDbContext<MealPlannerDbContext>(
 builder.Services.AddOpenApi();
 
 builder.Services.AddCqrsHandlers(typeof(Program).Assembly);
+
+// ── Feature flags (OpenFeature + flagd, RPC/gRPC) ──
+// The flagd endpoint is supplied by the Aspire flagd reference in development
+// (connection string "flagd" = http://{host}:{port}) and by FeatureFlags__Host /
+// FeatureFlags__Port in production. SyncToken guards the internal sync endpoint.
+builder.Services.Configure<FeatureFlagsOptions>(
+	builder.Configuration.GetSection(FeatureFlagsOptions.SectionName));
+builder.Services.PostConfigure<FeatureFlagsOptions>(options =>
+	FeatureFlagsOptions.ApplyFlagdConnectionString(options, builder.Configuration));
+
+var featureFlagsOptions = new FeatureFlagsOptions();
+builder.Configuration.GetSection(FeatureFlagsOptions.SectionName).Bind(featureFlagsOptions);
+FeatureFlagsOptions.ApplyFlagdConnectionString(featureFlagsOptions, builder.Configuration);
+
+builder.Services.AddOpenFeature(featureBuilder =>
+	featureBuilder
+		.AddHostedFeatureLifecycle(_ => { })
+		.AddFlagdProvider(flagdOptions =>
+		{
+			flagdOptions.Host = featureFlagsOptions.Host;
+			flagdOptions.Port = featureFlagsOptions.Port;
+			flagdOptions.ResolverType = OpenFeature.Contrib.Providers.Flagd.ResolverType.RPC;
+		}));
+builder.Services.AddSingleton<IFeatureFlagClient, OpenFeatureFlagClient>();
 
 // CORS is required when the browser connects to this API directly across origins
 // (SignalR hub connections from the deployed frontend). Origins are supplied via
@@ -243,6 +270,8 @@ app.MapGoogleKeepEndpoints();
 app.MapAdminEndpoints();
 app.MapCatalogueEndpoints();
 app.MapAdminCatalogueEndpoints();
+app.MapFeatureFlagEndpoints();
+app.MapFeatureFlagAdminEndpoints();
 app.MapHub<GroceryListHub>(GroceryListHub.HubRoute)
 	.RequireAuthorization(RbacAuthorization.RequireUserRolePolicy);
 app.MapHub<MealPlanHub>(MealPlanHub.HubRoute)

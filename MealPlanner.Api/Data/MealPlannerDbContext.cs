@@ -22,6 +22,7 @@ public class MealPlannerDbContext(DbContextOptions<MealPlannerDbContext> options
 	public DbSet<CatalogueRecipeEntity> CatalogueRecipes => Set<CatalogueRecipeEntity>();
 	public DbSet<CatalogueTagEntity> CatalogueTags => Set<CatalogueTagEntity>();
 	public DbSet<CatalogueRecipeTagEntity> CatalogueRecipeTags => Set<CatalogueRecipeTagEntity>();
+	public DbSet<FeatureFlagEntity> FeatureFlags => Set<FeatureFlagEntity>();
 
 	protected override void OnModelCreating(ModelBuilder modelBuilder)
 	{
@@ -207,6 +208,14 @@ public class MealPlannerDbContext(DbContextOptions<MealPlannerDbContext> options
 			entity.HasKey(e => e.Id);
 			entity.HasIndex(e => new { e.UserId, e.WeekStart, e.Provider }).IsUnique();
 			entity.HasIndex(e => new { e.UserId, e.GroceryListId, e.Provider }).IsUnique();
+		});
+
+		// ── Feature Flags ──
+		modelBuilder.Entity<FeatureFlagEntity>(entity =>
+		{
+			entity.ToTable("feature_flags");
+			entity.HasKey(e => e.Key);
+			entity.Property(e => e.Key).HasMaxLength(200);
 		});
 	}
 

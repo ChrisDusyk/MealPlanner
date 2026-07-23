@@ -16,6 +16,9 @@
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" />
+    <PackageReference Include="OpenFeature" />
+    <PackageReference Include="OpenFeature.Hosting" />
+    <PackageReference Include="OpenFeature.Contrib.Providers.Flagd" />
   </ItemGroup>
 
   <ItemGroup>
