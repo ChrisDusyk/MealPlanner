@@ -77,13 +77,14 @@ public static class FeatureFlagEndpoints
 	}
 
 	/// <summary>
-	/// Constant-time string comparison to avoid leaking the sync token via
-	/// response timing.
+	/// Constant-time string comparison. Both inputs are hashed to a fixed length
+	/// first so the comparison time does not depend on the provided token's
+	/// length (a raw <c>FixedTimeEquals</c> short-circuits on length mismatch).
 	/// </summary>
 	private static bool CryptographicEquals(string a, string b)
 	{
-		var aBytes = System.Text.Encoding.UTF8.GetBytes(a);
-		var bBytes = System.Text.Encoding.UTF8.GetBytes(b);
-		return System.Security.Cryptography.CryptographicOperations.FixedTimeEquals(aBytes, bBytes);
+		var aHash = System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(a));
+		var bHash = System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(b));
+		return System.Security.Cryptography.CryptographicOperations.FixedTimeEquals(aHash, bHash);
 	}
 }

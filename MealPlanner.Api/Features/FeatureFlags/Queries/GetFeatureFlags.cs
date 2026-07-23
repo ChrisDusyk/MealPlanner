@@ -24,8 +24,7 @@ public class GetFeatureFlagsQueryHandler(MealPlannerDbContext db)
 				.OrderBy(f => f.Key)
 				.ToListAsync(cancellationToken);
 
-			var flags = entities.Select(FeatureFlagMapper.ToDomain).ToList()
-				as IReadOnlyList<FeatureFlag>;
+			IReadOnlyList<FeatureFlag> flags = entities.Select(FeatureFlagMapper.ToDomain).ToList();
 
 			return Result<IReadOnlyList<FeatureFlag>>.Success(flags);
 		}

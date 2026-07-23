@@ -36,7 +36,10 @@ api.WithReference(flagd);
 var frontend = builder.AddViteApp("frontend", "../frontend")
 	.WithReference(api).WaitFor(api)
 	.WithReference(mealPlannerDb).WaitFor(mealPlannerDb)
-	.WithReference(flagd).WaitFor(flagd)
+	// Reference flagd for its endpoint env, but deliberately no WaitFor(flagd):
+	// SSR flag evaluation connects lazily and falls back to defaults when flagd
+	// is unreachable, so the frontend must not be blocked on flagd startup.
+	.WithReference(flagd)
 	.WithEnvironment("FLAGD_HOST",
 		ReferenceExpression.Create($"{flagd.GetEndpoint("http").Property(EndpointProperty.Host)}"))
 	.WithEnvironment("FLAGD_PORT",
