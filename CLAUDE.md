@@ -399,9 +399,21 @@ Better Auth's SvelteKit integration is wired via `src/hooks.server.ts`:
 - `BETTER_AUTH_SECRET` — cookie/token signing secret (required)
 - `BETTER_AUTH_URL` — base URL the frontend is served from
 - `BETTER_AUTH_JWT_AUDIENCE` — API audience claim (default
-  `mealplanner-api`)
+  `mealplanner-api`). This identifies the API, not the frontend origin —
+  keep it a single value even when multiple domains serve the app.
+- `BETTER_AUTH_COOKIE_DOMAIN` — optional, overrides the domain used for
+  cross-subdomain session cookies. When unset it is derived from
+  `BETTER_AUTH_URL` (leading-dot registrable domain, e.g.
+  `.simplemealplanner.ca`); localhost/IP hosts get host-only cookies.
 - `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` — optional, enables the
   "Continue with Google" social login button
+
+### Canonical host
+
+`hooks.server.ts` 308-redirects the `www.` subdomain to the apex domain so
+the app runs on a single origin (session cookies, CORS, and Better Auth
+trusted-origin checks all target one host). The client host is read from
+`x-forwarded-host` because adapter-node runs behind Railway's proxy.
 
 ### Auth UI
 

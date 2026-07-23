@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createAuth } from './auth-options';
+import { createAuth, resolveCanonicalApex } from './auth-options';
 
 const betterAuthMock = vi.fn((options: unknown) => options);
 
@@ -86,5 +86,108 @@ describe('createAuth social provider configuration', () => {
 		expect(betterAuthMock.mock.calls[0]?.[0]).toMatchObject({
 			socialProviders: undefined
 		});
+	});
+});
+
+describe('createAuth cross-subdomain cookie configuration', () => {
+	const originalAuthUrl = process.env.BETTER_AUTH_URL;
+	const originalCookieDomain = process.env.BETTER_AUTH_COOKIE_DOMAIN;
+
+	function restoreEnv(key: string, value: string | undefined) {
+		if (value === undefined) {
+			delete process.env[key];
+		} else {
+			process.env[key] = value;
+		}
+	}
+
+	beforeEach(() => {
+		betterAuthMock.mockClear();
+		delete process.env.BETTER_AUTH_URL;
+		delete process.env.BETTER_AUTH_COOKIE_DOMAIN;
+	});
+
+	afterEach(() => {
+		restoreEnv('BETTER_AUTH_URL', originalAuthUrl);
+		restoreEnv('BETTER_AUTH_COOKIE_DOMAIN', originalCookieDomain);
+	});
+
+	function advancedFromCall() {
+		return (betterAuthMock.mock.calls[0]?.[0] as { advanced?: unknown }).advanced;
+	}
+
+	it('derives a leading-dot cookie domain from an apex BETTER_AUTH_URL', () => {
+		process.env.BETTER_AUTH_URL = 'https://simplemealplanner.ca';
+
+		createAuth([], { allowMissingConnectionString: true });
+
+		expect(advancedFromCall()).toEqual({
+			crossSubDomainCookies: { enabled: true, domain: '.simplemealplanner.ca' }
+		});
+	});
+
+	it('strips a www. host when deriving the cookie domain', () => {
+		process.env.BETTER_AUTH_URL = 'https://www.simplemealplanner.ca';
+
+		createAuth([], { allowMissingConnectionString: true });
+
+		expect(advancedFromCall()).toEqual({
+			crossSubDomainCookies: { enabled: true, domain: '.simplemealplanner.ca' }
+		});
+	});
+
+	it('honours an explicit BETTER_AUTH_COOKIE_DOMAIN override', () => {
+		process.env.BETTER_AUTH_URL = 'https://simplemealplanner.ca';
+		process.env.BETTER_AUTH_COOKIE_DOMAIN = '.override.example';
+
+		createAuth([], { allowMissingConnectionString: true });
+
+		expect(advancedFromCall()).toEqual({
+			crossSubDomainCookies: { enabled: true, domain: '.override.example' }
+		});
+	});
+
+	it('does not scope cookies to a domain for localhost dev', () => {
+		process.env.BETTER_AUTH_URL = 'http://localhost:3000';
+
+		createAuth([], { allowMissingConnectionString: true });
+
+		expect(advancedFromCall()).toBeUndefined();
+	});
+});
+
+describe('resolveCanonicalApex', () => {
+	const originalAuthUrl = process.env.BETTER_AUTH_URL;
+
+	afterEach(() => {
+		if (originalAuthUrl === undefined) {
+			delete process.env.BETTER_AUTH_URL;
+		} else {
+			process.env.BETTER_AUTH_URL = originalAuthUrl;
+		}
+	});
+
+	it('derives the apex host and origin from BETTER_AUTH_URL', () => {
+		process.env.BETTER_AUTH_URL = 'https://simplemealplanner.ca';
+
+		expect(resolveCanonicalApex()).toEqual({
+			host: 'simplemealplanner.ca',
+			origin: 'https://simplemealplanner.ca'
+		});
+	});
+
+	it('strips a www. host from the configured URL so the apex stays canonical', () => {
+		process.env.BETTER_AUTH_URL = 'https://www.simplemealplanner.ca';
+
+		expect(resolveCanonicalApex()).toEqual({
+			host: 'simplemealplanner.ca',
+			origin: 'https://simplemealplanner.ca'
+		});
+	});
+
+	it('returns null for localhost dev so canonicalisation is a no-op', () => {
+		process.env.BETTER_AUTH_URL = 'http://localhost:3000';
+
+		expect(resolveCanonicalApex()).toBeNull();
 	});
 });
