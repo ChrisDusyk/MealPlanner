@@ -60,8 +60,8 @@ sync source with a service variable:
 
 | Variable | Example | Purpose |
 | --- | --- | --- |
-| `FLAGD_SOURCES` | `[{"uri":"http://mealplanner-api.railway.internal:8080/internal/feature-flags","provider":"http"}]` | JSON array of flagd sync sources. Point it at the API's **private** internal endpoint so flagd polls it for flag definitions. |
-| `FeatureFlags__SyncToken` | *(optional)* | If set, must match the API's `FeatureFlags__SyncToken`; flagd would then need to send it as the `X-Flags-Sync-Token` header (configure via a `--sources` header option). Leave unset to rely on private-network isolation. |
+| `FLAGD_SOURCES` | `[{"uri":"http://<api-service>.railway.internal:8080/internal/feature-flags","provider":"http"}]` | JSON array of flagd sync sources. Point it at the API's **private** internal endpoint so flagd polls it for flag definitions. Use `http://`, not `https://` — Railway's private network doesn't terminate TLS, and an `https://` URI with no explicit port defaults to 443, which nothing listens on internally ("connection refused"). Confirm the port under the API service's **Settings → Networking → Private Networking** (defaults to `8080` for the .NET 10 aspnet container image). |
+| `FeatureFlags__SyncToken` | *(optional)* | If set, must match the API's `FeatureFlags__SyncToken`. flagd's HTTP sync source can only authenticate via its `authHeader` field (it cannot send an arbitrary custom header), so add `"authHeader":"Bearer <token>"` to the source object in `FLAGD_SOURCES`, e.g. `[{"uri":"...","provider":"http","authHeader":"Bearer <token>"}]`. Leave unset to rely on private-network isolation only. |
 
 flagd serves gRPC evaluation on port `8013` over the private network.
 

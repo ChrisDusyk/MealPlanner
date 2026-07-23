@@ -12,9 +12,6 @@ namespace MealPlanner.Api.Features.FeatureFlags;
 /// </summary>
 public static class FeatureFlagEndpoints
 {
-	/// <summary>Header flagd sends to authenticate against the sync endpoint.</summary>
-	public const string SyncTokenHeader = "X-Flags-Sync-Token";
-
 	/// <summary>Key of the demo flag seeded by the AddFeatureFlags migration.</summary>
 	public const string DemoFlagKey = "demo-banner";
 
@@ -46,8 +43,13 @@ public static class FeatureFlagEndpoints
 		var expectedToken = options.Value.SyncToken;
 		if (!string.IsNullOrWhiteSpace(expectedToken))
 		{
-			var providedToken = httpContext.Request.Headers[SyncTokenHeader].ToString();
-			if (!CryptographicEquals(providedToken, expectedToken))
+			// flagd's HTTP sync source only supports authenticating via its
+			// `authHeader` config field, which sets the literal Authorization
+			// header value (bearer/basic style) — it cannot send an arbitrary
+			// custom header. So the shared secret travels as a bearer token.
+			var providedAuthorization = httpContext.Request.Headers.Authorization.ToString();
+			var expectedAuthorization = $"Bearer {expectedToken}";
+			if (!CryptographicEquals(providedAuthorization, expectedAuthorization))
 			{
 				return Results.Unauthorized();
 			}

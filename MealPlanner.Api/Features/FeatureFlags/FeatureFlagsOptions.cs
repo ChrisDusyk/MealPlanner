@@ -21,8 +21,10 @@ public class FeatureFlagsOptions
 
 	/// <summary>
 	/// Optional shared secret required on the internal sync endpoint. When set,
-	/// flagd must send it in the <c>X-Flags-Sync-Token</c> header. When empty,
-	/// the endpoint relies on private-network isolation only.
+	/// flagd must send <c>Authorization: Bearer &lt;SyncToken&gt;</c> — flagd's
+	/// HTTP sync source can only set the literal Authorization header (via its
+	/// <c>authHeader</c> config field), not an arbitrary custom header. When
+	/// empty, the endpoint relies on private-network isolation only.
 	/// </summary>
 	public string SyncToken { get; set; } = string.Empty;
 
