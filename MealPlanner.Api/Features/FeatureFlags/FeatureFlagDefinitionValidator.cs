@@ -44,9 +44,9 @@ public static partial class FeatureFlagDefinitionValidator
 	/// variant stored alongside it.
 	/// </summary>
 	internal static Result<Unit> ValidateDefinition(
-		string valueType,
+		string? valueType,
 		string? disabledVariant,
-		string definitionJson)
+		string? definitionJson)
 	{
 		if (!FeatureFlagValueTypes.IsSupported(valueType))
 		{
@@ -90,9 +90,9 @@ public static partial class FeatureFlagDefinitionValidator
 			return Failure("A default variant is required.");
 		}
 
-		if (!variants.ContainsKey(defaultVariant))
+		if (!variants.ContainsKey(defaultVariant!))
 		{
-			return Failure($"The default variant '{defaultVariant}' is not one of the flag's variants.");
+				return Failure($"The default variant '{defaultVariant}' is not one of the flag's variants.");
 		}
 
 		if (!string.IsNullOrWhiteSpace(disabledVariant) && !variants.ContainsKey(disabledVariant))
@@ -204,7 +204,7 @@ public static partial class FeatureFlagDefinitionValidator
 		}
 	}
 
-	private static bool MatchesValueType(JsonNode? value, string valueType) => valueType switch
+	private static bool MatchesValueType(JsonNode? value, string? valueType) => valueType switch
 	{
 		FeatureFlagValueTypes.Boolean => value is JsonValue b && b.TryGetValue<bool>(out _),
 		FeatureFlagValueTypes.String => value is JsonValue s && s.TryGetValue<string>(out _),
