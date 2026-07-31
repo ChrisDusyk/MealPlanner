@@ -18,6 +18,8 @@ public static class FeatureFlagMapper
 	internal static FeatureFlag ToDomain(FeatureFlagEntity entity) => new(
 		Key: entity.Key,
 		Enabled: entity.Enabled,
+		ValueType: entity.ValueType,
+		DisabledVariant: Option<string>.From(entity.DisabledVariant),
 		DefinitionJson: entity.DefinitionJson,
 		Description: Option<string>.From(entity.Description),
 		UpdatedAt: entity.UpdatedAt);
@@ -26,7 +28,7 @@ public static class FeatureFlagMapper
 	/// Assembles the supplied flags into a flagd-format document. Each flag's
 	/// <see cref="FeatureFlag.DefinitionJson"/> supplies the variants /
 	/// defaultVariant / targeting, and the current <see cref="FeatureFlag.Enabled"/>
-	/// state is merged in as the flagd <c>state</c> field.
+	/// state decides what the document serves — see <see cref="ApplyState"/>.
 	/// </summary>
 	internal static string ToFlagdDocument(IEnumerable<FeatureFlag> flags)
 	{
@@ -35,7 +37,7 @@ public static class FeatureFlagMapper
 		foreach (var flag in flags)
 		{
 			var body = ParseDefinition(flag.DefinitionJson);
-			body["state"] = flag.Enabled ? "ENABLED" : "DISABLED";
+			ApplyState(body, flag);
 			flagsObject[flag.Key] = body;
 		}
 
@@ -46,6 +48,41 @@ public static class FeatureFlagMapper
 		};
 
 		return document.ToJsonString();
+	}
+
+	/// <summary>
+	/// Writes the flag's on/off state into its flagd body.
+	/// <para>
+	/// flagd has no notion of a stored "value when off": a flag whose state is
+	/// <c>DISABLED</c> resolves to whatever default the calling code passed. So
+	/// when a flag names a <see cref="FeatureFlag.DisabledVariant"/> the document
+	/// keeps it <c>ENABLED</c> and instead points <c>defaultVariant</c> at that
+	/// variant, which puts the resolved value under database control in both
+	/// states. Targeting is dropped in that case so switching a flag off is a
+	/// true kill switch rather than something rules can override.
+	/// </para>
+	/// <para>
+	/// Flags with no disabled variant keep the original behaviour of emitting
+	/// <c>state: DISABLED</c>, so pre-existing rows are unaffected.
+	/// </para>
+	/// </summary>
+	private static void ApplyState(JsonObject body, FeatureFlag flag)
+	{
+		if (flag.Enabled)
+		{
+			body["state"] = "ENABLED";
+			return;
+		}
+
+		if (!flag.DisabledVariant.HasValue)
+		{
+			body["state"] = "DISABLED";
+			return;
+		}
+
+		body["state"] = "ENABLED";
+		body["defaultVariant"] = flag.DisabledVariant.Value;
+		body.Remove("targeting");
 	}
 
 	/// <summary>

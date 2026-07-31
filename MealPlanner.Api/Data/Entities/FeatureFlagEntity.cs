@@ -1,3 +1,5 @@
+using MealPlanner.Api.Features.FeatureFlags;
+
 namespace MealPlanner.Api.Data.Entities;
 
 /// <summary>
@@ -15,12 +17,31 @@ public class FeatureFlagEntity
 	public string Key { get; set; } = string.Empty;
 
 	/// <summary>
-	/// Whether the flag is active. Maps to the flagd <c>state</c>
-	/// (<c>ENABLED</c>/<c>DISABLED</c>). For a boolean flag whose
-	/// <c>defaultVariant</c> points at its "true" variant, this doubles as the
-	/// resolved value: enabled → true, disabled → the caller's code default.
+	/// Whether the flag is active. When <see cref="DisabledVariant"/> is set this
+	/// selects which variant the sync document serves as <c>defaultVariant</c>
+	/// (see <see cref="FeatureFlagMapper"/>).
+	/// When it is not set, this maps straight to the flagd <c>state</c>
+	/// (<c>ENABLED</c>/<c>DISABLED</c>) and a disabled flag resolves to the
+	/// caller's code default.
 	/// </summary>
 	public bool Enabled { get; set; }
+
+	/// <summary>
+	/// JSON kind shared by every variant value: <c>boolean</c>, <c>string</c>,
+	/// <c>number</c>, or <c>object</c>. flagd requires a flag's variants to be
+	/// homogeneous, so this drives both write validation and the admin editor's
+	/// value inputs.
+	/// </summary>
+	public string ValueType { get; set; } = FeatureFlagValueTypes.Boolean;
+
+	/// <summary>
+	/// Variant served while the flag is switched off. When set, the sync document
+	/// keeps the flag <c>ENABLED</c> and swaps <c>defaultVariant</c> to this
+	/// variant (dropping any targeting), so the database — not the calling code's
+	/// fallback — decides the value in both states. Null preserves the original
+	/// behaviour of emitting <c>state: DISABLED</c>.
+	/// </summary>
+	public string? DisabledVariant { get; set; }
 
 	/// <summary>
 	/// The flagd flag body as a JSON object string, excluding <c>state</c>

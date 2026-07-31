@@ -1,5 +1,5 @@
 import { building } from '$app/environment';
-import { OpenFeature, type EvaluationContext } from '@openfeature/server-sdk';
+import { OpenFeature, type EvaluationContext, type JsonValue } from '@openfeature/server-sdk';
 import { FlagdProvider } from '@openfeature/flagd-provider';
 
 /**
@@ -86,4 +86,38 @@ export async function getServerFlags(context?: EvaluationContext): Promise<Resol
 	const demoBanner = await client.getBooleanValue(DEMO_BANNER_FLAG, DEFAULT_FLAGS.demoBanner, context);
 
 	return { demoBanner };
+}
+
+/**
+ * Resolves a single flag of any type. {@link getServerFlags} covers the flags the
+ * root layout hands to every page; this is for flags read on demand by a
+ * specific route, including the string / number / object flags the admin editor
+ * can author.
+ *
+ * The supplied default is returned when flagd is unreachable or does not know
+ * the key, so callers keep working while a flag is being introduced or after one
+ * is deleted.
+ */
+export async function getFlagValue<T extends JsonValue>(
+	key: string,
+	defaultValue: T,
+	context?: EvaluationContext
+): Promise<T> {
+	if (building) {
+		return defaultValue;
+	}
+
+	await ensureProvider();
+	const client = OpenFeature.getClient();
+
+	switch (typeof defaultValue) {
+		case 'boolean':
+			return (await client.getBooleanValue(key, defaultValue, context)) as T;
+		case 'string':
+			return (await client.getStringValue(key, defaultValue, context)) as T;
+		case 'number':
+			return (await client.getNumberValue(key, defaultValue, context)) as T;
+		default:
+			return (await client.getObjectValue(key, defaultValue, context)) as T;
+	}
 }

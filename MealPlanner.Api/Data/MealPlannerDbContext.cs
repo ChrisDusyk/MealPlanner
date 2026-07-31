@@ -1,4 +1,5 @@
 using MealPlanner.Api.Data.Entities;
+using MealPlanner.Api.Features.FeatureFlags;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -216,6 +217,8 @@ public class MealPlannerDbContext(DbContextOptions<MealPlannerDbContext> options
 			entity.ToTable("feature_flags");
 			entity.HasKey(e => e.Key);
 			entity.Property(e => e.Key).HasMaxLength(200);
+			entity.Property(e => e.ValueType).HasMaxLength(32).HasDefaultValue(FeatureFlagValueTypes.Boolean);
+			entity.Property(e => e.DisabledVariant).HasMaxLength(200);
 		});
 	}
 

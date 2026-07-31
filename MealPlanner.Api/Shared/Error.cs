@@ -16,6 +16,7 @@ public class Error(string code, string message, Exception? exception = null)
 public static class ErrorCodes
 {
 	public const string NotFound = "NotFound";
+	public const string Conflict = "Conflict";
 	public const string ValidationFailed = "ValidationFailed";
 	public const string ValidationError = "ValidationError";
 	public const string Unauthorized = "Unauthorized";
