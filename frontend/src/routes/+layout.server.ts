@@ -2,16 +2,41 @@ import type { LayoutServerLoad } from './$types';
 import { ApiError } from '$lib/api/apiHelpers';
 import { getCurrentUser, syncCurrentUser, type AppUserResponse } from '$lib/api/userApi';
 import { getServerFlags } from '$lib/server/featureFlags';
+import type { AppSession } from '$lib/auth/session';
+import type { EvaluationContext } from '@openfeature/server-sdk';
+
+/**
+ * Builds the OpenFeature context from the session. Attributes are omitted rather
+ * than sent as empty strings so a targeting rule never matches a signed-out
+ * visitor by accident.
+ */
+function buildEvaluationContext(session: AppSession | null): EvaluationContext | undefined {
+	if (!session?.user?.id) {
+		return undefined;
+	}
+
+	const context: EvaluationContext = { targetingKey: session.user.id };
+
+	if (session.user.email) {
+		context.email = session.user.email;
+	}
+
+	const role = session.roles?.[0];
+	if (role) {
+		context.role = role;
+	}
+
+	return context;
+}
 
 export const load: LayoutServerLoad = async (event) => {
 	const session = await event.locals.auth();
 	let appUser: AppUserResponse | null = null;
 
 	// Feature flags are resolved server-side and handed to the browser via page
-	// data. Keyed on the signed-in user so targeting rules can vary per user.
-	const flags = await getServerFlags(
-		session?.user?.id ? { targetingKey: session.user.id } : undefined
-	);
+	// data. The context carries every attribute the admin targeting editor can
+	// match on, so a rule authored there resolves the same way here.
+	const flags = await getServerFlags(buildEvaluationContext(session));
 
 	if (session?.accessToken) {
 		try {
