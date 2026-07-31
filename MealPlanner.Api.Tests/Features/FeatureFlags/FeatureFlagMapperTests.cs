@@ -12,8 +12,17 @@ public class FeatureFlagMapperTests
 		string key,
 		bool enabled,
 		string definitionJson,
-		string? description = null) =>
-		new(key, enabled, definitionJson, Option<string>.From(description), DateTime.UtcNow);
+		string? description = null,
+		string? disabledVariant = null,
+		string valueType = FeatureFlagValueTypes.Boolean) =>
+		new(
+			key,
+			enabled,
+			valueType,
+			Option<string>.From(disabledVariant),
+			definitionJson,
+			Option<string>.From(description),
+			DateTime.UtcNow);
 
 	[Fact]
 	public void ToDomain_MapsAllFields_AndWrapsDescriptionInSome()
@@ -23,6 +32,8 @@ public class FeatureFlagMapperTests
 		{
 			Key = "demo-banner",
 			Enabled = true,
+			ValueType = FeatureFlagValueTypes.String,
+			DisabledVariant = "off",
 			DefinitionJson = "{\"defaultVariant\":\"on\"}",
 			Description = "A demo flag.",
 			UpdatedAt = updatedAt
@@ -32,6 +43,9 @@ public class FeatureFlagMapperTests
 
 		Assert.Equal("demo-banner", domain.Key);
 		Assert.True(domain.Enabled);
+		Assert.Equal(FeatureFlagValueTypes.String, domain.ValueType);
+		Assert.True(domain.DisabledVariant.HasValue);
+		Assert.Equal("off", domain.DisabledVariant.Value);
 		Assert.Equal("{\"defaultVariant\":\"on\"}", domain.DefinitionJson);
 		Assert.True(domain.Description.HasValue);
 		Assert.Equal("A demo flag.", domain.Description.Value);
@@ -53,6 +67,7 @@ public class FeatureFlagMapperTests
 		var domain = FeatureFlagMapper.ToDomain(entity);
 
 		Assert.False(domain.Description.HasValue);
+		Assert.False(domain.DisabledVariant.HasValue);
 	}
 
 	[Fact]
@@ -88,7 +103,7 @@ public class FeatureFlagMapperTests
 	}
 
 	[Fact]
-	public void ToFlagdDocument_SetsDisabledState_WhenFlagIsDisabled()
+	public void ToFlagdDocument_SetsDisabledState_WhenFlagIsDisabledWithoutADisabledVariant()
 	{
 		var flags = new[] { Flag("demo-banner", enabled: false, "{\"defaultVariant\":\"on\"}") };
 
@@ -98,6 +113,75 @@ public class FeatureFlagMapperTests
 		var flag = document.RootElement.GetProperty("flags").GetProperty("demo-banner");
 
 		Assert.Equal("DISABLED", flag.GetProperty("state").GetString());
+	}
+
+	[Fact]
+	public void ToFlagdDocument_ServesTheDisabledVariant_WhenFlagIsDisabled()
+	{
+		// flagd resolves a DISABLED flag to the caller's code default, so a flag
+		// that names a disabled variant stays ENABLED with its default swapped.
+		var flags = new[]
+		{
+			Flag(
+				"demo-banner",
+				enabled: false,
+				"{\"variants\":{\"on\":true,\"off\":false},\"defaultVariant\":\"on\"}",
+				disabledVariant: "off")
+		};
+
+		var json = FeatureFlagMapper.ToFlagdDocument(flags);
+
+		using var document = JsonDocument.Parse(json);
+		var flag = document.RootElement.GetProperty("flags").GetProperty("demo-banner");
+
+		Assert.Equal("ENABLED", flag.GetProperty("state").GetString());
+		Assert.Equal("off", flag.GetProperty("defaultVariant").GetString());
+	}
+
+	[Fact]
+	public void ToFlagdDocument_DropsTargeting_WhenFlagIsDisabledWithADisabledVariant()
+	{
+		// Switching a flag off must be a kill switch, not something a targeting
+		// rule can override.
+		var flags = new[]
+		{
+			Flag(
+				"demo-banner",
+				enabled: false,
+				"{\"variants\":{\"on\":true,\"off\":false},\"defaultVariant\":\"on\"," +
+				"\"targeting\":{\"if\":[{\"==\":[{\"var\":\"role\"},\"admin\"]},\"on\"]}}",
+				disabledVariant: "off")
+		};
+
+		var json = FeatureFlagMapper.ToFlagdDocument(flags);
+
+		using var document = JsonDocument.Parse(json);
+		var flag = document.RootElement.GetProperty("flags").GetProperty("demo-banner");
+
+		Assert.False(flag.TryGetProperty("targeting", out _));
+	}
+
+	[Fact]
+	public void ToFlagdDocument_KeepsTargeting_WhenFlagIsEnabled()
+	{
+		var flags = new[]
+		{
+			Flag(
+				"demo-banner",
+				enabled: true,
+				"{\"variants\":{\"on\":true,\"off\":false},\"defaultVariant\":\"off\"," +
+				"\"targeting\":{\"if\":[{\"==\":[{\"var\":\"role\"},\"admin\"]},\"on\"]}}",
+				disabledVariant: "off")
+		};
+
+		var json = FeatureFlagMapper.ToFlagdDocument(flags);
+
+		using var document = JsonDocument.Parse(json);
+		var flag = document.RootElement.GetProperty("flags").GetProperty("demo-banner");
+
+		Assert.Equal("ENABLED", flag.GetProperty("state").GetString());
+		Assert.Equal("off", flag.GetProperty("defaultVariant").GetString());
+		Assert.True(flag.TryGetProperty("targeting", out _));
 	}
 
 	[Theory]

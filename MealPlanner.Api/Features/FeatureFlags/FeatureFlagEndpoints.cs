@@ -72,7 +72,7 @@ public static class FeatureFlagEndpoints
 		var enabled = await featureFlags.GetBooleanValueAsync(
 			DemoFlagKey,
 			defaultValue: false,
-			targetingKey: userId,
+			FeatureFlagContext.From(userId),
 			cancellationToken: cancellationToken);
 
 		return Results.Ok(new { flag = DemoFlagKey, enabled });
