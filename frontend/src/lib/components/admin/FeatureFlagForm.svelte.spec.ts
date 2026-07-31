@@ -96,6 +96,25 @@ describe('FeatureFlagForm', () => {
 			.toBeInTheDocument();
 	});
 
+	it('reports invalid JSON as a syntax problem and keeps the builder available', async () => {
+		render(FeatureFlagForm, { mode: 'edit', initialData: editData(), onsubmit: vi.fn() });
+
+		await page.getByRole('button', { name: 'Edit as JSON' }).click();
+		await page.getByLabelText('Targeting rules as JSON').fill('{oops');
+		await page.getByRole('button', { name: 'Back to rule builder' }).click();
+
+		await expect
+			.element(page.getByTestId('feature-flag-form-error'))
+			.toHaveTextContent('must be valid JSON');
+
+		// Correcting the typo must let the admin back into the builder rather
+		// than leaving them stuck in raw mode.
+		await page.getByLabelText('Targeting rules as JSON').fill('');
+		await page.getByRole('button', { name: 'Back to rule builder' }).click();
+
+		await expect.element(page.getByRole('button', { name: 'Add rule' })).toBeInTheDocument();
+	});
+
 	it('builds a targeting rule and includes it in the submitted definition', async () => {
 		const onsubmit = vi.fn();
 		render(FeatureFlagForm, { mode: 'edit', initialData: editData(), onsubmit });

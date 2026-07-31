@@ -145,6 +145,7 @@ public static class FeatureFlagAdminEndpoints
 		EvaluateFeatureFlagRequest request,
 		IQueryHandler<GetFeatureFlagByKeyQuery, FeatureFlag> flagHandler,
 		IFeatureFlagClient featureFlags,
+		ILoggerFactory loggerFactory,
 		CancellationToken cancellationToken)
 	{
 		var flagResult = await flagHandler.HandleAsync(
@@ -171,8 +172,17 @@ public static class FeatureFlagAdminEndpoints
 		}
 		catch (Exception ex)
 		{
+			// A provider exception can carry internal infrastructure detail (the
+			// flagd private host and port, for instance), so it goes to the logs
+			// rather than back over the wire — matching how the CQRS handlers keep
+			// the exception inside Error and return a curated message.
+			loggerFactory
+				.CreateLogger(typeof(FeatureFlagAdminEndpoints))
+				.LogError(ex, "Failed to evaluate feature flag {FlagKey} through flagd.", flag.Key);
+
 			return Results.Problem(
-				$"Failed to evaluate the feature flag through flagd: {ex.Message}", statusCode: 502);
+				"Failed to evaluate the feature flag through flagd. See the API logs for details.",
+				statusCode: 502);
 		}
 	}
 

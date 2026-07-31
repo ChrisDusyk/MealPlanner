@@ -125,6 +125,7 @@
 
 	function switchToBuilder() {
 		const trimmed = targetingJson.trim();
+		localError = '';
 
 		if (trimmed === '') {
 			rules = [];
@@ -134,13 +135,18 @@
 			return;
 		}
 
-		let parsedRules: ReturnType<typeof parseTargeting> = null;
+		let parsedJson: unknown;
 		try {
-			parsedRules = parseTargeting(JSON.parse(trimmed));
+			parsedJson = JSON.parse(trimmed);
 		} catch {
-			parsedRules = null;
+			// A syntax error is the admin's typo to fix, not a limit of the
+			// builder — say so, and leave the builder unlocked so correcting the
+			// JSON and retrying works.
+			localError = 'Targeting rules must be valid JSON before switching to the rule builder.';
+			return;
 		}
 
+		const parsedRules = parseTargeting(parsedJson);
 		if (parsedRules === null) {
 			localError =
 				'These targeting rules use JsonLogic the builder cannot represent. Keep editing them as raw JSON.';

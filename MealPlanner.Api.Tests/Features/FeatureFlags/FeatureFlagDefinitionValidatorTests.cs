@@ -197,6 +197,22 @@ public class FeatureFlagDefinitionValidatorTests
 		Assert.Contains("'ghost'", result.Error?.Message);
 	}
 
+	[Theory]
+	// The bucketing expression sits alongside the buckets and may be written in
+	// either JsonLogic form. Neither should be mistaken for a bucket.
+	[InlineData("{\"var\":\"targetingKey\"}")]
+	[InlineData("[\"var\",\"targetingKey\"]")]
+	public void ValidateDefinition_IgnoresTheBucketingExpression_WhateverFormItTakes(string bucketBy)
+	{
+		var result = FeatureFlagDefinitionValidator.ValidateDefinition(
+			FeatureFlagValueTypes.Boolean,
+			null,
+			"{\"variants\":{\"on\":true,\"off\":false},\"defaultVariant\":\"off\"," +
+			$"\"targeting\":{{\"fractional\":[{bucketBy},[\"on\",25],[\"off\",75]]}}}}");
+
+		Assert.True(result.IsSuccess);
+	}
+
 	[Fact]
 	public void ValidateDefinition_Succeeds_ForAFractionalRolloutOverKnownVariants()
 	{

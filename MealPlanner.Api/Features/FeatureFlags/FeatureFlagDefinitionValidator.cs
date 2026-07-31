@@ -148,12 +148,19 @@ public static partial class FeatureFlagDefinitionValidator
 				{
 					if (key == "fractional" && value is JsonArray buckets)
 					{
-						// Each bucket is [variantName, weight]; the first entry may
-						// instead be the bucketing expression, which is not an array.
+						// Buckets are [variantName, weight]. The optional leading
+						// bucketing expression can itself be an array (JsonLogic
+						// allows ["var","targetingKey"] alongside {"var":...}), so
+						// match on the bucket's shape rather than its position —
+						// otherwise "var" reads as a variant name and valid
+						// targeting gets rejected.
 						foreach (var bucket in buckets.OfType<JsonArray>())
 						{
-							if (bucket.Count > 0 && bucket[0] is JsonValue name
-								&& name.TryGetValue<string>(out var variantName))
+							if (bucket.Count == 2
+								&& bucket[0] is JsonValue name
+								&& name.TryGetValue<string>(out var variantName)
+								&& bucket[1] is JsonValue weight
+								&& weight.TryGetValue<double>(out _))
 							{
 								yield return variantName;
 							}
