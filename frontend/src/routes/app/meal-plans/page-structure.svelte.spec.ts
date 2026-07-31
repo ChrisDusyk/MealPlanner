@@ -17,6 +17,7 @@ function buildData() {
 			roles: ['user']
 		},
 		appUser: null,
+		flags: { demoBanner: false },
 		familyInvitations: [],
 		mealPlan: {
 			id: 'plan-1',

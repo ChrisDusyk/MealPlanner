@@ -16,9 +16,34 @@ var api = builder.AddProject<Projects.MealPlanner_Api>("api")
 	.WithEnvironment("Anthropic__ApiKey",
 		builder.Configuration["Anthropic__ApiKey"] ?? builder.Configuration["Anthropic:ApiKey"]);
 
+// flagd is the OpenFeature evaluation engine. It HTTP-syncs its flag
+// definitions from the API's internal endpoint (so toggles are live without a
+// redeploy) and serves evaluations to the API and frontend over gRPC.
+var flagd = builder.AddFlagd("flagd")
+	.WithReference(api)
+	.WaitFor(api)
+	.WithArgs(context =>
+	{
+		context.Args.Add("--uri");
+		context.Args.Add(ReferenceExpression.Create($"{api.GetEndpoint("http")}/internal/feature-flags"));
+	});
+
+// The API resolves flags against flagd (injected as connection string "flagd").
+// Deliberately no WaitFor(flagd): the OpenFeature provider connects lazily and
+// retries, which avoids a start-order deadlock with flagd waiting for the API.
+api.WithReference(flagd);
+
 var frontend = builder.AddViteApp("frontend", "../frontend")
 	.WithReference(api).WaitFor(api)
 	.WithReference(mealPlannerDb).WaitFor(mealPlannerDb)
+	// Reference flagd for its endpoint env, but deliberately no WaitFor(flagd):
+	// SSR flag evaluation connects lazily and falls back to defaults when flagd
+	// is unreachable, so the frontend must not be blocked on flagd startup.
+	.WithReference(flagd)
+	.WithEnvironment("FLAGD_HOST",
+		ReferenceExpression.Create($"{flagd.GetEndpoint("http").Property(EndpointProperty.Host)}"))
+	.WithEnvironment("FLAGD_PORT",
+		ReferenceExpression.Create($"{flagd.GetEndpoint("http").Property(EndpointProperty.Port)}"))
 	.WithEnvironment("BETTER_AUTH_SECRET", builder.Configuration["BETTER_AUTH_SECRET"])
 	.WithEnvironment("BETTER_AUTH_URL", builder.Configuration["BETTER_AUTH_URL"] ?? "http://localhost:3000")
 	.WithEnvironment("BETTER_AUTH_JWT_AUDIENCE", builder.Configuration["BETTER_AUTH_JWT_AUDIENCE"] ?? "mealplanner-api")

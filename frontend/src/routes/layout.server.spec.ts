@@ -8,6 +8,10 @@ vi.mock('$lib/api/userApi', () => ({
 	syncCurrentUser: vi.fn()
 }));
 
+vi.mock('$lib/server/featureFlags', () => ({
+	getServerFlags: vi.fn().mockResolvedValue({ demoBanner: false })
+}));
+
 type RootLayoutLoadEvent = Parameters<typeof load>[0];
 
 function createEvent(
@@ -51,7 +55,8 @@ describe('root layout user sync', () => {
 
 		expect(result).toEqual({
 			session: { user: { name: 'Pat', email: 'pat@example.com' }, accessToken: 'test-token' },
-			appUser
+			appUser,
+			flags: { demoBanner: false }
 		});
 		expect(syncCurrentUser).not.toHaveBeenCalled();
 	});
@@ -84,7 +89,8 @@ describe('root layout user sync', () => {
 		);
 		expect(result).toEqual({
 			session: { user: { name: 'Pat', email: 'pat@example.com' }, accessToken: 'test-token' },
-			appUser: syncedUser
+			appUser: syncedUser,
+			flags: { demoBanner: false }
 		});
 	});
 
@@ -101,7 +107,8 @@ describe('root layout user sync', () => {
 
 		expect(result).toEqual({
 			session: { user: { name: 'Pat', email: 'pat@example.com' }, accessToken: 'test-token' },
-			appUser: null
+			appUser: null,
+			flags: { demoBanner: false }
 		});
 		expect(warn).toHaveBeenCalled();
 		warn.mockRestore();

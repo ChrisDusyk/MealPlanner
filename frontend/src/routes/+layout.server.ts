@@ -1,10 +1,17 @@
 import type { LayoutServerLoad } from './$types';
 import { ApiError } from '$lib/api/apiHelpers';
 import { getCurrentUser, syncCurrentUser, type AppUserResponse } from '$lib/api/userApi';
+import { getServerFlags } from '$lib/server/featureFlags';
 
 export const load: LayoutServerLoad = async (event) => {
 	const session = await event.locals.auth();
 	let appUser: AppUserResponse | null = null;
+
+	// Feature flags are resolved server-side and handed to the browser via page
+	// data. Keyed on the signed-in user so targeting rules can vary per user.
+	const flags = await getServerFlags(
+		session?.user?.id ? { targetingKey: session.user.id } : undefined
+	);
 
 	if (session?.accessToken) {
 		try {
@@ -25,7 +32,8 @@ export const load: LayoutServerLoad = async (event) => {
 				}
 				return {
 					session,
-					appUser
+					appUser,
+					flags
 				};
 			}
 
@@ -35,6 +43,7 @@ export const load: LayoutServerLoad = async (event) => {
 
 	return {
 		session,
-		appUser
+		appUser,
+		flags
 	};
 };
