@@ -53,6 +53,40 @@ Flag definitions live in the `feature_flags` Postgres table; the API serves the
 flagd-format document at `GET /internal/feature-flags`, and flagd HTTP-syncs
 from it and hot-reloads on its poll interval.
 
+Admins author flags at `/app/admin/feature-flags` — create, edit, toggle, and
+delete, including variants, which variant each state serves, and targeting
+rules. No migration or redeploy is needed to introduce a flag.
+
+### On/off semantics
+
+flagd has no concept of a stored "value when off": a flag whose state is
+`DISABLED` resolves to whatever default the **calling code** passed. So the sync
+mapper treats the toggle in one of two ways, depending on whether the flag names
+an off variant (`feature_flags.DisabledVariant`):
+
+| Flag state | Emitted to flagd |
+| --- | --- |
+| On | The definition as authored, `state: ENABLED`. |
+| Off, off variant set | `state: ENABLED`, `defaultVariant` swapped to the off variant, `targeting` dropped. |
+| Off, no off variant | `state: DISABLED` — every caller falls back to its own code default. |
+
+Setting an off variant is what puts the resolved value under database control in
+both states; code defaults then only apply when flagd itself is unreachable.
+Targeting is dropped while a flag is off so switching it off is a true kill
+switch rather than something a rule can override.
+
+Deleting a flag is not a breaking change for callers: flagd simply stops knowing
+the key and each caller falls back to the default it passes in code. That is
+easy to miss, so the admin UI warns before deleting.
+
+### Targeting context
+
+Targeting rules can only match attributes the evaluating service supplies. Both
+the API and the SvelteKit server currently send `targetingKey` (the user id),
+`email`, and `role`. Adding an attribute means widening `FeatureFlagContext` in
+the API and `buildEvaluationContext` in the frontend root layout, then adding it
+to `TARGETING_ATTRIBUTES` so the rule builder offers it.
+
 ### flagd service
 
 Build from `flagd/Dockerfile` (Railway root directory `flagd`). Configure the
