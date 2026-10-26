@@ -1,6 +1,6 @@
 import { json, error } from '@sveltejs/kit';
-import { generateGroceryList } from '$lib/api/groceryListApi';
-import { ApiError } from '$lib/api/recipeApi';
+import { generateGroceryList } from '#lib/api/groceryListApi';
+import { ApiError } from '#lib/api/recipeApi';
 import type { RequestHandler } from './$types';
 
 export const POST: RequestHandler = async ({ locals, fetch, url }) => {

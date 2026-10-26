@@ -1,7 +1,7 @@
 import { redirect } from '@sveltejs/kit';
 import type { LayoutServerLoad } from './$types';
-import { requireAuthenticatedSession } from '$lib/auth/guards';
-import { getIncomingFamilyInvitations, type FamilyInvitationResponse } from '$lib/api/familyApi';
+import { requireAuthenticatedSession } from '#lib/auth/guards';
+import { getIncomingFamilyInvitations, type FamilyInvitationResponse } from '#lib/api/familyApi';
 
 export const load: LayoutServerLoad = async (event) => {
 	const rawSession = await event.locals.auth();

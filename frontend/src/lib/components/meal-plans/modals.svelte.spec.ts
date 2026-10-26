@@ -6,7 +6,7 @@ import CopyModal from './CopyModal.svelte';
 
 describe('meal-plan modals accessibility', () => {
 	it('renders AddItemModal with accessible dialog semantics', async () => {
-		render(AddItemModal, {
+		await render(AddItemModal, {
 			open: true,
 			recipes: [
 				{
@@ -33,7 +33,7 @@ describe('meal-plan modals accessibility', () => {
 	});
 
 	it('renders CopyModal with label and describedby wiring', async () => {
-		render(CopyModal, {
+		await render(CopyModal, {
 			open: true,
 			sourceDay: 'Monday',
 			category: 'Dinner',
@@ -52,7 +52,7 @@ describe('meal-plan modals accessibility', () => {
 	it('closes AddItemModal when Escape is pressed', async () => {
 		const onClose = vi.fn();
 
-		render(AddItemModal, {
+		await render(AddItemModal, {
 			open: true,
 			recipes: [
 				{
@@ -79,7 +79,7 @@ describe('meal-plan modals accessibility', () => {
 	});
 
 	it('keeps keyboard focus trapped inside CopyModal', async () => {
-		render(CopyModal, {
+		await render(CopyModal, {
 			open: true,
 			sourceDay: 'Monday',
 			category: 'Dinner',

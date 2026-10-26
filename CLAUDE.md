@@ -358,7 +358,7 @@ and migration notes.
 - **Frontend** hosts Better Auth directly at `/api/auth/*` through a
   SvelteKit catch-all endpoint (`src/routes/api/auth/[...all]/+server.ts`).
   Sign-in and sign-up flows use the `authClient` helper from
-  `$lib/auth/client`.
+  `#lib/auth/client`.
 - **API** validates JWT bearer tokens with ASP.NET Core `AddJwtBearer`,
   pointing at Better Auth's JWKS document via the custom
   `BetterAuthJwksConfigurationRetriever`.
@@ -420,7 +420,7 @@ trusted-origin checks all target one host). The client host is read from
 - The `Navbar` component receives an `AppSession | null` prop and shows
   Log In / Sign Up / Log Out buttons accordingly
 - Log In navigates to `/auth/signin`, Sign Up navigates to `/auth/signup`,
-  and Log Out calls `authClient.signOut()` from `$lib/auth/client`
+  and Log Out calls `authClient.signOut()` from `#lib/auth/client`
 
 ---
 
@@ -461,7 +461,7 @@ You MUST use Svelte 5 Runes for all component logic. Do NOT use legacy Svelte 4 
   - `+page.ts` / `+page.server.ts`: Data loading.
   - `+layout.svelte`: Layout components.
 - **`src/lib`**: Contains reusable components and utility functions.
-  - Use the `$lib` alias to import from this directory.
+  - Use the `#lib/*` subpath import (package.json `imports`; SvelteKit 3 removed `$lib`) to import from this directory.
 
 ### 4. Testing and Validation
 

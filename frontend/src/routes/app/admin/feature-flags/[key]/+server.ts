@@ -4,9 +4,9 @@ import {
 	deleteFeatureFlag,
 	updateFeatureFlag,
 	type UpdateFeatureFlagRequest
-} from '$lib/api/featureFlagsApi';
-import { requireRole } from '$lib/auth/guards';
-import { APP_ROLES } from '$lib/auth/roles';
+} from '#lib/api/featureFlagsApi';
+import { requireRole } from '#lib/auth/guards';
+import { APP_ROLES } from '#lib/auth/roles';
 import type { RequestHandler } from './$types';
 
 export const PUT: RequestHandler = async ({ request, params, locals, fetch }) => {

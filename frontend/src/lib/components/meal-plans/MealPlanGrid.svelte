@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { MEAL_CATEGORIES, WEEK_DAYS, getDateForDay } from '$lib/api/mealPlanApi';
-	import type { DayPlan, MealSlotItem } from '$lib/api/mealPlanApi';
+	import { MEAL_CATEGORIES, WEEK_DAYS, getDateForDay } from '#lib/api/mealPlanApi';
+	import type { DayPlan, MealSlotItem } from '#lib/api/mealPlanApi';
 	import MealSlot from './MealSlot.svelte';
 
 	let {

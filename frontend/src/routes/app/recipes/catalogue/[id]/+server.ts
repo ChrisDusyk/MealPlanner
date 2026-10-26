@@ -3,8 +3,8 @@ import {
 	ApiError,
 	addCatalogueRecipeToMyRecipes,
 	fetchCatalogueRecipe
-} from '$lib/api/catalogueApi';
-import { requireAuthenticatedSession } from '$lib/auth/guards';
+} from '#lib/api/catalogueApi';
+import { requireAuthenticatedSession } from '#lib/auth/guards';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async ({ params, locals, fetch }) => {

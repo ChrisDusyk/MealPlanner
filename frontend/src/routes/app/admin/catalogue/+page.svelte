@@ -33,7 +33,7 @@
 		if (isPublishedFilter === 'published') params.set('isPublished', 'true');
 		if (isPublishedFilter === 'draft') params.set('isPublished', 'false');
 		const qs = params.toString();
-		goto(`${resolve('/app/admin/catalogue')}${qs ? `?${qs}` : ''}`, { keepFocus: true });
+		goto(`${resolve('/app/admin/catalogue')}${qs ? `?${qs}` : ''}`, { reset: false });
 	}
 
 	async function togglePublished(id: string, current: boolean) {

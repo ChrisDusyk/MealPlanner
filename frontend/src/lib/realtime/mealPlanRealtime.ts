@@ -4,8 +4,8 @@ import {
 	LogLevel,
 	type HubConnection
 } from '@microsoft/signalr';
-import { getHubUrlCandidates, isSignalRHubNotFoundError } from '$lib/realtime/hubUrl';
-import type { MealPlanResponse } from '$lib/api/mealPlanApi';
+import { getHubUrlCandidates, isSignalRHubNotFoundError } from '#lib/realtime/hubUrl';
+import type { MealPlanResponse } from '#lib/api/mealPlanApi';
 
 export interface MealPlanUpdatedEvent {
 	eventType: string;

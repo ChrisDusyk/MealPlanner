@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import { authClient } from '$lib/auth/client';
+	import { authClient } from '#lib/auth/client';
 
 	let name = $state('');
 	let email = $state('');

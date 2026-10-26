@@ -5,7 +5,7 @@ const setProviderAndWait = vi.fn().mockResolvedValue(undefined);
 const getClient = vi.fn(() => ({ getBooleanValue }));
 const FlagdProvider = vi.fn();
 
-vi.mock('$app/environment', () => ({ building: false }));
+vi.mock('$app/env', () => ({ building: false }));
 vi.mock('@openfeature/server-sdk', () => ({
 	OpenFeature: { setProviderAndWait, getClient }
 }));

@@ -3,14 +3,14 @@
 	import { resolve } from '$app/paths';
 	import { enhance } from '$app/forms';
 	import { onMount } from 'svelte';
-	import type { GroceryListResponse } from '$lib/api/groceryListApi';
+	import type { GroceryListResponse } from '#lib/api/groceryListApi';
 	import {
 		GroceryListRealtimeClient,
 		type GroceryListUpdatedEvent
-	} from '$lib/realtime/groceryListRealtime';
-	import WeekNavigator from '$lib/components/meal-plans/WeekNavigator.svelte';
-	import Modal from '$lib/components/Modal.svelte';
-	import { toast } from '$lib/stores/toast.svelte';
+	} from '#lib/realtime/groceryListRealtime';
+	import WeekNavigator from '#lib/components/meal-plans/WeekNavigator.svelte';
+	import Modal from '#lib/components/Modal.svelte';
+	import { toast } from '#lib/stores/toast.svelte';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();

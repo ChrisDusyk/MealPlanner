@@ -1,9 +1,9 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { actions, load } from './+page.server';
-import { completeOnboarding, syncCurrentUser } from '$lib/api/userApi';
-import { ApiError } from '$lib/api/apiHelpers';
+import { completeOnboarding, syncCurrentUser } from '#lib/api/userApi';
+import { ApiError } from '#lib/api/apiHelpers';
 
-vi.mock('$lib/api/userApi', () => ({
+vi.mock('#lib/api/userApi', () => ({
 	completeOnboarding: vi.fn(),
 	syncCurrentUser: vi.fn()
 }));

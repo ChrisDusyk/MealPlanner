@@ -1,9 +1,9 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { ApiError } from '$lib/api/apiHelpers';
+import { ApiError } from '#lib/api/apiHelpers';
 
 const getFeatureFlag = vi.fn();
 
-vi.mock('$lib/api/featureFlagsApi', () => ({
+vi.mock('#lib/api/featureFlagsApi', () => ({
 	getFeatureFlag: (...args: unknown[]) => getFeatureFlag(...args)
 }));
 

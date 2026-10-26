@@ -1,5 +1,5 @@
 import { json, error } from '@sveltejs/kit';
-import { updateRecipe, ApiError } from '$lib/api/recipeApi';
+import { updateRecipe, ApiError } from '#lib/api/recipeApi';
 import type { RequestHandler } from './$types';
 
 export const PUT: RequestHandler = async ({ request, locals, params, fetch }) => {

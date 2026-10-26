@@ -4,8 +4,8 @@
 	import type {
 		CreateFeatureFlagRequest,
 		EvaluateFeatureFlagResponse
-	} from '$lib/api/featureFlagsApi';
-	import FeatureFlagForm from '$lib/components/admin/FeatureFlagForm.svelte';
+	} from '#lib/api/featureFlagsApi';
+	import FeatureFlagForm from '#lib/components/admin/FeatureFlagForm.svelte';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();

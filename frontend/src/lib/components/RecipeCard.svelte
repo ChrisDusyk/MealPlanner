@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import type { Recipe } from '$lib/api/recipeApi';
-	import { formatDate } from '$lib/utils/date';
-	import { sanitizeUrl } from '$lib/utils/url';
+	import type { Recipe } from '#lib/api/recipeApi';
+	import { formatDate } from '#lib/utils/date';
+	import { sanitizeUrl } from '#lib/utils/url';
 
 	let { recipe }: { recipe: Recipe } = $props();
 

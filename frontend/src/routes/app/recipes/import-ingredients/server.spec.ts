@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { ApiError, importRecipeIngredients } from '$lib/api/recipeApi';
+import { ApiError, importRecipeIngredients } from '#lib/api/recipeApi';
 import { POST } from './+server';
 
 type ImportIngredientsEvent = Parameters<typeof POST>[0];
 
-vi.mock('$lib/api/recipeApi', async () => {
-	const actual = await vi.importActual<typeof import('$lib/api/recipeApi')>('$lib/api/recipeApi');
+vi.mock('#lib/api/recipeApi', async () => {
+	const actual = await vi.importActual<typeof import('#lib/api/recipeApi')>('#lib/api/recipeApi');
 	return {
 		...actual,
 		importRecipeIngredients: vi.fn()

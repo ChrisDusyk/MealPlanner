@@ -11,7 +11,7 @@ const body = createRawSnippet(() => ({
 
 describe('Modal', () => {
 	it('renders accessible dialog semantics from title and subtitle', async () => {
-		render(Modal, {
+		await render(Modal, {
 			open: true,
 			title: 'Example Modal',
 			subtitle: 'A helpful subtitle',
@@ -31,7 +31,7 @@ describe('Modal', () => {
 	});
 
 	it('omits aria-describedby when no subtitle is provided', async () => {
-		render(Modal, {
+		await render(Modal, {
 			open: true,
 			title: 'No Subtitle',
 			onClose: vi.fn(),
@@ -46,7 +46,7 @@ describe('Modal', () => {
 	});
 
 	it('renders nothing when closed', async () => {
-		render(Modal, {
+		await render(Modal, {
 			open: false,
 			title: 'Hidden',
 			onClose: vi.fn(),
@@ -59,7 +59,7 @@ describe('Modal', () => {
 	it('calls onClose when Escape is pressed', async () => {
 		const onClose = vi.fn();
 
-		render(Modal, {
+		await render(Modal, {
 			open: true,
 			title: 'Escapable',
 			onClose,
@@ -78,7 +78,7 @@ describe('Modal', () => {
 	it('calls onClose when the backdrop is clicked', async () => {
 		const onClose = vi.fn();
 
-		render(Modal, {
+		await render(Modal, {
 			open: true,
 			title: 'Backdrop',
 			onClose,
@@ -96,7 +96,7 @@ describe('Modal', () => {
 	});
 
 	it('keeps keyboard focus trapped inside the dialog', async () => {
-		render(Modal, {
+		await render(Modal, {
 			open: true,
 			title: 'Trapped',
 			onClose: vi.fn(),
@@ -132,7 +132,7 @@ describe('Modal', () => {
 		const onClose = vi.fn();
 		const onkeydown = vi.fn();
 
-		render(Modal, {
+		await render(Modal, {
 			open: true,
 			title: 'Keyed',
 			onClose,

@@ -1,4 +1,4 @@
-import type { FeatureFlagValueType } from '$lib/api/featureFlagsApi';
+import type { FeatureFlagValueType } from '#lib/api/featureFlagsApi';
 
 /**
  * A single variant row in the editor. Values are held as JSON text so a

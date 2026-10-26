@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { getDateForDay } from '$lib/api/mealPlanApi';
+	import { getDateForDay } from '#lib/api/mealPlanApi';
 
 	let {
 		weekStart,

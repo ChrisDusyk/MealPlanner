@@ -7,7 +7,7 @@ describe('MealSlot remove action', () => {
 	it('invokes onRemove with day, category, and index', async () => {
 		const onRemove = vi.fn();
 
-		render(MealSlot, {
+		await render(MealSlot, {
 			day: 'Monday',
 			category: 'Breakfast',
 			dateLabel: 'Mon',

@@ -1,4 +1,4 @@
-import { env as publicEnv } from '$env/dynamic/public';
+import { PUBLIC_API_URL } from '$app/env/public';
 
 /**
  * Custom error that preserves the HTTP status code from an API response.
@@ -63,7 +63,7 @@ export function getApiBase(): string {
 export function getPublicApiBase(): string {
 	// Runtime-configurable (adapter-node serializes PUBLIC_* vars to the browser),
 	// so deployments can point the browser at the API without rebuilding the image.
-	const runtimePublicApiUrl = normalizeBaseUrl(publicEnv.PUBLIC_API_URL);
+	const runtimePublicApiUrl = normalizeBaseUrl(PUBLIC_API_URL);
 	if (runtimePublicApiUrl) return runtimePublicApiUrl;
 
 	if (typeof process !== 'undefined') {

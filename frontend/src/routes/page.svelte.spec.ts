@@ -5,7 +5,7 @@ import Page from './+page.svelte';
 
 describe('/+page.svelte', () => {
 	it('renders key public-page structure landmarks', async () => {
-		render(Page, {
+		await render(Page, {
 			data: {
 				session: null,
 				appUser: null,

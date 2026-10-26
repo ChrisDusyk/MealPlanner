@@ -1,8 +1,8 @@
 import { page } from 'vitest/browser';
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render } from 'vitest-browser-svelte';
 import MealPlansPage from './+page.svelte';
-import { WEEK_DAYS } from '$lib/api/mealPlanApi';
+import { WEEK_DAYS } from '#lib/api/mealPlanApi';
 
 function buildData() {
 	return {
@@ -31,8 +31,20 @@ function buildData() {
 }
 
 describe('meal plans route structure', () => {
+	beforeEach(() => {
+		// The page starts a realtime client that fetches an access token; keep the test off the dev server.
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(async () => new Response('{}', { status: 401 }))
+		);
+	});
+
+	afterEach(() => {
+		vi.unstubAllGlobals();
+	});
+
 	it('renders core meal-plans page heading and primary action', async () => {
-		render(MealPlansPage, {
+		await render(MealPlansPage, {
 			data: buildData()
 		});
 

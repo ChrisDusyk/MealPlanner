@@ -1,5 +1,5 @@
 import { error } from '@sveltejs/kit';
-import { fetchRecipeById, ApiError } from '$lib/api/recipeApi';
+import { fetchRecipeById, ApiError } from '#lib/api/recipeApi';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ parent, params, fetch }) => {

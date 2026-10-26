@@ -1,9 +1,9 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import { getContext } from 'svelte';
-	import type { FamilyInvitationResponse, MyFamilyResponse } from '$lib/api/familyApi';
+	import type { FamilyInvitationResponse, MyFamilyResponse } from '#lib/api/familyApi';
 	import type { ActionData, PageData } from './$types';
-	import { APP_USER_CONTEXT_KEY, type AppUserContextValue } from '$lib/context/appUserContext';
+	import { APP_USER_CONTEXT_KEY, type AppUserContextValue } from '#lib/context/appUserContext';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 

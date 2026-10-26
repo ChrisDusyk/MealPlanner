@@ -4,8 +4,8 @@ import {
 	LogLevel,
 	type HubConnection
 } from '@microsoft/signalr';
-import { getHubUrlCandidates, isSignalRHubNotFoundError } from '$lib/realtime/hubUrl';
-import type { GroceryListResponse } from '$lib/api/groceryListApi';
+import { getHubUrlCandidates, isSignalRHubNotFoundError } from '#lib/realtime/hubUrl';
+import type { GroceryListResponse } from '#lib/api/groceryListApi';
 
 export interface GroceryListUpdatedEvent {
 	eventType: string;

@@ -1,5 +1,5 @@
 import { auth } from './auth';
-import type { AppSession, AppSessionUser } from '$lib/auth/session';
+import type { AppSession, AppSessionUser } from '#lib/auth/session';
 
 /**
  * Resolve the current request into the app's session shape, or `null` if

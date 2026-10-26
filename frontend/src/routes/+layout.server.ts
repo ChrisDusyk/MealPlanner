@@ -1,8 +1,8 @@
 import type { LayoutServerLoad } from './$types';
-import { ApiError } from '$lib/api/apiHelpers';
-import { getCurrentUser, syncCurrentUser, type AppUserResponse } from '$lib/api/userApi';
-import { getServerFlags } from '$lib/server/featureFlags';
-import type { AppSession } from '$lib/auth/session';
+import { ApiError } from '#lib/api/apiHelpers';
+import { getCurrentUser, syncCurrentUser, type AppUserResponse } from '#lib/api/userApi';
+import { getServerFlags } from '#lib/server/featureFlags';
+import type { AppSession } from '#lib/auth/session';
 import type { EvaluationContext } from '@openfeature/server-sdk';
 
 /**

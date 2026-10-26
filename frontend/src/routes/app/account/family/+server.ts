@@ -11,8 +11,8 @@ import {
 	removeFamilyMember,
 	renameFamily,
 	transferFamilyOwnership
-} from '$lib/api/familyApi';
-import { ApiError } from '$lib/api/recipeApi';
+} from '#lib/api/familyApi';
+import { ApiError } from '#lib/api/recipeApi';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async ({ locals, fetch }) => {

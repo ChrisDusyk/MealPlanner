@@ -4,9 +4,9 @@ import {
 	adminDeleteCatalogueTag,
 	adminUpdateCatalogueTag,
 	type CatalogueTagRequest
-} from '$lib/api/adminCatalogueApi';
-import { requireRole } from '$lib/auth/guards';
-import { APP_ROLES } from '$lib/auth/roles';
+} from '#lib/api/adminCatalogueApi';
+import { requireRole } from '#lib/auth/guards';
+import { APP_ROLES } from '#lib/auth/roles';
 import type { RequestHandler } from './$types';
 
 export const PUT: RequestHandler = async ({ request, params, locals, fetch }) => {

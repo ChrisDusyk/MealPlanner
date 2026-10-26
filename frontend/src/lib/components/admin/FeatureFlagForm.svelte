@@ -4,12 +4,12 @@
 		FEATURE_FLAG_VALUE_TYPES,
 		type CreateFeatureFlagRequest,
 		type FeatureFlagValueType
-	} from '$lib/api/featureFlagsApi';
+	} from '#lib/api/featureFlagsApi';
 	import {
 		buildDefinition,
 		parseDefinition,
 		type VariantDraft
-	} from '$lib/featureFlags/definition';
+	} from '#lib/featureFlags/definition';
 	import {
 		buildTargeting,
 		parseTargeting,
@@ -18,7 +18,7 @@
 		TARGETING_OPERATORS,
 		type PercentageRollout,
 		type TargetingRule
-	} from '$lib/featureFlags/targeting';
+	} from '#lib/featureFlags/targeting';
 
 	export interface FeatureFlagFormData {
 		key: string;

@@ -1,10 +1,10 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { ApiError } from '$lib/api/apiHelpers';
+import { ApiError } from '#lib/api/apiHelpers';
 
 const evaluateFeatureFlag = vi.fn();
 
-vi.mock('$lib/api/featureFlagsApi', async () => {
-	const helpers = await import('$lib/api/apiHelpers');
+vi.mock('#lib/api/featureFlagsApi', async () => {
+	const helpers = await import('#lib/api/apiHelpers');
 	return {
 		ApiError: helpers.ApiError,
 		evaluateFeatureFlag: (...args: unknown[]) => evaluateFeatureFlag(...args)

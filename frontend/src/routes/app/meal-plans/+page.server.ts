@@ -1,6 +1,6 @@
 import { error } from '@sveltejs/kit';
-import { fetchMealPlan } from '$lib/api/mealPlanApi';
-import { fetchRecipes } from '$lib/api/recipeApi';
+import { fetchMealPlan } from '#lib/api/mealPlanApi';
+import { fetchRecipes } from '#lib/api/recipeApi';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ parent, fetch, url }) => {

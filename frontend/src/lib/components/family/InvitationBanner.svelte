@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { invalidateAll } from '$app/navigation';
-	import type { FamilyInvitationResponse } from '$lib/api/familyApi';
+	import type { FamilyInvitationResponse } from '#lib/api/familyApi';
 
 	let { invitations }: { invitations: FamilyInvitationResponse[] } = $props();
 

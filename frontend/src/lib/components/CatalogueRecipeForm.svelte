@@ -1,11 +1,11 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import type { CatalogueIngredient, CatalogueTag } from '$lib/api/catalogueApi';
+	import type { CatalogueIngredient, CatalogueTag } from '#lib/api/catalogueApi';
 	import type {
 		CreateCatalogueRecipeRequest,
 		UpdateCatalogueRecipeRequest
-	} from '$lib/api/adminCatalogueApi';
-	import type { ImportIngredientsResponse } from '$lib/api/recipeApi';
+	} from '#lib/api/adminCatalogueApi';
+	import type { ImportIngredientsResponse } from '#lib/api/recipeApi';
 	import { flip } from 'svelte/animate';
 	import { quintOut } from 'svelte/easing';
 	import { fade, fly, slide } from 'svelte/transition';

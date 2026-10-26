@@ -5,9 +5,9 @@
 	import type {
 		CreateCatalogueRecipeRequest,
 		UpdateCatalogueRecipeRequest
-	} from '$lib/api/adminCatalogueApi';
-	import CatalogueRecipeForm from '$lib/components/CatalogueRecipeForm.svelte';
-	import type { CatalogueRecipeFormData } from '$lib/components/CatalogueRecipeForm.svelte';
+	} from '#lib/api/adminCatalogueApi';
+	import CatalogueRecipeForm from '#lib/components/CatalogueRecipeForm.svelte';
+	import type { CatalogueRecipeFormData } from '#lib/components/CatalogueRecipeForm.svelte';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();

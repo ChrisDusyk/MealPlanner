@@ -6,7 +6,7 @@ import AppSidebar from './AppSidebar.svelte';
 
 describe('navigation landmark structure', () => {
 	it('renders Navbar with named primary navigation and mobile control wiring', async () => {
-		render(Navbar, { session: null });
+		await render(Navbar, { session: null });
 
 		await expect.element(page.getByRole('navigation', { name: 'Primary' })).toBeInTheDocument();
 		const toggle = page.getByRole('button', { name: 'Toggle menu' });
@@ -16,7 +16,7 @@ describe('navigation landmark structure', () => {
 	});
 
 	it('renders AppSidebar with complementary and application navigation landmarks', async () => {
-		render(AppSidebar, { session: null });
+		await render(AppSidebar, { session: null });
 
 		await expect
 			.element(page.getByRole('complementary', { name: 'Application sidebar' }))
@@ -25,7 +25,7 @@ describe('navigation landmark structure', () => {
 	});
 
 	it('closes Navbar user menu when Escape is pressed', async () => {
-		const { container } = render(Navbar, {
+		const { container } = await render(Navbar, {
 			session: {
 				user: {
 					id: 'user-1',
@@ -53,7 +53,7 @@ describe('navigation landmark structure', () => {
 	});
 
 	it('uses pointer cursor classes for logout buttons in navigation components', async () => {
-		const { container: navbarContainer } = render(Navbar, {
+		const { container: navbarContainer } = await render(Navbar, {
 			session: {
 				user: {
 					id: 'user-1',
@@ -91,7 +91,7 @@ describe('navigation landmark structure', () => {
 		);
 		expect(mobileNavbarLogoutButton).toBeTruthy();
 		expect(mobileNavbarLogoutButton?.className).toContain('cursor-pointer');
-		const { container: sidebarContainer } = render(AppSidebar, {
+		const { container: sidebarContainer } = await render(AppSidebar, {
 			session: {
 				user: {
 					id: 'user-1',

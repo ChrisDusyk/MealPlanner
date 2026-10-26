@@ -3,9 +3,9 @@ import {
 	ApiError,
 	adminCreateCatalogueRecipe,
 	type CreateCatalogueRecipeRequest
-} from '$lib/api/adminCatalogueApi';
-import { requireRole } from '$lib/auth/guards';
-import { APP_ROLES } from '$lib/auth/roles';
+} from '#lib/api/adminCatalogueApi';
+import { requireRole } from '#lib/auth/guards';
+import { APP_ROLES } from '#lib/auth/roles';
 import type { RequestHandler } from './$types';
 
 export const POST: RequestHandler = async ({ request, locals, fetch }) => {

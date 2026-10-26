@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { page } from 'vitest/browser';
 import { render } from 'vitest-browser-svelte';
-import type { CreateFeatureFlagRequest } from '$lib/api/featureFlagsApi';
+import type { CreateFeatureFlagRequest } from '#lib/api/featureFlagsApi';
 import FeatureFlagForm from './FeatureFlagForm.svelte';
 
 const BOOLEAN_DEFINITION = '{"variants":{"on":true,"off":false},"defaultVariant":"on"}';
@@ -20,7 +20,7 @@ function editData(overrides: Partial<Record<string, unknown>> = {}) {
 
 describe('FeatureFlagForm', () => {
 	it('seeds variant rows and defaults from the stored definition', async () => {
-		render(FeatureFlagForm, { mode: 'edit', initialData: editData(), onsubmit: vi.fn() });
+		await render(FeatureFlagForm, { mode: 'edit', initialData: editData(), onsubmit: vi.fn() });
 
 		await expect.element(page.getByLabelText('Variant 1 name')).toHaveValue('on');
 		await expect.element(page.getByLabelText('Variant 1 value')).toHaveValue('true');
@@ -30,19 +30,19 @@ describe('FeatureFlagForm', () => {
 	});
 
 	it('renders the key as read-only when editing', async () => {
-		render(FeatureFlagForm, { mode: 'edit', initialData: editData(), onsubmit: vi.fn() });
+		await render(FeatureFlagForm, { mode: 'edit', initialData: editData(), onsubmit: vi.fn() });
 
 		await expect.element(page.getByRole('textbox', { name: 'Key' })).not.toBeInTheDocument();
 	});
 
 	it('offers a key field when creating', async () => {
-		render(FeatureFlagForm, { mode: 'create', onsubmit: vi.fn() });
+		await render(FeatureFlagForm, { mode: 'create', onsubmit: vi.fn() });
 
 		await expect.element(page.getByLabelText('Key')).toBeInTheDocument();
 	});
 
 	it('adds a variant row and offers it as a default', async () => {
-		render(FeatureFlagForm, { mode: 'edit', initialData: editData(), onsubmit: vi.fn() });
+		await render(FeatureFlagForm, { mode: 'edit', initialData: editData(), onsubmit: vi.fn() });
 
 		await page.getByRole('button', { name: 'Add variant' }).click();
 		await page.getByLabelText('Variant 3 name').fill('beta');
@@ -53,7 +53,7 @@ describe('FeatureFlagForm', () => {
 
 	it('submits the assembled definition', async () => {
 		const onsubmit = vi.fn();
-		render(FeatureFlagForm, { mode: 'edit', initialData: editData(), onsubmit });
+		await render(FeatureFlagForm, { mode: 'edit', initialData: editData(), onsubmit });
 
 		await page.getByRole('button', { name: 'Save changes' }).click();
 
@@ -69,7 +69,7 @@ describe('FeatureFlagForm', () => {
 
 	it('blocks submission and explains when a variant does not match the value type', async () => {
 		const onsubmit = vi.fn();
-		render(FeatureFlagForm, { mode: 'edit', initialData: editData(), onsubmit });
+		await render(FeatureFlagForm, { mode: 'edit', initialData: editData(), onsubmit });
 
 		await page.getByLabelText('Variant 1 value').fill('"yes"');
 		await page.getByRole('button', { name: 'Save changes' }).click();
@@ -77,11 +77,11 @@ describe('FeatureFlagForm', () => {
 		expect(onsubmit).not.toHaveBeenCalled();
 		await expect
 			.element(page.getByTestId('feature-flag-form-error'))
-			.toHaveTextContent('Expected true or false.');
+			.toMatchTextContent('Expected true or false.');
 	});
 
 	it('starts in raw mode when targeting cannot be represented by the builder', async () => {
-		render(FeatureFlagForm, {
+		await render(FeatureFlagForm, {
 			mode: 'edit',
 			initialData: editData({
 				definitionJson:
@@ -97,7 +97,7 @@ describe('FeatureFlagForm', () => {
 	});
 
 	it('reports invalid JSON as a syntax problem and keeps the builder available', async () => {
-		render(FeatureFlagForm, { mode: 'edit', initialData: editData(), onsubmit: vi.fn() });
+		await render(FeatureFlagForm, { mode: 'edit', initialData: editData(), onsubmit: vi.fn() });
 
 		await page.getByRole('button', { name: 'Edit as JSON' }).click();
 		await page.getByLabelText('Targeting rules as JSON').fill('{oops');
@@ -105,7 +105,7 @@ describe('FeatureFlagForm', () => {
 
 		await expect
 			.element(page.getByTestId('feature-flag-form-error'))
-			.toHaveTextContent('must be valid JSON');
+			.toMatchTextContent('must be valid JSON');
 
 		// Correcting the typo must let the admin back into the builder rather
 		// than leaving them stuck in raw mode.
@@ -117,7 +117,7 @@ describe('FeatureFlagForm', () => {
 
 	it('builds a targeting rule and includes it in the submitted definition', async () => {
 		const onsubmit = vi.fn();
-		render(FeatureFlagForm, { mode: 'edit', initialData: editData(), onsubmit });
+		await render(FeatureFlagForm, { mode: 'edit', initialData: editData(), onsubmit });
 
 		await page.getByRole('button', { name: 'Add rule' }).click();
 		await page.getByLabelText('Rule 1 value').fill('admin');

@@ -2,10 +2,10 @@
 	import { getContext } from 'svelte';
 	import { goto, invalidateAll } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import { authClient } from '$lib/auth/client';
-	import type { AppSession } from '$lib/auth/session';
-	import { APP_USER_CONTEXT_KEY, type AppUserContextValue } from '$lib/context/appUserContext';
-	import { APP_ROLES, hasRole } from '$lib/auth/roles';
+	import { authClient } from '#lib/auth/client';
+	import type { AppSession } from '#lib/auth/session';
+	import { APP_USER_CONTEXT_KEY, type AppUserContextValue } from '#lib/context/appUserContext';
+	import { APP_ROLES, hasRole } from '#lib/auth/roles';
 
 	let { session }: { session: AppSession | null } = $props();
 	const appUserContext = getContext<AppUserContextValue | undefined>(APP_USER_CONTEXT_KEY);

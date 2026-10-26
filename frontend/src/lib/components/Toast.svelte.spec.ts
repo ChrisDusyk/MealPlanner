@@ -2,7 +2,7 @@ import { page } from 'vitest/browser';
 import { afterEach, describe, expect, it } from 'vitest';
 import { render } from 'vitest-browser-svelte';
 import Toast from './Toast.svelte';
-import { toast } from '$lib/stores/toast.svelte';
+import { toast } from '#lib/stores/toast.svelte';
 
 describe('Toast', () => {
 	afterEach(() => {
@@ -10,13 +10,13 @@ describe('Toast', () => {
 	});
 
 	it('renders nothing while no toast is active', async () => {
-		render(Toast);
+		await render(Toast);
 
 		expect(document.querySelector('[role="status"], [role="alert"]')).toBeNull();
 	});
 
 	it('renders a polite status for success toasts', async () => {
-		render(Toast);
+		await render(Toast);
 
 		toast.success('Recipe saved');
 
@@ -27,7 +27,7 @@ describe('Toast', () => {
 	});
 
 	it('renders an assertive alert for error toasts', async () => {
-		render(Toast);
+		await render(Toast);
 
 		toast.error('Something went wrong');
 
