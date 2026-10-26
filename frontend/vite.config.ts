@@ -38,12 +38,12 @@ export default defineConfig({
 			{
 				extends: './vite.config.ts',
 				resolve: {
-					// The SvelteKit client runtime that backs $env/dynamic/public is
+					// The SvelteKit client runtime that backs $app/env/public is
 					// absent in Vitest browser mode, so importing the real virtual
 					// module throws; point it at a stub instead.
 					alias: {
-						'$env/dynamic/public': fileURLToPath(
-							new URL('./src/lib/testing/env-dynamic-public.ts', import.meta.url)
+						'$app/env/public': fileURLToPath(
+							new URL('./src/lib/testing/app-env-public.ts', import.meta.url)
 						)
 					}
 				},

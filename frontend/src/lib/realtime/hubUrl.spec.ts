@@ -3,7 +3,11 @@ import { getHubUrl, getHubUrlCandidates } from '#lib/realtime/hubUrl';
 
 const mockPublicEnv = vi.hoisted((): Record<string, string | undefined> => ({}));
 
-vi.mock('$env/dynamic/public', () => ({ env: mockPublicEnv }));
+vi.mock('$app/env/public', () => ({
+	get PUBLIC_API_URL() {
+		return mockPublicEnv.PUBLIC_API_URL;
+	}
+}));
 
 const envKeys = ['API_PUBLIC_URL', 'PUBLIC_API_URL', 'API_INTERNAL_URL', 'API_BASE_URL'] as const;
 let savedEnv: Record<string, string | undefined>;
