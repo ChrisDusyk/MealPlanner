@@ -1,4 +1,3 @@
-import { fileURLToPath } from 'node:url';
 import devtoolsJson from 'vite-plugin-devtools-json';
 import tailwindcss from '@tailwindcss/vite';
 import { defineConfig } from 'vitest/config';
@@ -37,18 +36,9 @@ export default defineConfig({
 		projects: [
 			{
 				extends: './vite.config.ts',
-				resolve: {
-					// The SvelteKit client runtime that backs $app/env/public is
-					// absent in Vitest browser mode, so importing the real virtual
-					// module throws; point it at a stub instead.
-					alias: {
-						'$app/env/public': fileURLToPath(
-							new URL('./src/lib/testing/app-env-public.ts', import.meta.url)
-						)
-					}
-				},
 				test: {
 					name: 'client',
+					setupFiles: ['./src/lib/testing/sveltekit-dev-env.ts'],
 					browser: {
 						enabled: runBrowserTests,
 						provider: playwright(),
