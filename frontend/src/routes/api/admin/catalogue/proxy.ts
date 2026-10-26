@@ -1,4 +1,4 @@
-import { getApiBase } from '$lib/api/apiHelpers';
+import { getApiBase } from '#lib/api/apiHelpers';
 import type { RequestEvent } from '@sveltejs/kit';
 
 export async function proxyAdminCatalogueRequest(

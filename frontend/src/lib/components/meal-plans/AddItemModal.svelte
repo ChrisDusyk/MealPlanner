@@ -1,7 +1,7 @@
 <script lang="ts">
-	import Modal from '$lib/components/Modal.svelte';
-	import type { Recipe } from '$lib/api/recipeApi';
-	import type { MealSlotItem } from '$lib/api/mealPlanApi';
+	import Modal from '#lib/components/Modal.svelte';
+	import type { Recipe } from '#lib/api/recipeApi';
+	import type { MealSlotItem } from '#lib/api/mealPlanApi';
 
 	let {
 		open = false,

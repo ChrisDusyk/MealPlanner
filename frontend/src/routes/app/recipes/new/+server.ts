@@ -1,5 +1,5 @@
 import { json, error } from '@sveltejs/kit';
-import { createRecipe } from '$lib/api/recipeApi';
+import { createRecipe } from '#lib/api/recipeApi';
 import type { RequestHandler } from './$types';
 
 export const POST: RequestHandler = async ({ request, locals, fetch }) => {

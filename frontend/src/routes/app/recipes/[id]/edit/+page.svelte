@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import RecipeForm from '$lib/components/RecipeForm.svelte';
-	import type { CreateRecipeRequest } from '$lib/api/recipeApi';
+	import RecipeForm from '#lib/components/RecipeForm.svelte';
+	import type { CreateRecipeRequest } from '#lib/api/recipeApi';
 
 	let { data } = $props();
 

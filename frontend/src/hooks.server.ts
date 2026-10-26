@@ -1,11 +1,12 @@
-import { building } from '$app/environment';
+import { building } from '$app/env';
 import { svelteKitHandler } from 'better-auth/svelte-kit';
-import { redirect, type Handle } from '@sveltejs/kit';
+import { redirect } from '@sveltejs/kit';
+import type { Handle } from '@sveltejs/kit/hooks';
 import { sequence } from '@sveltejs/kit/hooks';
-import { auth } from '$lib/server/auth';
-import { resolveCanonicalApex } from '$lib/server/auth-options';
-import { resolveAppSession } from '$lib/server/session';
-import type { AppSession } from '$lib/auth/session';
+import { auth } from '#lib/server/auth';
+import { resolveCanonicalApex } from '#lib/server/auth-options';
+import { resolveAppSession } from '#lib/server/session';
+import type { AppSession } from '#lib/auth/session';
 
 /**
  * Canonicalise the host by redirecting the `www.` subdomain to the apex

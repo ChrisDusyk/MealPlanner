@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { getHubUrl, getHubUrlCandidates } from '$lib/realtime/hubUrl';
+import { getHubUrl, getHubUrlCandidates } from '#lib/realtime/hubUrl';
 
 const mockPublicEnv = vi.hoisted((): Record<string, string | undefined> => ({}));
 

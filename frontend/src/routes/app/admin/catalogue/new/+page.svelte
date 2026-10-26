@@ -1,12 +1,12 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import type { CatalogueRecipe } from '$lib/api/catalogueApi';
+	import type { CatalogueRecipe } from '#lib/api/catalogueApi';
 	import type {
 		CreateCatalogueRecipeRequest,
 		UpdateCatalogueRecipeRequest
-	} from '$lib/api/adminCatalogueApi';
-	import CatalogueRecipeForm from '$lib/components/CatalogueRecipeForm.svelte';
+	} from '#lib/api/adminCatalogueApi';
+	import CatalogueRecipeForm from '#lib/components/CatalogueRecipeForm.svelte';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();

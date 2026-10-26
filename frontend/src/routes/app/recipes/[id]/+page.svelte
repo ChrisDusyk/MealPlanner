@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import { formatDate } from '$lib/utils/date';
-	import { sanitizeUrl } from '$lib/utils/url';
+	import { formatDate } from '#lib/utils/date';
+	import { sanitizeUrl } from '#lib/utils/url';
 
 	let { data } = $props();
 

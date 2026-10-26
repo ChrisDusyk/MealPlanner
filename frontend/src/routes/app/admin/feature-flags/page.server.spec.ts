@@ -3,7 +3,7 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 const getFeatureFlags = vi.fn();
 const setFeatureFlagEnabled = vi.fn();
 
-vi.mock('$lib/api/featureFlagsApi', () => ({
+vi.mock('#lib/api/featureFlagsApi', () => ({
 	getFeatureFlags: (...args: unknown[]) => getFeatureFlags(...args),
 	setFeatureFlagEnabled: (...args: unknown[]) => setFeatureFlagEnabled(...args)
 }));

@@ -1,8 +1,8 @@
 import { error } from '@sveltejs/kit';
-import { ApiError } from '$lib/api/apiHelpers';
-import { getFeatureFlag } from '$lib/api/featureFlagsApi';
-import { requireRole } from '$lib/auth/guards';
-import { APP_ROLES } from '$lib/auth/roles';
+import { ApiError } from '#lib/api/apiHelpers';
+import { getFeatureFlag } from '#lib/api/featureFlagsApi';
+import { requireRole } from '#lib/auth/guards';
+import { APP_ROLES } from '#lib/auth/roles';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ parent, params, locals, fetch }) => {

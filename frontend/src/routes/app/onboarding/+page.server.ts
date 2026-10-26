@@ -1,8 +1,8 @@
 import { fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
-import { requireAuthenticatedSession } from '$lib/auth/guards';
-import { completeOnboarding, syncCurrentUser } from '$lib/api/userApi';
-import { ApiError } from '$lib/api/apiHelpers';
+import { requireAuthenticatedSession } from '#lib/auth/guards';
+import { completeOnboarding, syncCurrentUser } from '#lib/api/userApi';
+import { ApiError } from '#lib/api/apiHelpers';
 
 export const load: PageServerLoad = async (event) => {
 	const rawSession = await event.locals.auth();

@@ -1,6 +1,6 @@
 <script lang="ts">
-	import Modal from '$lib/components/Modal.svelte';
-	import { WEEK_DAYS } from '$lib/api/mealPlanApi';
+	import Modal from '#lib/components/Modal.svelte';
+	import { WEEK_DAYS } from '#lib/api/mealPlanApi';
 
 	let {
 		open = false,

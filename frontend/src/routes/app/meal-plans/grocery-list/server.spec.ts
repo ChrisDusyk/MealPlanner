@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { ApiError } from '$lib/api/recipeApi';
+import { ApiError } from '#lib/api/recipeApi';
 import { POST } from './+server';
-import { generateGroceryList } from '$lib/api/groceryListApi';
+import { generateGroceryList } from '#lib/api/groceryListApi';
 
 type GroceryListGenerateEvent = Parameters<typeof POST>[0];
 
-vi.mock('$lib/api/groceryListApi', () => ({
+vi.mock('#lib/api/groceryListApi', () => ({
 	generateGroceryList: vi.fn()
 }));
 

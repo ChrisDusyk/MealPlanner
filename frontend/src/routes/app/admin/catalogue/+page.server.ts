@@ -1,7 +1,7 @@
 import { error } from '@sveltejs/kit';
-import { adminListCatalogue, adminListCatalogueTags } from '$lib/api/adminCatalogueApi';
-import { requireRole } from '$lib/auth/guards';
-import { APP_ROLES } from '$lib/auth/roles';
+import { adminListCatalogue, adminListCatalogueTags } from '#lib/api/adminCatalogueApi';
+import { requireRole } from '#lib/auth/guards';
+import { APP_ROLES } from '#lib/auth/roles';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ parent, locals, fetch, url }) => {

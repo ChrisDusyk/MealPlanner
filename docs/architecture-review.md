@@ -105,7 +105,7 @@ Meal plans use the accessible, reusable `ShareModal.svelte`; grocery lists reimp
 ### 8. Magic values
 
 - The 72px navbar height is hard-coded in four places (`+layout.svelte` `pt-[72px]`, `app/+layout.svelte` `min-h-[calc(100vh-72px)]`, `AppSidebar.svelte` `top-[72px]`/`top-[78px]`). Promote it to a CSS variable in `routes/layout.css`.
-- `'ReadOnly'`/`'ReadWrite'` permission strings appear 24 times across four files with no shared constant. Export a `Permission` const/type from `$lib/api`.
+- `'ReadOnly'`/`'ReadWrite'` permission strings appear 24 times across four files with no shared constant. Export a `Permission` const/type from `#lib/api`.
 - The theme tokens in `routes/layout.css` only cover greens; feature UIs introduce raw `blue-*`, `purple-*`, `amber-*` ad hoc (grocery share panel, shared lists, pantry staples). Tokenize the semantic colors so features stay consistent.
 
 ### 9. Mixed mutation patterns
@@ -118,7 +118,7 @@ Grocery lists mutate via SvelteKit form actions + `use:enhance`; meal plans and 
 
 Backend: `Result<T>`/`Option<T>` + `ErrorCodes` (`MealPlanner.Api/Shared/`), reflection-based handler registration (`AddCqrsHandlers` — new handlers need no wiring), the named-HttpClient + `IOptions<T>` pattern (`AnthropicOptions`, `GoogleIntegrationsOptions`), and `IIntegrationTokenProtector` for secrets at rest.
 
-Frontend: `WeekNavigator.svelte` (already shared by meal plans and grocery lists), the meal-plan modals as the a11y reference implementation, `$lib/api/apiHelpers.ts` (`ApiError`, `getApiBase`), `$lib/utils/date.ts` / `url.ts`, `$lib/context/appUserContext.ts`, and `$lib/auth/roles.ts`.
+Frontend: `WeekNavigator.svelte` (already shared by meal plans and grocery lists), the meal-plan modals as the a11y reference implementation, `#lib/api/apiHelpers.ts` (`ApiError`, `getApiBase`), `#lib/utils/date.ts` / `url.ts`, `#lib/context/appUserContext.ts`, and `#lib/auth/roles.ts`.
 
 ## Suggested order of attack
 

@@ -3,17 +3,17 @@
 	import { resolve } from '$app/paths';
 	import { onMount } from 'svelte';
 	import { SvelteURLSearchParams } from 'svelte/reactivity';
-	import type { MealSlotItem, MealPlanResponse } from '$lib/api/mealPlanApi';
-	import type { Recipe } from '$lib/api/recipeApi';
+	import type { MealSlotItem, MealPlanResponse } from '#lib/api/mealPlanApi';
+	import type { Recipe } from '#lib/api/recipeApi';
 	import {
 		MealPlanRealtimeClient,
 		type MealPlanUpdatedEvent
-	} from '$lib/realtime/mealPlanRealtime';
-	import WeekNavigator from '$lib/components/meal-plans/WeekNavigator.svelte';
-	import MealPlanGrid from '$lib/components/meal-plans/MealPlanGrid.svelte';
-	import AddItemModal from '$lib/components/meal-plans/AddItemModal.svelte';
-	import CopyModal from '$lib/components/meal-plans/CopyModal.svelte';
-	import { toast } from '$lib/stores/toast.svelte';
+	} from '#lib/realtime/mealPlanRealtime';
+	import WeekNavigator from '#lib/components/meal-plans/WeekNavigator.svelte';
+	import MealPlanGrid from '#lib/components/meal-plans/MealPlanGrid.svelte';
+	import AddItemModal from '#lib/components/meal-plans/AddItemModal.svelte';
+	import CopyModal from '#lib/components/meal-plans/CopyModal.svelte';
+	import { toast } from '#lib/stores/toast.svelte';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();

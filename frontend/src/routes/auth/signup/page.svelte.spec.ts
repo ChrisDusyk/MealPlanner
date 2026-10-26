@@ -5,7 +5,7 @@ import Page from './+page.svelte';
 
 describe('/auth/signup/+page.svelte', () => {
 	it('renders value messaging for meal planning, grocery generation, and sharing', async () => {
-		render(Page);
+		await render(Page);
 
 		await expect
 			.element(page.getByRole('heading', { level: 1, name: /plan meals, generate grocery lists/i }))

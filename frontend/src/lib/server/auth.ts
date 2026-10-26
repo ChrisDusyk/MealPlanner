@@ -1,6 +1,6 @@
 import { sveltekitCookies } from 'better-auth/svelte-kit';
 import { getRequestEvent } from '$app/server';
-import { building } from '$app/environment';
+import { building } from '$app/env';
 import { createAuth } from './auth-options';
 import { dash } from '@better-auth/infra';
 

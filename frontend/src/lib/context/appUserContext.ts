@@ -1,4 +1,4 @@
-import type { AppUserResponse } from '$lib/api/userApi';
+import type { AppUserResponse } from '#lib/api/userApi';
 
 export type AppUser = AppUserResponse;
 

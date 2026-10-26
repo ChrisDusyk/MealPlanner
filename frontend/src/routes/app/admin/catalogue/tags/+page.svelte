@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { invalidateAll } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import type { CatalogueTag } from '$lib/api/catalogueApi';
+	import type { CatalogueTag } from '#lib/api/catalogueApi';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();

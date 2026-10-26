@@ -1,4 +1,4 @@
-import { ApiError } from '$lib/api/recipeApi';
+import { ApiError } from '#lib/api/recipeApi';
 import {
 	fetchGroceryList,
 	generateGroceryList,
@@ -6,8 +6,8 @@ import {
 	addCustomItem,
 	deleteGroceryList,
 	promotePantryStapleItem
-} from '$lib/api/groceryListApi';
-import type { GroceryListResponse } from '$lib/api/groceryListApi';
+} from '#lib/api/groceryListApi';
+import type { GroceryListResponse } from '#lib/api/groceryListApi';
 import type { PageServerLoad, Actions } from './$types';
 import { error, fail } from '@sveltejs/kit';
 

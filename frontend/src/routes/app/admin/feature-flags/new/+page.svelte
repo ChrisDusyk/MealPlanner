@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import type { CreateFeatureFlagRequest } from '$lib/api/featureFlagsApi';
-	import FeatureFlagForm from '$lib/components/admin/FeatureFlagForm.svelte';
+	import type { CreateFeatureFlagRequest } from '#lib/api/featureFlagsApi';
+	import FeatureFlagForm from '#lib/components/admin/FeatureFlagForm.svelte';
 
 	let submitting = $state(false);
 	let errorMessage = $state('');

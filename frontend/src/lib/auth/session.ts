@@ -2,7 +2,7 @@
  * Shared session shape used across the SvelteKit frontend.
  *
  * Server-only helpers that produce these sessions live in
- * `$lib/server/session` — this module is safe to import from browser code
+ * `#lib/server/session` — this module is safe to import from browser code
  * for typing alone.
  */
 

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import CatalogueBrowserModal from '$lib/components/CatalogueBrowserModal.svelte';
-	import RecipeCard from '$lib/components/RecipeCard.svelte';
+	import CatalogueBrowserModal from '#lib/components/CatalogueBrowserModal.svelte';
+	import RecipeCard from '#lib/components/RecipeCard.svelte';
 
 	let { data } = $props();
 

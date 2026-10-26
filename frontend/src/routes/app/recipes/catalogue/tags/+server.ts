@@ -1,6 +1,6 @@
 import { json, error } from '@sveltejs/kit';
-import { ApiError, fetchCatalogueTags } from '$lib/api/catalogueApi';
-import { requireAuthenticatedSession } from '$lib/auth/guards';
+import { ApiError, fetchCatalogueTags } from '#lib/api/catalogueApi';
+import { requireAuthenticatedSession } from '#lib/auth/guards';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async ({ locals, fetch }) => {

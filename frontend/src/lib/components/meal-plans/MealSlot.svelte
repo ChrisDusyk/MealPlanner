@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { MealSlotItem } from '$lib/api/mealPlanApi';
+	import type { MealSlotItem } from '#lib/api/mealPlanApi';
 
 	let {
 		day,

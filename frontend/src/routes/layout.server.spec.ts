@@ -1,14 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { load } from './+layout.server';
-import { getCurrentUser, syncCurrentUser } from '$lib/api/userApi';
-import { ApiError } from '$lib/api/apiHelpers';
+import { getCurrentUser, syncCurrentUser } from '#lib/api/userApi';
+import { ApiError } from '#lib/api/apiHelpers';
 
-vi.mock('$lib/api/userApi', () => ({
+vi.mock('#lib/api/userApi', () => ({
 	getCurrentUser: vi.fn(),
 	syncCurrentUser: vi.fn()
 }));
 
-vi.mock('$lib/server/featureFlags', () => ({
+vi.mock('#lib/server/featureFlags', () => ({
 	getServerFlags: vi.fn().mockResolvedValue({ demoBanner: false })
 }));
 

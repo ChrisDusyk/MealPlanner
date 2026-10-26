@@ -2,7 +2,7 @@
 	import { enhance } from '$app/forms';
 	import { invalidateAll } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import { describeResolvedValues } from '$lib/featureFlags/definition';
+	import { describeResolvedValues } from '#lib/featureFlags/definition';
 	import type { PageData, ActionData } from './$types';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();

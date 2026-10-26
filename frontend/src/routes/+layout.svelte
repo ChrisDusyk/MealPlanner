@@ -1,14 +1,14 @@
 <script lang="ts">
 	import './layout.css';
 	import { setContext } from 'svelte';
-	import favicon from '$lib/assets/favicon.svg';
-	import Navbar from '$lib/components/Navbar.svelte';
-	import DemoBanner from '$lib/components/DemoBanner.svelte';
+	import favicon from '#lib/assets/favicon.svg';
+	import Navbar from '#lib/components/Navbar.svelte';
+	import DemoBanner from '#lib/components/DemoBanner.svelte';
 	import {
 		APP_USER_CONTEXT_KEY,
 		type AppUserContextValue,
 		type AppUserState
-	} from '$lib/context/appUserContext';
+	} from '#lib/context/appUserContext';
 
 	let { children, data } = $props();
 

@@ -1,5 +1,5 @@
 import { json, error } from '@sveltejs/kit';
-import { updateDaySlot, copyCategory, removeSlotItem } from '$lib/api/mealPlanApi';
+import { updateDaySlot, copyCategory, removeSlotItem } from '#lib/api/mealPlanApi';
 import type { RequestHandler } from './$types';
 
 export const PUT: RequestHandler = async ({ request, locals, fetch, url }) => {

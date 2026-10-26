@@ -1,7 +1,7 @@
 import { error, fail } from '@sveltejs/kit';
-import { ApiError } from '$lib/api/recipeApi';
-import { getIncomingFamilyInvitations, getMyFamily } from '$lib/api/familyApi';
-import { updateCurrentUser } from '$lib/api/userApi';
+import { ApiError } from '#lib/api/recipeApi';
+import { getIncomingFamilyInvitations, getMyFamily } from '#lib/api/familyApi';
+import { updateCurrentUser } from '#lib/api/userApi';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ locals, fetch }) => {

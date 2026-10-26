@@ -3,9 +3,9 @@
 	import { goto, invalidateAll } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { getContext } from 'svelte';
-	import { authClient } from '$lib/auth/client';
-	import type { AppSession } from '$lib/auth/session';
-	import { APP_USER_CONTEXT_KEY, type AppUserContextValue } from '$lib/context/appUserContext';
+	import { authClient } from '#lib/auth/client';
+	import type { AppSession } from '#lib/auth/session';
+	import { APP_USER_CONTEXT_KEY, type AppUserContextValue } from '#lib/context/appUserContext';
 
 	let { session }: { session: AppSession | null } = $props();
 	const appUserContext = getContext<AppUserContextValue | undefined>(APP_USER_CONTEXT_KEY);

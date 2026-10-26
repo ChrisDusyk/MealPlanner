@@ -1,7 +1,7 @@
 import { json, error } from '@sveltejs/kit';
-import { ApiError, adminImportCatalogueFromUrl } from '$lib/api/adminCatalogueApi';
-import { requireRole } from '$lib/auth/guards';
-import { APP_ROLES } from '$lib/auth/roles';
+import { ApiError, adminImportCatalogueFromUrl } from '#lib/api/adminCatalogueApi';
+import { requireRole } from '#lib/auth/guards';
+import { APP_ROLES } from '#lib/auth/roles';
 import type { RequestHandler } from './$types';
 
 interface ImportFromUrlRequest {

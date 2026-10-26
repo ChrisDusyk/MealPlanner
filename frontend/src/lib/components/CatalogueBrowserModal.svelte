@@ -5,8 +5,8 @@
 		type CatalogueRecipeListItem,
 		type CatalogueSort,
 		type CatalogueTag
-	} from '$lib/api/catalogueApi';
-	import { sanitizeUrl } from '$lib/utils/url';
+	} from '#lib/api/catalogueApi';
+	import { sanitizeUrl } from '#lib/utils/url';
 	import CatalogueRecipeCard from './CatalogueRecipeCard.svelte';
 
 	let {

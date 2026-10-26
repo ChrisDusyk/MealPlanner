@@ -1,6 +1,6 @@
 <script lang="ts">
-	import type { CatalogueRecipeListItem } from '$lib/api/catalogueApi';
-	import { sanitizeUrl } from '$lib/utils/url';
+	import type { CatalogueRecipeListItem } from '#lib/api/catalogueApi';
+	import { sanitizeUrl } from '#lib/utils/url';
 
 	let {
 		recipe,

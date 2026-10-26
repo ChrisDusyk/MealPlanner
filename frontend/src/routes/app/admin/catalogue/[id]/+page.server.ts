@@ -2,10 +2,10 @@ import { error } from '@sveltejs/kit';
 import {
 	adminGetCatalogueRecipe,
 	adminListCatalogueTags
-} from '$lib/api/adminCatalogueApi';
-import { ApiError } from '$lib/api/apiHelpers';
-import { requireRole } from '$lib/auth/guards';
-import { APP_ROLES } from '$lib/auth/roles';
+} from '#lib/api/adminCatalogueApi';
+import { ApiError } from '#lib/api/apiHelpers';
+import { requireRole } from '#lib/auth/guards';
+import { APP_ROLES } from '#lib/auth/roles';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ parent, locals, fetch, params }) => {

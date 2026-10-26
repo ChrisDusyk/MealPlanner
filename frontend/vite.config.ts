@@ -3,12 +3,13 @@ import devtoolsJson from 'vite-plugin-devtools-json';
 import tailwindcss from '@tailwindcss/vite';
 import { defineConfig } from 'vitest/config';
 import { playwright } from '@vitest/browser-playwright';
+import adapter from '@sveltejs/adapter-node';
 import { sveltekit } from '@sveltejs/kit/vite';
 
 const runBrowserTests = process.env.VITEST_BROWSER === '1';
 
 export default defineConfig({
-	plugins: [tailwindcss(), sveltekit(), devtoolsJson()],
+	plugins: [tailwindcss(), sveltekit({ adapter: adapter() }), devtoolsJson()],
 	server: {
 		host: '127.0.0.1',
 		proxy: {
@@ -30,7 +31,7 @@ export default defineConfig({
 		api: {
 			host: '127.0.0.1',
 			port: 13337,
-			strictPort: true
+			strictPort: false
 		},
 		expect: { requireAssertions: true },
 		projects: [

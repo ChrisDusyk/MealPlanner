@@ -1,4 +1,4 @@
-import { getPublicApiBase } from '$lib/api/apiHelpers';
+import { getPublicApiBase } from '#lib/api/apiHelpers';
 
 export function getHubUrl(path: string): string {
 	const apiBase = getPublicApiBase();

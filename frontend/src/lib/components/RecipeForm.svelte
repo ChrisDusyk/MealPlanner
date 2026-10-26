@@ -4,7 +4,7 @@
 	import { flip } from 'svelte/animate';
 	import { quintOut } from 'svelte/easing';
 	import { untrack } from 'svelte';
-	import type { Ingredient, CreateRecipeRequest } from '$lib/api/recipeApi';
+	import type { Ingredient, CreateRecipeRequest } from '#lib/api/recipeApi';
 
 	interface RecipeFormData {
 		name: string;
